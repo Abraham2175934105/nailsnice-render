@@ -1,0 +1,139 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Catálogo de Productos{% endblock %}
+{% block page_title %}Catálogo de Productos{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'lista_inventario' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-layers"></use></svg>Gestionar en Inventario</a>
+  <button type="button" class="btn-pill" data-export-trigger><svg aria-hidden="true"><use href="#icon-export"></use></svg>Exportar</button>
+  <a href="{% url 'catalogo_productos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Refrescar</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="get" class="glass-panel" style="padding:16px; margin-bottom:14px;">
+  <div class="search-bar">
+    <input type="search" name="q" placeholder="Buscar por nombre, descripción o marca" value="{{ search|default:'' }}">
+    <label style="font-weight:700; color:var(--muted);">Por página
+      <select name="page_size" onchange="this.form.submit()">
+        <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
+        <option value="15" {% if page_size == 15 %}selected{% endif %}>15</option>
+        <option value="20" {% if page_size == 20 %}selected{% endif %}>20</option>
+        <option value="25" {% if page_size == 25 %}selected{% endif %}>25</option>
+        <option value="30" {% if page_size == 30 %}selected{% endif %}>30</option>
+      </select>
+    </label>
+    <button class="btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-search"></use></svg>Buscar</button>
+  </div>
+</form>
+
+<div class="glass-panel glass-table skeleton-onload">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Nombre</th><th>Precio</th><th>Estado</th><th>Categoría</th><th>Marca</th><th>Inventario</th><th>Gestión</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for producto in productos %}
+      <tr>
+        <td>{{ producto.id }}</td>
+        <td>{{ producto.nombre }}</td>
+        <td>${{ producto.precio }}</td>
+        <td>
+          {% if producto.estado_producto == 'Activo' %}
+            <span class="badge badge-soft badge-active">Activo</span>
+          {% elif producto.estado_producto == 'Inactivo' %}
+            <span class="badge badge-soft badge-inactive">Inactivo</span>
+          {% else %}
+            <span class="badge badge-soft">{{ producto.estado_producto }}</span>
+          {% endif %}
+        </td>
+        <td>{{ producto.id_categoria.nombre_categoria|default:'-' }}</td>
+        <td>{{ producto.id_marca.nombre_marca|default:'-' }}</td>
+        <td>
+          {% if producto.inventario %}
+            <span class="pill">ID {{ producto.inventario.id_inventario }} · Cant {{ producto.inventario.cantidad|default:producto.inventario.stock }}</span>
+          {% else %}
+            <span class="pill" style="color:var(--muted);">Sin vínculo</span>
+          {% endif %}
+        </td>
+        <td><span class="pill" style="color:var(--muted);">Solo lectura</span></td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="empty-row-cell">
+          <div class="empty-state-inline">
+            <strong>Sin productos en catálogo</strong>
+            <span>Gestiona productos desde inventario y aparecerán aquí en modo solo lectura.</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination" style="margin-top:14px;">
+  {% for num in page_obj.paginator.page_range %}
+    {% with query='?page='|add:num|add:'&page_size='|add:page_size|add:'&q='|add:search %}
+      <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="{{ query }}">{{ num }}</a>
+    {% endwith %}
+  {% endfor %}
+</div>
+
+<div class="modal-overlay" id="export-modal">
+  <div class="glass-modal export-modal">
+    <div class="modal-header" style="justify-content: space-between; align-items:center;">
+      <div>
+        <h3>Exportar productos</h3>
+        <p class="section-subtitle">Elige formato, alcance y columnas.</p>
+      </div>
+      <button type="button" class="btn-ghost" data-close-export><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Cancelar</button>
+    </div>
+    <form method="get" id="export-form" class="export-options">
+      <input type="hidden" name="export" id="export-format" value="">
+      <input type="hidden" name="q" value="{{ search }}">
+      <input type="hidden" name="page_size" value="{{ page_size }}">
+      <div>
+        <p class="section-subtitle">Alcance</p>
+        <label><input type="radio" name="export_scope" value="page" {% if export_scope != 'all' %}checked{% endif %}> Solo página</label>
+        <label><input type="radio" name="export_scope" value="all" {% if export_scope == 'all' %}checked{% endif %}> Todo</label>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+          <span>Página</span>
+          <input type="number" name="export_page" value="{{ export_page }}" min="1" max="{{ page_obj.paginator.num_pages }}" style="width:80px;">
+          <span class="pill-tag">{{ page_obj.paginator.count }} registros</span>
+        </div>
+      </div>
+      <div>
+        <p class="section-subtitle">Columnas</p>
+        <div class="checkbox-grid">
+          {% for key,label in columns_options %}
+            <label><input type="checkbox" name="columns" value="{{ key }}" {% if key in selected_columns %}checked{% endif %}> {{ label }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-actions" style="justify-content:flex-end;">
+        <button type="submit" class="btn-pill btn-primary" onclick="document.getElementById('export-format').value='csv'"><svg aria-hidden="true"><use href="#icon-export"></use></svg>CSV</button>
+        <button type="submit" class="btn-pill" onclick="document.getElementById('export-format').value='xlsx'"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Excel</button>
+        <button type="submit" class="btn-pill" onclick="document.getElementById('export-format').value='pdf'"><svg aria-hidden="true"><use href="#icon-export"></use></svg>PDF</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('export-modal');
+    const trigger = document.querySelector('[data-export-trigger]');
+    const closers = document.querySelectorAll('[data-close-export]');
+    if (trigger && modal) { trigger.addEventListener('click', () => modal.classList.add('show')); }
+    closers.forEach(btn => btn.addEventListener('click', () => modal.classList.remove('show')));
+    document.querySelectorAll('.skeleton-onload').forEach(function(el) { setTimeout(() => el.classList.remove('skeleton-onload'), 350); });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Producto | Crear / Editar{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+  <div class="modal-header" style="justify-content: center; align-items:center;">
+    <div style="text-align:center; width:100%;">
+      <h3>Producto</h3>
+      <p class="section-subtitle">Datos básicos, stock y multimedia.</p>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="form-grid">
+    {% csrf_token %}
+    <div class="field">
+      <label for="id_nombre">Nombre</label>
+      {{ form.nombre }}
+      {% if form.nombre.errors %}<span class="badge-chip">{{ form.nombre.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_marca">Marca</label>
+      {{ form.marca }}
+      {% if form.marca.errors %}<span class="badge-chip">{{ form.marca.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_proveedor">Proveedor</label>
+      {{ form.proveedor }}
+      {% if form.proveedor.errors %}<span class="badge-chip">{{ form.proveedor.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_precio">Precio</label>
+      {{ form.precio }}
+      {% if form.precio.errors %}<span class="badge-chip">{{ form.precio.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_estado">Estado</label>
+      {{ form.estado }}
+      {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_cantidad">Cantidad</label>
+      {{ form.cantidad }}
+      {% if form.cantidad.errors %}<span class="badge-chip">{{ form.cantidad.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_stock">Stock disponible</label>
+      {{ form.stock }}
+      {% if form.stock.errors %}<span class="badge-chip">{{ form.stock.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_fecha_ingreso">Fecha de ingreso</label>
+      {{ form.fecha_ingreso }}
+      {% if form.fecha_ingreso.errors %}<span class="badge-chip">{{ form.fecha_ingreso.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_imagen">Imagen</label>
+      {{ form.imagen }}
+      {% if form.imagen.errors %}<span class="badge-chip">{{ form.imagen.errors }}</span>{% endif %}
+    </div>
+    <div class="field" style="grid-column:1/-1;">
+      <label for="id_descripcion">Descripción</label>
+      {{ form.descripcion }}
+      {% if form.descripcion.errors %}<span class="badge-chip">{{ form.descripcion.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+      <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>
+      <button type="submit" class="btn-pill btn-primary">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

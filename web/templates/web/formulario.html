@@ -1,0 +1,50 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Cliente{% endblock %}
+{% block page_title %}Cliente{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+    <div class="modal-header" style="justify-content: center; align-items:center;">
+        <div style="text-align:center; width:100%;">
+            <h3>Cliente</h3>
+            <p class="section-subtitle">Datos de contacto y validaciones.</p>
+        </div>
+    </div>
+
+    <form method="POST" class="form-grid">
+        {% csrf_token %}
+        <div class="field">
+            <label>Nombre</label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}<span class="badge-chip">{{ form.nombre.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Apellido</label>
+            {{ form.apellido }}
+            {% if form.apellido.errors %}<span class="badge-chip">{{ form.apellido.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Dirección</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}<span class="badge-chip">{{ form.direccion.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Teléfono</label>
+            {{ form.telefono }}
+            {% if form.telefono.errors %}<span class="badge-chip">{{ form.telefono.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Correo</label>
+            {{ form.correo }}
+            {% if form.correo.errors %}<span class="badge-chip">{{ form.correo.errors }}</span>{% endif %}
+        </div>
+
+        <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+            <a class="btn-ghost" href="{% url 'lista_clientes' %}">Cancelar</a>
+            <button class="btn-pill btn-primary" type="submit">Guardar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

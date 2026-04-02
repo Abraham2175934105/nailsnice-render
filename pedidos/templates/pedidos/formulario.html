@@ -1,0 +1,59 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Pedido{% endblock %}
+{% block page_title %}Pedido{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+  <div class="modal-header" style="justify-content: center; align-items:center;">
+    <div style="text-align:center; width:100%;">
+      <h3>Pedido</h3>
+      <p class="section-subtitle">Registrar o editar pedidos con reglas de negocio.</p>
+    </div>
+  </div>
+
+  <form method="POST" class="form-grid">
+    {% csrf_token %}
+    <div class="field">
+      <label>Usuario</label>
+      {{ form.usuario }}
+    </div>
+    <div class="field">
+      <label>Teléfono</label>
+      {{ form.telefono }}
+      {% if form.telefono.errors %}<span class="badge-chip">{{ form.telefono.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Precio</label>
+      {{ form.precio }}
+      {% if form.precio.errors %}<span class="badge-chip">{{ form.precio.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Producto</label>
+      {{ form.producto }}
+      {% if form.producto.errors %}<span class="badge-chip">{{ form.producto.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Dirección</label>
+      {{ form.direccion }}
+      {% if form.direccion.errors %}<span class="badge-chip">{{ form.direccion.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Cantidad</label>
+      {{ form.cantidad }}
+      {% if form.cantidad.errors %}<span class="badge-chip">{{ form.cantidad.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Fecha</label>
+      {{ form.fecha }}
+      {% if form.fecha.errors %}<span class="badge-chip">{{ form.fecha.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+      <a class="btn-ghost" href="{% url 'lista_pedidos' %}">Cancelar</a>
+      <button class="btn-pill btn-primary" type="submit">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
