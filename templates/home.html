@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NailsNice - Belleza y Estilo en Tus Manos</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260401i">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body class="home-page">
+    {% if messages %}
+    <div style="position:fixed; top:1rem; right:1rem; z-index:100; background:#DCFCE7; color:#166534; padding:0.75rem 1rem; border-radius:0.75rem; box-shadow:0 4px 10px rgba(0,0,0,0.15); font-size:0.9rem;">
+        {% for message in messages %}
+            <div>{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="logo">
+                    <h1>NailsNice</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#categorias">Categorías</a></li>
+                    <li><a href="#nosotros">Sobre</a></li>
+                    <li><a href="/productos.html">Productos</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                    <li class="nav-cart">
+                        <a href="/carrito/" aria-label="Carrito">
+                            <span aria-hidden="true">🛒</span>
+                            <span class="nav-cart-count" data-cart-count>0</span>
+                        </a>
+                    </li>
+                    {% if request.user.is_authenticated %}
+                        <li class="nav-user-chip">
+                            <div class="nav-user-text">
+                                <span class="nav-user-eyebrow">Hola</span>
+                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                            </div>
+                            <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
+                        </li>
+                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                            <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
+                        {% endif %}
+                        <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
+                    {% else %}
+                        <li class="nav-auth">
+                            <button type="button" class="nav-auth-trigger" aria-haspopup="true" aria-expanded="false">
+                                <span class="nav-auth-title">Empieza ahora con NailsNice</span>
+                                <span class="nav-auth-subtitle">Accede o crea tu cuenta</span>
+                            </button>
+                            <div class="nav-auth-menu" id="nav-auth-menu" aria-label="Accesos de cuenta">
+                                <a href="{% url 'login' %}">Iniciar sesión</a>
+                                <a href="{% url 'registro' %}">Crear cuenta</a>
+                            </div>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <div id="home-sticky-search" class="sticky-search" aria-hidden="true">
+        <div class="container sticky-search__inner">
+            <div class="sticky-search__label">Buscar productos</div>
+            <div class="sticky-search__controls">
+                <input id="home-search" type="search" placeholder="Ej: gel, strass, esmalte..." autocomplete="off" />
+                <div id="home-search-suggestions" class="suggestions" aria-live="polite"></div>
+                <button id="home-search-go" type="button" class="btn-secondary">Ver en Productos</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="home-main">
+        {% if request.user.is_authenticated %}
+        <section class="greeting-card reveal" aria-label="Saludo de usuario">
+            <div class="greeting-text">
+                <p class="greeting-eyebrow">Bienvenida de nuevo</p>
+                <h2>Hola, {{ request.user.nombre1|default:request.user.email }} ✨</h2>
+                <p>Accede rápidamente a tu perfil para ver tus datos, pedidos y seguridad.</p>
+            </div>
+            <div class="greeting-actions">
+                <a class="btn-primary" href="{% url 'perfil' %}">Perfil</a>
+                <a class="btn-secondary" href="/productos.html">Ver productos</a>
+            </div>
+        </section>
+        {% endif %}
+
+        <section id="inicio" class="hero">
+            <div class="container hero-shell">
+                <div id="hero-focus" class="hero-content reveal">
+                    <h2>Descubre la Belleza en Tus Manos</h2>
+                    <p>
+                        NailsNice es tu estudio de belleza y tu tienda de confianza: cuidamos tus uñas con acabados
+                        impecables y productos seleccionados por marca, color y tipo.
+                    </p>
+                    <div class="hero-proof">
+                        <span>+500 clientas felices</span>
+                        <span>Marcas top</span>
+                        <span>Envío 24-72h</span>
+                    </div>
+                    <div class="hero-buttons">
+                        <a href="#productos-destacados" class="btn-primary">Descubrir productos</a>
+                        <a href="#nosotros" class="btn-secondary">Sobre NailsNice</a>
+                    </div>
+                </div>
+
+                <div class="hero-image">
+                    <div class="beauty-float" aria-hidden="true">
+                        <div class="beauty-orb"></div>
+                        <div class="beauty-orb beauty-orb--2"></div>
+                        <div class="beauty-sparkles">
+                            <span>✦</span><span>✦</span><span>✦</span>
+                            <span>✦</span><span>✦</span>
+                        </div>
+                        <div id="hero-product-card" class="hero-product-card">
+                            <img id="hero-product-img" alt="" />
+                            <div id="hero-product-fallback" class="hero-product-fallback">Kit de belleza</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="categorias" class="services categories">
+            <div class="container">
+                <h2 class="reveal">Nuestras Categorías</h2>
+                <div class="section-subtitle reveal">
+                    Encuentra tu estilo: esmaltes, decoraciones, bases y más. Filtra por marca, color y tipo en el catálogo.
+                </div>
+
+                <div id="categories-grid" class="services-grid" aria-live="polite">
+                    <div class="service-card skeleton reveal"></div>
+                    <div class="service-card skeleton reveal"></div>
+                    <div class="service-card skeleton reveal"></div>
+                    <div class="service-card skeleton reveal"></div>
+                    <div class="service-card skeleton reveal"></div>
+                    <div class="service-card skeleton reveal"></div>
+                </div>
+
+                <div class="products-actions reveal" style="margin-top: 10px;">
+                    <a href="/productos.html" class="btn-primary">Explorar todo el catálogo</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="nosotros" class="about">
+            <div class="container">
+                <div class="about-layout">
+                    <div class="about-text reveal">
+                        <h2>Sobre NailsNice</h2>
+                        <p>
+                            Somos NailsNice: venta de cosméticos y belleza para que tus uñas se vean perfectas, con
+                            acabados duraderos y colores que realzan tu estilo.
+                        </p>
+                        <p>
+                            Nuestro catálogo se organiza por <strong>categoría</strong>, <strong>marca</strong> y
+                            <strong>color</strong> para que encuentres rápido lo que buscas (y lo que ni sabías que te iba a encantar).
+                        </p>
+                        <div class="about-cta">
+                            <a class="btn-primary" href="/productos.html">Ver productos</a>
+                            <a class="btn-secondary" href="#contacto">Hablar con nosotros</a>
+                        </div>
+                    </div>
+
+                    <div class="about-highlights">
+                        <div class="service-card reveal">
+                            <div class="service-icon">✨</div>
+                            <h3>Calidad que se nota</h3>
+                            <p>Productos seleccionados para un look profesional desde casa.</p>
+                        </div>
+                        <div class="service-card reveal">
+                            <div class="service-icon">🌸</div>
+                            <h3>Paleta que enamora</h3>
+                            <p>Colores y efectos que combinan con tu personalidad.</p>
+                        </div>
+                        <div class="service-card reveal">
+                            <div class="service-icon">🫧</div>
+                            <h3>Consejos prácticos</h3>
+                            <p>Recomendaciones para que tu manicura dure más.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="compromisos" class="services">
+            <div class="container">
+                <h2 class="reveal">Nuestros Compromisos</h2>
+                <div class="section-subtitle reveal">
+                    Belleza profesional sin complicaciones. Te ayudamos a elegir mejor y a lograr resultados que se notan.
+                </div>
+                <div class="services-grid">
+                    <div class="service-card reveal">
+                        <div class="service-icon">🧾</div>
+                        <h3>Transparencia</h3>
+                        <p>Información clara sobre marcas, tipos y recomendaciones para que compres con confianza.</p>
+                    </div>
+                    <div class="service-card reveal">
+                        <div class="service-icon">⏳</div>
+                        <h3>Duración</h3>
+                        <p>Productos pensados para mantener el look por más tiempo y con menos retoques.</p>
+                    </div>
+                    <div class="service-card reveal">
+                        <div class="service-icon">🎯</div>
+                        <h3>Resultados</h3>
+                        <p>Desde tonos suaves hasta estilos con brillo: siempre buscamos un acabado wow.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="productos-destacados" class="products">
+            <div class="container">
+                <h2 class="reveal">Productos Destacados</h2>
+                <div class="section-subtitle reveal">Una selección curada de NailsNice para que brilles con estilo.</div>
+
+                <div id="featured-products" class="products-grid" aria-live="polite">
+                    <!-- skeletons (se reemplazan con JS) -->
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                    <div class="product-card skeleton reveal"></div>
+                </div>
+
+                <div class="products-actions reveal">
+                    <a href="/productos.html" class="btn-primary">Ver todos los productos</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta">
+            <div class="container">
+                <h2 class="reveal">¿Lista para Lucir unas Uñas Perfectas?</h2>
+                <p class="reveal">Agenda tu cita hoy mismo y descubre por qué somos los mejores en cuidado de uñas.</p>
+                <a href="#contacto" class="btn-primary reveal">Agendar Cita</a>
+            </div>
+        </section>
+    </main>
+
+    <footer id="contacto" class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>NailsNice</h3>
+                    <p>Tu destino para el cuidado y embellecimiento de tus uñas.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Contacto</h3>
+                    <p>📞 +57 300 123 4567</p>
+                    <p>📧 info@nailsnice.com</p>
+                    <p>📍 Calle 123, Bogotá, Colombia</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Horarios</h3>
+                    <p>Lunes - Viernes: 9:00 AM - 7:00 PM</p>
+                    <p>Sábados: 8:00 AM - 5:00 PM</p>
+                    <p>Domingos: Cerrado</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 NailsNice. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de detalle de producto (se controla desde JS) -->
+    <div id="product-modal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop" data-close="true"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-label="Detalle de producto">
+            <button class="modal-close" type="button" data-close="true" aria-label="Cerrar">×</button>
+            <div class="modal-body">
+                <div class="modal-image">
+                    <img id="modal-image" alt="" />
+                    <div id="modal-image-fallback" class="modal-image-fallback">NailsNice</div>
+                </div>
+                <div class="modal-info">
+                    <h3 id="modal-title"></h3>
+                    <p id="modal-description"></p>
+                    <div class="modal-price" id="modal-price"></div>
+                    <div class="modal-badges" id="modal-badges"></div>
+                    <div class="modal-actions">
+                        <a class="btn-secondary" href="/productos.html">Ver todos los productos</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{ cart|json_script:"cart-data" }}
+    <script src="{% static 'js/cart-ui.js' %}?v=20260401i"></script>
+    <script src="{% static 'js/home.js' %}?v=20260401i"></script>
+</body>
+</html>

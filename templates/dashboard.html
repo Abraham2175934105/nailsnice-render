@@ -1,0 +1,458 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Inicio - NailsNice Admin{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .dashboard-hero {
+        position: relative;
+        padding: 22px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+        gap: 16px;
+        overflow: hidden;
+    }
+
+    .dashboard-hero::before {
+        content: '';
+        position: absolute;
+        inset: auto -80px -130px auto;
+        width: 280px;
+        height: 280px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(244, 92, 150, 0.3), rgba(255, 255, 255, 0));
+        pointer-events: none;
+    }
+
+    .dashboard-hero__copy {
+        position: relative;
+        z-index: 1;
+    }
+
+    .dashboard-hero h2 {
+        margin: 6px 0;
+        font-size: clamp(1.35rem, 2vw, 1.85rem);
+        letter-spacing: -0.02em;
+        color: #2d0d26;
+    }
+
+    .dashboard-hero p {
+        margin: 0;
+        color: #6e5766;
+        max-width: 60ch;
+    }
+
+    .hero-insight-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        align-content: start;
+    }
+
+    .insight-pill {
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(244, 92, 150, 0.28);
+        border-radius: 14px;
+        padding: 10px 12px;
+        box-shadow: 0 8px 18px rgba(44, 9, 29, 0.08);
+    }
+
+    .insight-pill span {
+        display: block;
+        color: #7d6474;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        margin-bottom: 3px;
+        font-weight: 700;
+    }
+
+    .insight-pill strong {
+        color: #2d0d26;
+        font-size: 1.15rem;
+    }
+
+    .chart-shell {
+        min-height: 320px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .mini-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 9px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #9d3f6a;
+        background: rgba(244, 92, 150, 0.14);
+        border: 1px solid rgba(244, 92, 150, 0.25);
+    }
+
+    .chart-area {
+        position: relative;
+        width: 100%;
+        height: clamp(220px, 32vh, 290px);
+        margin-top: 4px;
+    }
+
+    .chart-area--donut {
+        height: clamp(230px, 34vh, 320px);
+    }
+
+    .chart-canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .stock-summary {
+        margin: -2px 0 10px;
+        font-size: 0.9rem;
+        color: #765b6b;
+    }
+
+    .stock-critical {
+        border-color: rgba(217, 72, 122, 0.4) !important;
+        color: #d9487a !important;
+        background: rgba(217, 72, 122, 0.12) !important;
+    }
+
+    @media (max-width: 1000px) {
+        .dashboard-hero {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-insight-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 760px) {
+        .hero-insight-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+{% block page_title %}Inicio{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+    <a href="{% url 'lista_pedidos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-clipboard"></use></svg>Gestionar Pedidos</a>
+    <a href="{% url 'lista_inventario' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-layers"></use></svg>Gestionar Inventario</a>
+    <a href="{% url 'catalogo_productos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-box"></use></svg>Catálogo Productos</a>
+    <a href="/clientes/" class="btn-pill"><svg aria-hidden="true"><use href="#icon-users"></use></svg>Gestionar Clientes</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero glass-panel">
+    <div class="dashboard-hero__copy">
+        <p class="eyebrow">Centro de control</p>
+        <h2>Analitica operativa para decisiones rapidas</h2>
+        <p>Monitorea pedidos, ventas, stock critico y comportamiento de productos en un solo panel. Las graficas usan datos reales de tus tablas activas.</p>
+    </div>
+    <div class="hero-insight-grid">
+        <article class="insight-pill">
+            <span>Pedidos registrados</span>
+            <strong>{{ total_pedidos }}</strong>
+        </article>
+        <article class="insight-pill">
+            <span>Stock en alerta</span>
+            <strong>{{ low_stock_count }}</strong>
+        </article>
+        <article class="insight-pill">
+            <span>Umbral activo</span>
+            <strong>&lt;= {{ low_stock_threshold }} unds</strong>
+        </article>
+    </div>
+</section>
+
+<section class="cards-grid">
+    <div class="card">
+        <div class="card-content">
+            <h3>Total Pedidos</h3>
+            <div class="value">{{ total_pedidos }}</div>
+        </div>
+        <div class="card-icon">📦</div>
+    </div>
+    <div class="card">
+        <div class="card-content">
+            <h3>Ingresos Brutos</h3>
+            <div class="value">${{ ingresos|floatformat:2 }}</div>
+        </div>
+        <div class="card-icon">💰</div>
+    </div>
+    <div class="card">
+        <div class="card-content">
+            <h3>Clientes</h3>
+            <div class="value">{{ total_clientes }}</div>
+        </div>
+        <div class="card-icon">👥</div>
+    </div>
+    <div class="card">
+        <div class="card-content">
+            <h3>Productos activos</h3>
+            <div class="value">{{ total_productos }}</div>
+        </div>
+        <div class="card-icon">🎨</div>
+    </div>
+</section>
+
+<section class="tables-grid" style="margin-top:18px;">
+    <div class="table-card glass-panel chart-shell">
+        <div class="chart-head">
+            <h3>Ventas mensuales</h3>
+            <span class="mini-badge">Ingresos y pedidos</span>
+        </div>
+        <div class="chart-area">
+            <canvas id="chartMonthly" class="chart-canvas"></canvas>
+        </div>
+    </div>
+    <div class="table-card glass-panel chart-shell">
+        <div class="chart-head">
+            <h3>Top productos vendidos</h3>
+            <span class="mini-badge">Rendimiento comercial</span>
+        </div>
+        <div class="chart-area">
+            <canvas id="chartTop" class="chart-canvas"></canvas>
+        </div>
+    </div>
+    <div class="table-card glass-panel chart-shell">
+        <div class="chart-head">
+            <h3>Inventario con mayor stock</h3>
+            <span class="mini-badge">Distribucion actual</span>
+        </div>
+        <div class="chart-area chart-area--donut">
+            <canvas id="chartStock" class="chart-canvas"></canvas>
+        </div>
+    </div>
+</section>
+
+<section class="tables-grid">
+    <div class="table-card glass-panel">
+        <h3>Últimos 5 Pedidos</h3>
+        {% if ultimos_pedidos %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th><th>Cliente</th><th>Fecha</th><th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in ultimos_pedidos %}
+                    <tr>
+                        <td>{{ pedido.id }}</td>
+                        <td>{{ pedido.usuario }}</td>
+                        <td>{{ pedido.fecha|date:"d M Y" }}</td>
+                        <td><strong>${{ pedido.precio|floatformat:2 }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">No hay pedidos recientes.</div>
+        {% endif %}
+    </div>
+
+    <div class="table-card glass-panel">
+        <h3>Alerta de Stock Bajo (&lt;= {{ low_stock_threshold }})</h3>
+        <p class="stock-summary">Productos en alerta: <strong>{{ low_stock_count }}</strong></p>
+        {% if productos_bajo_stock %}
+            <table>
+                <thead>
+                    <tr><th>Producto</th><th>Marca</th><th>Stock Actual</th></tr>
+                </thead>
+                <tbody>
+                    {% for producto in productos_bajo_stock %}
+                    <tr>
+                        <td>{{ producto.nombre }}</td>
+                        <td>{{ producto.marca }}</td>
+                        <td><span class="badge badge-warning {% if producto.stock <= 2 %}stock-critical{% endif %}">{{ producto.stock }} unds</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">No hay productos por debajo del umbral de alerta.</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{{ charts_payload|json_script:"charts-data" }}
+<script>
+    (function() {
+        const dataNode = document.getElementById('charts-data');
+        const chartsData = dataNode ? JSON.parse(dataNode.textContent) : {};
+        const palette = {
+            primary: 'rgba(240, 138, 180, 0.9)',
+            primarySoft: 'rgba(240, 138, 180, 0.35)',
+            line: 'rgba(46, 13, 38, 0.75)',
+            dark: 'rgba(78, 29, 54, 0.9)',
+            stock: [
+                'rgba(244, 92, 150, 0.8)',
+                'rgba(255, 143, 188, 0.78)',
+                'rgba(188, 97, 146, 0.8)',
+                'rgba(132, 88, 166, 0.74)',
+                'rgba(240, 173, 205, 0.85)',
+            ],
+        };
+
+        const ensureSeries = (value, fallback) => {
+            return Array.isArray(value) && value.length ? value : fallback;
+        };
+
+        const monthlyLabels = ensureSeries(chartsData.monthly_labels, ['Sin datos']);
+        const monthlySales = ensureSeries(chartsData.monthly_sales, [0]);
+        const monthlyOrders = ensureSeries(chartsData.monthly_orders, [0]);
+
+        const topNames = ensureSeries(chartsData.top_names, ['Sin ventas']);
+        const topQty = ensureSeries(chartsData.top_qty, [0]);
+        const topSales = ensureSeries(chartsData.top_sales, [0]);
+
+        const stockNames = ensureSeries(chartsData.stock_names, ['Sin inventario']);
+        const stockQty = ensureSeries(chartsData.stock_qty, [0]);
+
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js no se pudo cargar.');
+            return;
+        }
+
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = 'rgba(60, 42, 55, 0.9)';
+
+        const commonScaleOptions = {
+            y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(176, 106, 139, 0.14)' },
+                ticks: { precision: 0 },
+            },
+            x: {
+                grid: { display: false },
+            },
+        };
+
+        const monthlyCtx = document.getElementById('chartMonthly');
+        if (monthlyCtx) {
+            const existingMonthly = Chart.getChart(monthlyCtx);
+            if (existingMonthly) existingMonthly.destroy();
+
+            new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthlyLabels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Ventas',
+                            data: monthlySales,
+                            backgroundColor: palette.primary,
+                            borderRadius: 10,
+                            maxBarThickness: 42,
+                        },
+                        {
+                            type: 'line',
+                            label: 'Pedidos',
+                            data: monthlyOrders,
+                            borderColor: palette.dark,
+                            backgroundColor: 'rgba(78, 29, 54, 0.1)',
+                            borderWidth: 2.4,
+                            tension: 0.32,
+                            pointRadius: 3,
+                            pointHoverRadius: 4,
+                            fill: false,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                    },
+                    scales: commonScaleOptions,
+                },
+            });
+        }
+
+        const topCtx = document.getElementById('chartTop');
+        if (topCtx) {
+            const existingTop = Chart.getChart(topCtx);
+            if (existingTop) existingTop.destroy();
+
+            new Chart(topCtx, {
+                type: 'bar',
+                data: {
+                    labels: topNames,
+                    datasets: [
+                        {
+                            label: 'Unidades',
+                            data: topQty,
+                            backgroundColor: palette.primary,
+                            borderRadius: 10,
+                            maxBarThickness: 42,
+                        },
+                        {
+                            label: 'Ventas',
+                            data: topSales,
+                            backgroundColor: palette.primarySoft,
+                            borderRadius: 10,
+                            maxBarThickness: 42,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                    },
+                    scales: commonScaleOptions,
+                },
+            });
+        }
+
+        const stockCtx = document.getElementById('chartStock');
+        if (stockCtx) {
+            const existingStock = Chart.getChart(stockCtx);
+            if (existingStock) existingStock.destroy();
+
+            new Chart(stockCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: stockNames,
+                    datasets: [
+                        {
+                            label: 'Stock',
+                            data: stockQty,
+                            backgroundColor: palette.stock,
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '58%',
+                    plugins: {
+                        legend: { position: 'bottom' },
+                    },
+                },
+            });
+        }
+    })();
+</script>
+{% endblock %}

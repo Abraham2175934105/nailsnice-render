@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ report_title }} - {{ company_name }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 17mm 14mm 20mm 14mm;
+
+            @bottom-right {
+                content: "Pagina " counter(page) " de " counter(pages);
+                color: #9c5e79;
+                font-size: 10px;
+                font-weight: 700;
+            }
+
+            @bottom-left {
+                content: "Nails Nice | Documento interno";
+                color: #7b7481;
+                font-size: 9px;
+            }
+        }
+
+        :root {
+            --ink: #2b2b35;
+            --muted: #6f6f7b;
+            --brand-1: #d66b9b;
+            --brand-2: #b44a7b;
+            --brand-soft: #fdeff6;
+            --line: #dfd9e2;
+            --card: #ffffff;
+            --paper: #fffafc;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: var(--ink);
+            font-size: 12px;
+            line-height: 1.5;
+            background: var(--paper);
+        }
+
+        .report-shell {
+            position: relative;
+        }
+
+        .report-shell::before {
+            content: "Nails Nice";
+            position: fixed;
+            right: -12mm;
+            top: 37%;
+            transform: rotate(-90deg);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-size: 22px;
+            color: rgba(214, 107, 155, 0.1);
+            font-weight: 700;
+        }
+
+        .cover {
+            border: 1px solid #e7d4df;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background:
+                linear-gradient(145deg, rgba(214, 107, 155, 0.12), rgba(255, 255, 255, 0.9)),
+                var(--card);
+        }
+
+        .cover-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cover-table td {
+            vertical-align: top;
+        }
+
+        .brand-cell {
+            width: 62%;
+            padding-right: 10px;
+        }
+
+        .meta-cell {
+            width: 38%;
+            text-align: right;
+        }
+
+        .brand-row {
+            margin: 0;
+        }
+
+        .logo-dot {
+            display: inline-block;
+            width: 26px;
+            height: 26px;
+            line-height: 26px;
+            text-align: center;
+            border-radius: 999px;
+            margin-right: 8px;
+            background: linear-gradient(145deg, var(--brand-1), var(--brand-2));
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+        }
+
+        .brand {
+            display: inline-block;
+            margin: 0;
+            font-size: 23px;
+            line-height: 1;
+            letter-spacing: 0.02em;
+            color: #3f2a36;
+            font-weight: 700;
+        }
+
+        .brand-mini {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .report-title {
+            margin: 10px 0 0;
+            font-size: 19px;
+            color: #342631;
+            font-weight: 700;
+        }
+
+        .meta-line {
+            margin: 2px 0;
+            color: #4f3a48;
+        }
+
+        .meta-grid {
+            margin-bottom: 14px;
+            font-size: 0;
+        }
+
+        .meta-card {
+            display: inline-block;
+            width: 49%;
+            margin-right: 2%;
+            border: 1px solid #e5d9e2;
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: #ffffff;
+            vertical-align: top;
+            font-size: 12px;
+        }
+
+        .meta-card:last-child {
+            margin-right: 0;
+        }
+
+        .meta-label {
+            margin: 0 0 6px;
+            color: #8b5d74;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        .meta-card p {
+            margin: 3px 0;
+        }
+
+        .meta-strong {
+            color: #2f2731;
+            font-weight: 700;
+        }
+
+        .table-wrap {
+            border: 1px solid #e2d8e1;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0;
+            font-size: 11.5px;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tfoot {
+            display: table-row-group;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--line);
+            padding: 8px 9px;
+            text-align: left;
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        th {
+            background: linear-gradient(145deg, var(--brand-soft), #fbe2ef);
+            color: #5a354a;
+            font-weight: 700;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .th-index,
+        .td-index {
+            width: 36px;
+            text-align: center;
+            color: #8b667b;
+            font-weight: 700;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #fff8fc;
+        }
+
+        tbody tr {
+            page-break-inside: avoid;
+        }
+
+        .empty {
+            margin-top: 14px;
+            border: 1px dashed #d9c7d3;
+            border-radius: 12px;
+            padding: 18px;
+            color: #7a6e79;
+            text-align: center;
+            background: #ffffff;
+        }
+
+        .footer-note {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border: 1px solid #e0d4dd;
+            border-radius: 10px;
+            color: #6c6170;
+            font-size: 11px;
+            background: #fff;
+        }
+
+        .footer-note strong {
+            color: #4e3946;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-shell">
+        <header class="cover">
+            <table class="cover-table">
+                <tr>
+                    <td class="brand-cell">
+                        <p class="brand-row">
+                            <span class="logo-dot">NN</span>
+                            <span class="brand">{{ company_name }}</span>
+                        </p>
+                        <p class="brand-mini">NIT {{ company_nit }} | {{ company_city }}</p>
+                        <h1 class="report-title">{{ report_title }}</h1>
+                    </td>
+                    <td class="meta-cell">
+                        <p class="meta-line"><strong>Codigo:</strong> {{ document_code }}</p>
+                        <p class="meta-line"><strong>Creado:</strong> {{ generated_at|date:"d/m/Y H:i" }}</p>
+                        <p class="meta-line"><strong>Usuario:</strong> {{ generated_by }}</p>
+                    </td>
+                </tr>
+            </table>
+        </header>
+
+        <section class="meta-grid">
+            <div class="meta-card">
+                <p class="meta-label">Resumen del documento</p>
+                <p><span class="meta-strong">Tipo:</span> Reporte CRUD exportado</p>
+                <p><span class="meta-strong">Modulo:</span> {{ report_title }}</p>
+                <p><span class="meta-strong">Registros:</span> {{ record_count }}</p>
+            </div>
+            <div class="meta-card">
+                <p class="meta-label">Informacion corporativa</p>
+                <p><span class="meta-strong">Empresa:</span> {{ company_name }}</p>
+                <p><span class="meta-strong">Correo:</span> {{ company_email }}</p>
+                <p><span class="meta-strong">Telefono:</span> {{ company_phone }}</p>
+            </div>
+        </section>
+
+        {% if table_rows %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="th-index">#</th>
+                        {% for header in headers %}
+                        <th>{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in table_rows %}
+                    <tr>
+                        <td class="td-index">{{ forloop.counter }}</td>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">No hay datos para exportar en este reporte.</div>
+        {% endif %}
+
+        <p class="footer-note">
+            <strong>Nota legal:</strong> {{ legal_note }}
+        </p>
+    </div>
+</body>
+</html>

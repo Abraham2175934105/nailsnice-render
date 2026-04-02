@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NailsNice - Factura</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        .invoice-print-heading {
+            display: none;
+        }
+
+        @media print {
+            .header,
+            .invoice-actions,
+            .summary-note,
+            .toast,
+            .page-hero {
+                display: none !important;
+            }
+
+            body {
+                background: #fff !important;
+            }
+
+            .page-shell,
+            .container,
+            .invoice-grid {
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: none !important;
+                display: block !important;
+            }
+
+            .invoice-card {
+                box-shadow: none !important;
+                border: 0 !important;
+                padding: 0 !important;
+            }
+
+            .invoice-print-heading {
+                display: block;
+                margin-bottom: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% if messages %}
+    <div class="toast">
+        {% for message in messages %}
+            <div>{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="logo">
+                    <h1>NailsNice</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="/">Inicio</a></li>
+                    <li><a href="/#categorias">Categorías</a></li>
+                    <li><a href="/#nosotros">Sobre</a></li>
+                    <li><a href="/productos/">Productos</a></li>
+                    <li><a href="/#contacto">Contacto</a></li>
+                    <li class="nav-cart">
+                        <a href="/carrito/" aria-label="Carrito">
+                            <span aria-hidden="true">🛒</span>
+                            <span class="nav-cart-count" data-cart-count>0</span>
+                        </a>
+                    </li>
+                    {% if request.user.is_authenticated %}
+                        <li class="nav-user-chip">
+                            <div class="nav-user-text">
+                                <span class="nav-user-eyebrow">Hola</span>
+                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                            </div>
+                            <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
+                        </li>
+                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                            <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
+                        {% endif %}
+                        <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
+                    {% else %}
+                        <li class="nav-auth">
+                            <button type="button" class="nav-auth-trigger" aria-haspopup="true" aria-expanded="false">
+                                <span class="nav-auth-title">Empieza ahora con NailsNice</span>
+                                <span class="nav-auth-subtitle">Accede o crea tu cuenta</span>
+                            </button>
+                            <div class="nav-auth-menu" id="nav-auth-menu" aria-label="Accesos de cuenta">
+                                <a href="{% url 'login' %}">Iniciar sesión</a>
+                                <a href="{% url 'registro' %}">Crear cuenta</a>
+                            </div>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="page-shell">
+        <section class="page-hero">
+            <div class="container">
+                <p class="page-eyebrow">Factura</p>
+                <div class="page-hero__header">
+                    <div>
+                        <h1>Pedido #{{ pedido.id }}</h1>
+                        <p>Descarga o imprime tu comprobante. Revisa estado y detalle de cada producto.</p>
+                    </div>
+                    <div class="status-pill status-{{ pedido.estado }}">{{ pedido.get_estado_display }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="container invoice-grid">
+            <div class="invoice-card">
+                <div class="invoice-print-heading">
+                    <h2>Factura #{{ pedido.id }}</h2>
+                    <p>Fecha: {{ pedido.creado_en|date:"d M Y, H:i" }}</p>
+                </div>
+                <div class="invoice-meta">
+                    <div>
+                        <p class="page-eyebrow">Cliente</p>
+                        <p class="tile-title">{{ pedido.usuario.email }}</p>
+                        <p class="cart-muted">{{ pedido.usuario.nombre1|default:'' }} {{ pedido.usuario.apellido1|default:'' }}</p>
+                    </div>
+                    <div>
+                        <p class="page-eyebrow">Fecha</p>
+                        <p class="tile-title">{{ pedido.creado_en|date:"d M Y, H:i" }}</p>
+                        <p class="cart-muted">Actualizado: {{ pedido.actualizado_en|date:"d M Y, H:i" }}</p>
+                    </div>
+                    <div>
+                        <p class="page-eyebrow">Método de pago</p>
+                        <p class="tile-title">{{ pedido.get_metodo_pago_display }}</p>
+                        <p class="cart-muted">Estado: {{ pedido.get_estado_display }}</p>
+                    </div>
+                    <div>
+                        <p class="page-eyebrow">Dirección</p>
+                        <p class="tile-title">{{ pedido.direccion_envio }}</p>
+                        <p class="cart-muted">Verifica antes de despachar.</p>
+                    </div>
+                    <div>
+                        <p class="page-eyebrow">Entrega estimada</p>
+                        <p class="tile-title">1 - 3 días</p>
+                        <p class="cart-muted">Te notificaremos cambios por correo.</p>
+                    </div>
+                </div>
+
+                <div class="invoice-lines">
+                    <div class="invoice-lines__head">
+                        <span>Producto</span>
+                        <span>Cant.</span>
+                        <span>Precio</span>
+                        <span>Subtotal</span>
+                    </div>
+                    {% for detalle in pedido.detalles.all %}
+                        <div class="invoice-line">
+                            <span>{{ detalle.producto.nombre }}</span>
+                            <span>x{{ detalle.cantidad }}</span>
+                            <span>${{ detalle.precio_unitario|floatformat:0 }}</span>
+                            <span class="invoice-subtotal">${{ detalle.subtotal|floatformat:0 }}</span>
+                        </div>
+                    {% empty %}
+                        <div class="empty-state-card" style="margin-top:12px;">
+                            <p class="cart-muted">No hay detalles cargados para este pedido.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="invoice-total-card">
+                    <div class="invoice-total-head">Resumen de pago</div>
+                    <div class="invoice-total-row">
+                        <span>Total</span>
+                        <span class="invoice-grand-total">${{ pedido.total|floatformat:0 }}</span>
+                    </div>
+                    <p class="invoice-note">Entrega estimada 1 - 3 días. Te avisaremos cualquier cambio.</p>
+                </div>
+            </div>
+
+            <aside class="invoice-actions">
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <p class="page-eyebrow">Acciones</p>
+                        <h3>Tu comprobante</h3>
+                    </div>
+                    <a class="btn-primary" href="{% url 'factura_pdf' pedido_id=pedido.id %}">Descargar PDF</a>
+                    <button id="invoice-print" class="btn-primary" type="button">Imprimir o guardar PDF</button>
+                    <a class="btn-ghost" href="/productos/">Seguir comprando</a>
+                    <a class="btn-ghost" href="{% url 'carrito' %}">Volver al carrito</a>
+                </div>
+                <div class="summary-note">
+                    <p>✔ Guarda este comprobante como respaldo.</p>
+                    <p>✔ Si notas inconsistencias, contáctanos.</p>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    {{ cart|json_script:"cart-data" }}
+    <script src="{% static 'js/cart-ui.js' %}"></script>
+    <script>
+        (function() {
+            var btn = document.getElementById('invoice-print');
+            if (btn) {
+                btn.addEventListener('click', function() { window.print(); });
+            }
+        })();
+    </script>
+</body>
+</html>
