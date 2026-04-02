@@ -121,4 +121,4 @@ Acceder a: `http://localhost:8000/admin/`
 
 ## 👤 Autor
 
-Migración realizado con GitHub Copilot
+Migración realizada por Abrahan Boada Suarez
