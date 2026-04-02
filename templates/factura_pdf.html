@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Factura #{{ pedido.id }} - NailsNice</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: #1f2937;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .meta {
+            text-align: right;
+        }
+
+        .meta p,
+        .client p,
+        .totals p {
+            margin: 2px 0;
+        }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin: 0 0 6px 0;
+            color: #4b5563;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        th,
+        td {
+            border: 1px solid #d1d5db;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f3f4f6;
+            font-weight: 700;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .totals {
+            margin-top: 14px;
+            margin-left: auto;
+            width: 240px;
+            border: 1px solid #d1d5db;
+            padding: 10px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        .footer-note {
+            margin-top: 18px;
+            border-top: 1px solid #d1d5db;
+            padding-top: 10px;
+            color: #4b5563;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div>
+            <p class="brand-title">NailsNice</p>
+            <p>NIT: 900000000-0</p>
+            <p>Bogota, Colombia</p>
+        </div>
+        <div class="meta">
+            <p><strong>Factura:</strong> #{{ pedido.id }}</p>
+            <p><strong>Fecha:</strong> {{ pedido.creado_en|date:"d/m/Y H:i" }}</p>
+            <p><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
+            <p><strong>Pago:</strong> {{ pedido.get_metodo_pago_display }}</p>
+        </div>
+    </header>
+
+    <section class="grid">
+        <div class="client">
+            <p class="section-title">Cliente</p>
+            <p><strong>{{ pedido.usuario.nombre1|default:'' }} {{ pedido.usuario.apellido1|default:'' }}</strong></p>
+            <p>{{ pedido.usuario.email }}</p>
+            <p>{{ pedido.usuario.telefono|default:'Sin telefono' }}</p>
+        </div>
+        <div>
+            <p class="section-title">Direccion de envio</p>
+            <p>{{ pedido.direccion_envio }}</p>
+        </div>
+    </section>
+
+    <section>
+        <p class="section-title">Detalle</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th class="text-right">Cantidad</th>
+                    <th class="text-right">Precio unitario</th>
+                    <th class="text-right">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in pedido.detalles.all %}
+                <tr>
+                    <td>{{ detalle.producto.nombre }}</td>
+                    <td class="text-right">{{ detalle.cantidad }}</td>
+                    <td class="text-right">${{ detalle.precio_unitario|floatformat:0 }}</td>
+                    <td class="text-right">${{ detalle.subtotal|floatformat:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="totals">
+        <p>Total a pagar</p>
+        <div class="total-row">
+            <span>Total</span>
+            <span>${{ pedido.total|floatformat:0 }}</span>
+        </div>
+    </section>
+
+    <p class="footer-note">
+        Este documento es un comprobante de compra generado por NailsNice.
+    </p>
+</body>
+</html>

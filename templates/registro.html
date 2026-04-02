@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Cliente - NailsNice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/register.css' %}">
+</head>
+<body>
+    <div id="loader" class="loader-overlay" aria-hidden="true">
+        <div class="loader-box" role="status" aria-live="polite">
+            <div class="loader-spinner"></div>
+            <p>Cargando datos...</p>
+        </div>
+    </div>
+
+    <div class="register-page">
+        <div class="register-card">
+            <div class="register-main">
+                <h2 class="register-title">Crear una Cuenta</h2>
+                <p class="register-subtitle">Regístrate como cliente de NailsNice</p>
+
+                {% if messages %}
+                    <div class="messages" style="margin-bottom:0.9rem; font-size:0.85rem; text-align:center; background:#fef2f2; color:#b91c1c; padding:0.6rem 0.8rem; border-radius:0.75rem;">
+                        {% for message in messages %}
+                            <div>{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="POST" action="{% url 'registro' %}" class="form-grid">
+                    {% csrf_token %}
+                    
+                    <div class="form-group floating {% if field_errors.nombre %}has-error{% elif request.method == 'POST' and request.POST.nombre %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="nombre" id="nombre" class="form-input" required placeholder=" " minlength="1" value="{{ request.POST.nombre }}">
+                            <label for="nombre" class="form-label">Primer Nombre *</label>
+                            {% if field_errors.nombre %}
+                                <div class="field-tooltip">{{ field_errors.nombre }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group floating {% if field_errors.apellido %}has-error{% elif request.method == 'POST' and request.POST.apellido %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="apellido" id="apellido" class="form-input" required placeholder=" " minlength="1" value="{{ request.POST.apellido }}">
+                            <label for="apellido" class="form-label">Primer Apellido *</label>
+                            {% if field_errors.apellido %}
+                                <div class="field-tooltip">{{ field_errors.apellido }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group floating {% if field_errors.nombre2 %}has-error{% elif request.method == 'POST' and request.POST.nombre2 %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="nombre2" id="nombre2" class="form-input" placeholder=" " value="{{ request.POST.nombre2 }}">
+                            <label for="nombre2" class="form-label">Segundo Nombre (opcional)</label>
+                            {% if field_errors.nombre2 %}
+                                <div class="field-tooltip">{{ field_errors.nombre2 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group floating {% if field_errors.apellido2 %}has-error{% elif request.method == 'POST' and request.POST.apellido2 %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="apellido2" id="apellido2" class="form-input" placeholder=" " value="{{ request.POST.apellido2 }}">
+                            <label for="apellido2" class="form-label">Segundo Apellido (opcional)</label>
+                            {% if field_errors.apellido2 %}
+                                <div class="field-tooltip">{{ field_errors.apellido2 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group floating {% if field_errors.telefono %}has-error{% elif request.method == 'POST' and request.POST.telefono %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="tel" name="telefono" id="telefono" class="form-input" required placeholder=" " value="{{ request.POST.telefono }}">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            {% if field_errors.telefono %}
+                                <div class="field-tooltip">{{ field_errors.telefono }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width floating {% if field_errors.direccion %}has-error{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="direccion" id="direccion" class="form-input" required placeholder=" " value="{{ request.POST.direccion }}">
+                            <label for="direccion" class="form-label">Dirección (Colombia)</label>
+                            {% if field_errors.direccion %}
+                                <div class="field-tooltip">{{ field_errors.direccion }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width floating {% if field_errors.correo %}has-error{% elif request.method == 'POST' and request.POST.correo %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="email" name="correo" id="correo_reg" class="form-input" required placeholder=" " value="{{ request.POST.correo }}">
+                            <label for="correo_reg" class="form-label">Correo Electrónico</label>
+                            {% if field_errors.correo %}
+                                <div class="field-tooltip">{{ field_errors.correo }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group full-width floating {% if field_errors.contrasena %}has-error{% elif request.method == 'POST' and request.POST.contrasena %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="password" name="contrasena" id="registro-contrasena" class="form-input" required placeholder=" " minlength="8" maxlength="20">
+                            <label for="registro-contrasena" class="form-label">Contraseña</label>
+                            <button type="button" class="password-toggle" data-target="registro-contrasena" aria-label="Mostrar u ocultar contraseña">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                            {% if field_errors.contrasena %}
+                                <div class="field-tooltip">{{ field_errors.contrasena }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit">Registrarme</button>
+                </form>
+
+                <div class="auth-links">
+                    ¿Ya tienes una cuenta? <a href="{% url 'login' %}">Inicia Sesión</a><br><br>
+                    <a href="/">← Volver al inicio</a>
+                </div>
+            </div>
+
+            <aside class="register-aside">
+                <div class="register-aside-inner">
+                    <h3>Haz tuya la experiencia</h3>
+                    <p>Con tu cuenta podrás guardar tus datos, seguir tus pedidos y tener todo tu historial de belleza en un solo lugar.</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+            const loader = document.getElementById('loader');
+            if (form && loader) {
+                form.addEventListener('submit', function () {
+                    loader.style.display = 'flex';
+                });
+            }
+
+            document.querySelectorAll('.password-toggle').forEach(function(btn) {
+                btn.addEventListener('click', function () {
+                    const targetId = this.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    if (!input) return;
+                    const icon = this.querySelector('i');
+                    const isHidden = input.type === 'password';
+                    input.type = isHidden ? 'text' : 'password';
+                    if (icon) {
+                        icon.classList.toggle('fa-eye', !isHidden);
+                        icon.classList.toggle('fa-eye-slash', isHidden);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

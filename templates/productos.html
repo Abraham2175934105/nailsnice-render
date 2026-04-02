@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>NailsNice - Todos los Productos</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260401g">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="logo">
+                    <h1>NailsNice</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="/">Inicio</a></li>
+                    <li><a href="/#categorias">Categorías</a></li>
+                    <li><a href="/#nosotros">Sobre</a></li>
+                    <li><a href="/productos.html" aria-current="page">Productos</a></li>
+                    <li><a href="/#contacto">Contacto</a></li>
+                    <li class="nav-cart">
+                        <a href="/carrito/" aria-label="Carrito">
+                            <span aria-hidden="true">🛒</span>
+                            <span class="nav-cart-count" data-cart-count>0</span>
+                        </a>
+                    </li>
+                    {% if request.user.is_authenticated %}
+                        <li class="nav-user-chip">
+                            <div class="nav-user-text">
+                                <span class="nav-user-eyebrow">Hola</span>
+                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                            </div>
+                            <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
+                        </li>
+                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                            <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
+                        {% endif %}
+                        <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
+                    {% else %}
+                        <li class="nav-auth">
+                            <button type="button" class="nav-auth-trigger" aria-haspopup="true" aria-expanded="false">
+                                <span class="nav-auth-title">Empieza ahora con NailsNice</span>
+                                <span class="nav-auth-subtitle">Accede o crea tu cuenta</span>
+                            </button>
+                            <div class="nav-auth-menu" id="nav-auth-menu" aria-label="Accesos de cuenta">
+                                <a href="{% url 'login' %}">Iniciar sesión</a>
+                                <a href="{% url 'registro' %}">Crear cuenta</a>
+                            </div>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="products">
+            <div class="container">
+                <h2 class="reveal">Todos los Productos</h2>
+                <div class="section-subtitle reveal">Filtra por marca, categoría, color, estado y precio. Todo en vivo.</div>
+
+                <div class="productos-layout">
+                    <section class="products-results">
+                        <div class="products-top-search reveal">
+                            <div class="products-top-search__inner">
+                                <div class="products-top-search__label">Buscar</div>
+                                <input id="products-search-top" type="search" placeholder="Nombre o descripción..." autocomplete="off" />
+                                <div id="products-suggestions" class="suggestions" aria-live="polite"></div>
+                            </div>
+                        </div>
+
+                        <div class="products-toolbar reveal">
+                            <div class="products-toolbar__left">
+                                <div class="products-count" id="products-count">Cargando...</div>
+                                <button id="filter-reset-top" type="button" class="btn-ghost btn-compact">Ver todo</button>
+                            </div>
+                            <div class="products-toolbar__right">
+                                <div>
+                                    <label for="filter-sort" style="font-weight:700; color: var(--text);">Ordenar:</label>
+                                    <select id="filter-sort" style="margin-left:10px;">
+                                        <option value="reciente" selected>Más recientes</option>
+                                        <option value="precio-asc">Precio (menor a mayor)</option>
+                                        <option value="precio-desc">Precio (mayor a menor)</option>
+                                        <option value="nombre-asc">Nombre (A-Z)</option>
+                                    </select>
+                                </div>
+                                <div class="view-switch" role="group" aria-label="Cambiar vista de productos">
+                                    <button type="button" class="view-switch__btn is-active" data-view-mode="grid">Grid</button>
+                                    <button type="button" class="view-switch__btn" data-view-mode="compact">Compacta</button>
+                                    <button type="button" class="view-switch__btn" data-view-mode="list">Lista</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="active-filters" class="active-filters reveal" aria-live="polite"></div>
+
+                        <div id="products-grid" class="products-grid" aria-live="polite">
+                            <!-- skeletons -->
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                            <div class="product-card skeleton reveal"></div>
+                        </div>
+
+                        <div id="products-pagination" class="pagination"></div>
+                    </section>
+
+                    <aside class="filters-panel reveal" id="filters-panel">
+                        <h3>Filtros</h3>
+
+                        <div class="filter-group">
+                            <div class="filter-group-title">Marcas</div>
+                            <div id="filter-marcas" class="checklist"></div>
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="filter-group-title">Categorías</div>
+                            <div id="filter-categorias" class="checklist"></div>
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="filter-group-title">Colores</div>
+                            <div id="filter-colores" class="checklist"></div>
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="filter-group-title">Estado</div>
+                            <select id="filter-estado">
+                                <option value="Todos" selected>Todos</option>
+                                <option value="Activo">Activo</option>
+                                <option value="Inactivo">Inactivo</option>
+                                <option value="Descontinuado">Descontinuado</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="filter-group-title">Disponibilidad</div>
+                            <select id="filter-disponibilidad">
+                                <option value="Todos" selected>Todos</option>
+                                <option value="disponible">Con stock</option>
+                                <option value="agotado">Sin stock</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <div class="filter-group-title">Precio</div>
+                            <div style="display:flex; gap:12px;">
+                                <input id="filter-price-min" type="number" min="0" step="1" placeholder="Min" />
+                                <input id="filter-price-max" type="number" min="0" step="1" placeholder="Max" />
+                            </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <button id="filter-reset" type="button" class="btn-secondary" style="width:100%;">Limpiar filtros</button>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="contacto" class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>NailsNice</h3>
+                    <p>Tu destino para el cuidado y embellecimiento de tus uñas.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Contacto</h3>
+                    <p>📞 +57 300 123 4567</p>
+                    <p>📧 info@nailsnice.com</p>
+                    <p>📍 Calle 123, Bogotá, Colombia</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Horarios</h3>
+                    <p>Lunes - Viernes: 9:00 AM - 7:00 PM</p>
+                    <p>Sábados: 8:00 AM - 5:00 PM</p>
+                    <p>Domingos: Cerrado</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 NailsNice. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de detalle de producto -->
+    <div id="product-modal" class="modal" aria-hidden="true">
+        <div class="modal-backdrop" data-close="true"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-label="Detalle de producto">
+            <button class="modal-close" type="button" data-close="true" aria-label="Cerrar">×</button>
+            <div class="modal-body">
+                <div class="modal-image">
+                    <img id="modal-image" alt="" />
+                    <div id="modal-image-fallback" class="modal-image-fallback">NailsNice</div>
+                </div>
+                <div class="modal-info">
+                    <h3 id="modal-title"></h3>
+                    <p id="modal-description"></p>
+                    <div class="modal-price" id="modal-price"></div>
+                    <div class="modal-badges" id="modal-badges"></div>
+                    <div class="modal-actions">
+                        <a class="btn-secondary" href="/productos.html">Ver catálogo completo</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{ cart|json_script:"cart-data" }}
+    <script>window.NAILSNICE_IS_AUTH = {{ request.user.is_authenticated|yesno:"true,false" }};</script>
+    <script src="{% static 'js/cart-ui.js' %}?v=20260401g"></script>
+    <script src="{% static 'js/productos.js' %}?v=20260401g"></script>
+</body>
+</html>
+

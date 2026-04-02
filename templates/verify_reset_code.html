@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar código - NailsNice</title>
+    {% load static %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-card">
+            <h2>Verificar código</h2>
+            <p class="auth-subtitle">Ingresa el código de verificación que recibiste</p>
+            <p class="auth-subtitle" style="font-size:0.85rem; opacity:0.85;">El código expira en pocos minutos por seguridad.</p>
+
+            {% if messages %}
+                <div class="messages-box">
+                    {% for message in messages %}
+                        <div>{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="POST" action="{% url 'verify_reset_code' %}">
+                {% csrf_token %}
+
+                <div class="form-group {% if field_errors.codigo %}has-error{% elif request.method == 'POST' and request.POST.codigo %}has-success{% endif %}">
+                    <label class="form-label">Código de verificación</label>
+                    <div class="input-wrapper">
+                        <input type="text" name="codigo" class="form-input" placeholder="Ej: 123456" value="{{ request.POST.codigo }}">
+                        {% if field_errors.codigo %}
+                            <div class="field-tooltip">{{ field_errors.codigo }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">Continuar</button>
+            </form>
+
+            <div class="auth-links">
+                <a href="{% url 'forgot_password' %}">Volver a solicitar código</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

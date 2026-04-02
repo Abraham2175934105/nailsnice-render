@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NailsNice - Checkout</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% if messages %}
+    <div class="toast">
+        {% for message in messages %}
+            <div>{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="logo">
+                    <h1>NailsNice</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="/">Inicio</a></li>
+                    <li><a href="/#categorias">Categorías</a></li>
+                    <li><a href="/#nosotros">Sobre</a></li>
+                    <li><a href="/productos/">Productos</a></li>
+                    <li><a href="/#contacto">Contacto</a></li>
+                    <li class="nav-cart">
+                        <a href="/carrito/" aria-label="Carrito">
+                            <span aria-hidden="true">🛒</span>
+                            <span class="nav-cart-count" data-cart-count>0</span>
+                        </a>
+                    </li>
+                    {% if request.user.is_authenticated %}
+                        <li class="nav-user-chip">
+                            <div class="nav-user-text">
+                                <span class="nav-user-eyebrow">Hola</span>
+                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                            </div>
+                            <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
+                        </li>
+                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                            <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
+                        {% endif %}
+                        <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
+                    {% else %}
+                        <li class="nav-auth">
+                            <button type="button" class="nav-auth-trigger" aria-haspopup="true" aria-expanded="false">
+                                <span class="nav-auth-title">Empieza ahora con NailsNice</span>
+                                <span class="nav-auth-subtitle">Accede o crea tu cuenta</span>
+                            </button>
+                            <div class="nav-auth-menu" id="nav-auth-menu" aria-label="Accesos de cuenta">
+                                <a href="{% url 'login' %}">Iniciar sesión</a>
+                                <a href="{% url 'registro' %}">Crear cuenta</a>
+                            </div>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="page-shell">
+        <section class="page-hero">
+            <div class="container">
+                <p class="page-eyebrow">Checkout</p>
+                <div class="page-hero__header">
+                    <div>
+                        <h1>Confirma y paga</h1>
+                        <p>Verifica dirección y método de pago. Validamos stock antes de crear tu pedido.</p>
+                    </div>
+                    <div class="checkout-steps">
+                        <div class="step is-done">Carrito</div>
+                        <div class="step is-current">Checkout</div>
+                        <div class="step">Factura</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="container checkout-grid">
+            <div class="checkout-form-card">
+                <form method="post" action="{% url 'checkout' %}" class="panel">
+                    {% csrf_token %}
+                    <div class="panel-header">
+                        <p class="page-eyebrow">Datos de envío</p>
+                        <h3>Dirección y contacto</h3>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                        <label class="field-label" for="direccion" style="margin:0;">Dirección de envío</label>
+                        {% if direccion_prefill %}
+                            <button type="button" id="toggle-direccion-edit" class="btn-ghost" style="padding:6px 12px; font-size:0.85rem;">Cambiar dirección</button>
+                        {% endif %}
+                    </div>
+                    <input
+                        id="direccion"
+                        name="direccion"
+                        type="text"
+                        placeholder="Calle, número, complemento"
+                        value="{{ direccion_prefill|default_if_none:'' }}"
+                        {% if direccion_prefill %}readonly{% endif %}
+                        required
+                    >
+                    <p class="cart-muted">Formato recomendado: Calle/Carrera/Avenida + número (ej: Calle 123 #45-67).</p>
+
+                    <div class="panel-header" style="margin-top:24px;">
+                        <p class="page-eyebrow">Pago</p>
+                        <h3>Método de pago</h3>
+                    </div>
+                    <div class="payment-options">
+                        <label class="payment-tile">
+                            <input type="radio" name="metodo_pago" value="contraentrega" required>
+                            <div>
+                                <p class="tile-title">Contraentrega</p>
+                                <p class="cart-muted">Pagas al recibir. Confirmamos stock y reservamos tu pedido.</p>
+                            </div>
+                        </label>
+                        <label class="payment-tile">
+                            <input type="radio" name="metodo_pago" value="tarjeta" required>
+                            <div>
+                                <p class="tile-title">Tarjeta</p>
+                                <p class="cart-muted">Procesamos el pago de forma segura y confirmamos en segundos.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn-ghost" href="{% url 'carrito' %}">Volver al carrito</a>
+                        <button type="submit" class="btn-primary">Confirmar pedido</button>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="checkout-summary">
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <p class="page-eyebrow">Resumen</p>
+                        <h3>Tu pedido</h3>
+                    </div>
+                    <div class="summary-items">
+                        {% for item in items %}
+                            <div class="summary-row">
+                                <div>
+                                    <p class="tile-title">{{ item.producto.nombre }}</p>
+                                    <p class="cart-muted">x{{ item.cantidad }} · ${{ item.producto.precio|floatformat:0 }} c/u</p>
+                                </div>
+                                <div class="summary-price">${{ item.subtotal|floatformat:0 }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="summary-line">
+                        <span>Total</span>
+                        <span class="summary-total">${{ total|floatformat:0 }}</span>
+                    </div>
+                    <p class="cart-muted">Validamos stock justo antes de crear el pedido.</p>
+                </div>
+
+                <div class="summary-note">
+                    <p>✔ Revisa bien tu dirección.</p>
+                    <p>✔ Métodos soportados: contraentrega o tarjeta.</p>
+                    <p>✔ Recibirás una factura al confirmar.</p>
+                </div>
+            </aside>
+        </section>
+    </main>
+    <div id="loader-overlay" class="screen-loader" aria-hidden="true">
+        <div class="screen-loader__backdrop"></div>
+        <div class="screen-loader__card" tabindex="-1" aria-live="polite" aria-atomic="true">
+            <div class="loader-spinner" aria-hidden="true"></div>
+            <div class="loader-check" aria-hidden="true">✅</div>
+            <p class="loader-message" data-loader-text>Procesando tu pedido...</p>
+            <p class="loader-sub" data-loader-sub>Validando stock y pago</p>
+        </div>
+    </div>
+
+    {{ cart|json_script:"cart-data" }}
+    <script src="{% static 'js/cart-ui.js' %}"></script>
+    <script>
+        (function() {
+            const getCSRFToken = () => {
+                const match = document.cookie.match(/csrftoken=([^;]+)/);
+                return match ? match[1] : '';
+            };
+
+            const form = document.querySelector('form.panel');
+            const direccionInput = document.getElementById('direccion');
+            const toggleDireccionBtn = document.getElementById('toggle-direccion-edit');
+            const overlay = document.getElementById('loader-overlay');
+            const textEl = overlay.querySelector('[data-loader-text]');
+            const subEl = overlay.querySelector('[data-loader-sub]');
+            const spinner = overlay.querySelector('.loader-spinner');
+            const check = overlay.querySelector('.loader-check');
+
+            if (direccionInput && toggleDireccionBtn) {
+                const initialAddress = (direccionInput.value || '').trim();
+                const syncButtonText = () => {
+                    toggleDireccionBtn.textContent = direccionInput.readOnly ? 'Cambiar dirección' : 'Usar dirección guardada';
+                };
+
+                syncButtonText();
+                toggleDireccionBtn.addEventListener('click', () => {
+                    if (direccionInput.readOnly) {
+                        direccionInput.readOnly = false;
+                        direccionInput.focus();
+                        direccionInput.select();
+                    } else {
+                        direccionInput.value = initialAddress;
+                        direccionInput.readOnly = true;
+                    }
+                    syncButtonText();
+                });
+            }
+
+            const setState = (state, text, sub) => {
+                overlay.classList.add('is-visible');
+                textEl.textContent = text || '';
+                subEl.textContent = sub || '';
+                spinner.style.display = state === 'loading' ? 'block' : 'none';
+                check.style.display = state === 'success' ? 'block' : 'none';
+                overlay.classList.toggle('is-error', state === 'error');
+                overlay.querySelector('.screen-loader__card')?.focus({ preventScroll: true });
+            };
+
+            const hideOverlay = () => {
+                overlay.classList.remove('is-visible', 'is-error');
+                spinner.style.display = 'block';
+                check.style.display = 'none';
+            };
+
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(form);
+                    setState('loading', 'Procesando tu pedido...', 'Validando stock y pago');
+                    try {
+                        const resp = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': getCSRFToken(),
+                            },
+                            body: fd,
+                        });
+                        const data = await resp.json();
+                        if (!resp.ok || !data.ok) {
+                            throw new Error(data.error || 'No se pudo procesar el pedido.');
+                        }
+                        setState('success', 'Pedido realizado con éxito', 'Redirigiendo a tu factura...');
+                        setTimeout(() => {
+                            window.location.href = data.factura_url || '/carrito/';
+                        }, 900);
+                    } catch (err) {
+                        setState('error', err.message || 'Ocurrió un error', 'Intenta nuevamente');
+                        setTimeout(() => hideOverlay(), 1400);
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi perfil - NailsNice</title>
+    <link rel="stylesheet" href="{% static 'css/profile.css' %}?v=20260401d">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="profile-page">
+    <header class="profile-header">
+        <div class="container header-inner">
+            <div>
+                <p class="eyebrow">Bienvenida</p>
+                <h1>Hola, {{ request.user.nombre1|default:request.user.email }}</h1>
+            </div>
+            <div class="header-actions">
+                <a class="btn-secondary" href="/">Inicio</a>
+                <a class="btn-ghost" href="{% url 'logout' %}">Cerrar sesión</a>
+            </div>
+        </div>
+    </header>
+
+    {% if messages %}
+    <div class="toast-stack" role="status" aria-live="polite">
+        {% for message in messages %}
+            <div class="toast">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="container profile-stats-wrap">
+        <section class="profile-stats" aria-label="Resumen de perfil">
+            <article class="stat-card">
+                <p class="stat-label">Correo</p>
+                <p class="stat-value">{{ request.user.email }}</p>
+            </article>
+            <article class="stat-card">
+                <p class="stat-label">Rol actual</p>
+                <p class="stat-value">{{ request.user.id_rol.nombre }}</p>
+            </article>
+            <article class="stat-card">
+                <p class="stat-label">Pedidos</p>
+                <p class="stat-value">{{ pedidos|length }}</p>
+            </article>
+        </section>
+    </div>
+
+    <div class="container layout">
+        <aside class="sidebar">
+            <div class="sidebar-title">Mi espacio</div>
+            <nav>
+                <a href="#mis-datos" data-target="mis-datos" class="sidebar-link active"><span class="sidebar-link__icon">👤</span><span>Mis datos</span></a>
+                <a href="#editar-datos" data-target="editar-datos" class="sidebar-link"><span class="sidebar-link__icon">📝</span><span>Editar datos</span></a>
+                <a href="#cambiar-pass" data-target="cambiar-pass" class="sidebar-link"><span class="sidebar-link__icon">🔒</span><span>Cambiar contraseña</span></a>
+                <a href="#mis-pedidos" data-target="mis-pedidos" class="sidebar-link"><span class="sidebar-link__icon">🛍️</span><span>Mis pedidos</span></a>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <section id="mis-datos" class="panel is-active">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Perfil</p>
+                        <h2>Mis datos</h2>
+                    </div>
+                </div>
+                <div class="data-grid">
+                    <div class="data-item">
+                        <p class="label">Nombre</p>
+                        <p class="value">{{ request.user.nombre1 }} {{ request.user.nombre2 }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Apellido</p>
+                        <p class="value">{{ request.user.apellido1 }} {{ request.user.apellido2 }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Correo</p>
+                        <p class="value">{{ request.user.email }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Teléfono</p>
+                        <p class="value">{{ request.user.telefono }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Rol</p>
+                        <p class="value">{{ request.user.id_rol.nombre }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Estado</p>
+                        <p class="value status success">{{ request.user.estado_usuario }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Último acceso</p>
+                        <p class="value">
+                            {% if security_info.last_login %}
+                                {{ security_info.last_login|date:"d/m/Y H:i" }}
+                            {% else %}
+                                Primer acceso registrado
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Sesión actual</p>
+                        <p class="value">
+                            {% if security_info.session_expire_browser_close %}
+                                Caduca al cerrar el navegador
+                            {% else %}
+                                Activa hasta {{ security_info.session_expires_at|date:"d/m/Y H:i" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">IP detectada</p>
+                        <p class="value">{{ security_info.current_ip|default:'No disponible' }}</p>
+                    </div>
+                </div>
+
+                <div class="security-ux-card">
+                    <div class="security-ux-card__head">
+                        <h3>Centro de seguridad</h3>
+                        {% if security_info.session_expire_browser_close %}
+                            <span class="security-pill security-pill--ok">Sesion protegida por cierre</span>
+                        {% else %}
+                            <span class="security-pill security-pill--warn">Sesion con tiempo de expiracion</span>
+                        {% endif %}
+                    </div>
+                    <p class="security-ux-card__text">
+                        Esta sesion esta activa desde la IP <strong>{{ security_info.current_ip|default:'No disponible' }}</strong>.
+                    </p>
+                    <ul class="security-list">
+                        <li>
+                            {% if security_info.session_expire_browser_close %}
+                                Se cerrara automaticamente al cerrar el navegador.
+                            {% else %}
+                                Tiempo restante estimado: <strong data-session-countdown>-</strong>
+                            {% endif %}
+                        </li>
+                        <li>Cambia tu contraseña de forma periodica y evita reutilizarla.</li>
+                        <li>No compartas tu cuenta ni dejes sesiones abiertas en equipos publicos.</li>
+                    </ul>
+                    {% if not security_info.session_expire_browser_close %}
+                        <p class="security-ux-card__hint" data-session-expire-at="{{ security_info.session_expires_at|date:'c' }}">
+                            Expira aproximadamente el {{ security_info.session_expires_at|date:"d/m/Y H:i" }}.
+                        </p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section id="editar-datos" class="panel">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Actualiza tu información</p>
+                        <h2>Editar datos</h2>
+                        <p class="muted">Puedes modificar tus datos (excepto la contraseña) confirmando con tu contraseña actual.</p>
+                    </div>
+                    <button class="btn-primary" type="button" id="open-update-confirm">Guardar cambios</button>
+                </div>
+                <form id="form-update" method="POST" action="{% url 'perfil' %}" class="form-grid">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+                    <label class="field">
+                        <span>Primer nombre</span>
+                        <input type="text" name="nombre1" value="{{ request.user.nombre1 }}" required>
+                        {% if field_errors.nombre %}<small class="error">{{ field_errors.nombre }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Segundo nombre</span>
+                        <input type="text" name="nombre2" value="{{ request.user.nombre2 }}">
+                        {% if field_errors.nombre2 %}<small class="error">{{ field_errors.nombre2 }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Primer apellido</span>
+                        <input type="text" name="apellido1" value="{{ request.user.apellido1 }}" required>
+                        {% if field_errors.apellido %}<small class="error">{{ field_errors.apellido }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Segundo apellido</span>
+                        <input type="text" name="apellido2" value="{{ request.user.apellido2 }}">
+                        {% if field_errors.apellido2 %}<small class="error">{{ field_errors.apellido2 }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Teléfono</span>
+                        <input type="tel" name="telefono" value="{{ request.user.telefono }}" required>
+                        {% if field_errors.telefono %}<small class="error">{{ field_errors.telefono }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Dirección</span>
+                        <input type="text" name="direccion" placeholder="Ej: Calle 123 #45-67" value="{{ cliente_direccion|default_if_none:'' }}">
+                        {% if field_errors.direccion %}<small class="error">{{ field_errors.direccion }}</small>{% endif %}
+                    </label>
+                    <label class="field full">
+                        <span>Contraseña actual (requerida para guardar)</span>
+                        <input type="password" name="password_actual" required>
+                        {% if field_errors.password_actual %}<small class="error">{{ field_errors.password_actual }}</small>{% endif %}
+                    </label>
+                </form>
+            </section>
+
+            <section id="cambiar-pass" class="panel">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Seguridad</p>
+                        <h2>Cambiar contraseña</h2>
+                        <p class="muted">8-20 caracteres, mayúscula, minúscula, número y símbolo.</p>
+                    </div>
+                    <button class="btn-primary" type="button" id="open-pass-confirm">Actualizar contraseña</button>
+                </div>
+                <form id="form-pass" method="POST" action="{% url 'perfil' %}" class="form-grid">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_password">
+                    <label class="field">
+                        <span>Contraseña actual</span>
+                        <input type="password" name="actual" required>
+                        {% if field_errors.actual %}<small class="error">{{ field_errors.actual }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Nueva contraseña</span>
+                        <input type="password" name="nueva" required>
+                        {% if field_errors.nueva %}<small class="error">{{ field_errors.nueva }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Confirmar</span>
+                        <input type="password" name="confirmar" required>
+                    </label>
+                </form>
+            </section>
+
+            <section id="mis-pedidos" class="panel">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Compras</p>
+                        <h2>Mis pedidos</h2>
+                    </div>
+                </div>
+                {% if pedidos %}
+                <div class="table">
+                    <div class="table-head">
+                        <span>ID</span>
+                        <span>Fecha</span>
+                        <span>Estado</span>
+                        <span>Total</span>
+                        <span></span>
+                    </div>
+                    {% for p in pedidos %}
+                    <div class="table-row">
+                        <span>#{{ p.id }}</span>
+                        <span>{{ p.fecha }}</span>
+                        <span class="badge">{{ p.estado|default:'Pendiente' }}</span>
+                        <span>${{ p.precio|default:'0' }}</span>
+                        <button type="button" class="link" data-toggle="pedido" data-id="{{ p.id }}" data-producto="{{ p.producto }}" data-cantidad="{{ p.cantidad }}" data-precio="{{ p.precio }}" data-direccion="{{ p.direccion }}">Ver detalles</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty">Aún no tienes pedidos.</div>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+
+    <div class="modal" id="modal-confirm">
+        <div class="modal-backdrop" data-close="true"></div>
+        <div class="modal-content" role="dialog" aria-modal="true">
+            <button class="modal-close" data-close="true" aria-label="Cerrar">×</button>
+            <h3 id="modal-title">¿Confirmar acción?</h3>
+            <p id="modal-body">Revisa que tus datos estén correctos.</p>
+            <div class="modal-actions">
+                <button class="btn-ghost" data-close="true">Cancelar</button>
+                <button class="btn-primary" id="modal-accept">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-pedido">
+        <div class="modal-backdrop" data-close="true"></div>
+        <div class="modal-content" role="dialog" aria-modal="true">
+            <button class="modal-close" data-close="true" aria-label="Cerrar">×</button>
+            <h3>Detalle del pedido</h3>
+            <div class="pedido-detail">
+                <p><strong>Producto:</strong> <span id="d-producto"></span></p>
+                <p><strong>Cantidad:</strong> <span id="d-cantidad"></span></p>
+                <p><strong>Precio:</strong> $<span id="d-precio"></span></p>
+                <p><strong>Envío a:</strong> <span id="d-direccion"></span></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" data-close="true">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-loader" class="screen-loader" aria-hidden="true">
+        <div class="screen-loader__backdrop"></div>
+        <div class="screen-loader__card" tabindex="-1" aria-live="polite" aria-atomic="true">
+            <div class="loader-spinner" aria-hidden="true"></div>
+            <div class="loader-check" aria-hidden="true">✅</div>
+            <p class="loader-message" data-loader-text>Procesando...</p>
+            <p class="loader-sub" data-loader-sub>Validando datos</p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            const panels = document.querySelectorAll('.panel');
+            const loader = document.getElementById('profile-loader');
+            const loaderText = loader.querySelector('[data-loader-text]');
+            const loaderSub = loader.querySelector('[data-loader-sub]');
+            const loaderSpinner = loader.querySelector('.loader-spinner');
+            const loaderCheck = loader.querySelector('.loader-check');
+
+            const getCSRFToken = () => {
+                const match = document.cookie.match(/csrftoken=([^;]+)/);
+                return match ? match[1] : '';
+            };
+
+            const activatePanel = (id) => {
+                panels.forEach(panel => {
+                    const isTarget = panel.id === id;
+                    panel.classList.toggle('is-active', isTarget);
+                    panel.setAttribute('aria-hidden', isTarget ? 'false' : 'true');
+                });
+            };
+
+            const setActiveLink = (targetId) => {
+                sidebarLinks.forEach(link => {
+                    const match = link.dataset.target === targetId;
+                    link.classList.toggle('active', match);
+                });
+            };
+
+            const setLoaderState = (state, text, sub) => {
+                loader.classList.add('is-visible');
+                loader.classList.toggle('is-error', state === 'error');
+                loaderText.textContent = text || '';
+                loaderSub.textContent = sub || '';
+                loaderSpinner.style.display = state === 'loading' ? 'block' : 'none';
+                loaderCheck.style.display = state === 'success' ? 'block' : 'none';
+                loader.querySelector('.screen-loader__card')?.focus({ preventScroll: true });
+            };
+
+            const hideLoader = () => {
+                loader.classList.remove('is-visible', 'is-error');
+                loaderSpinner.style.display = 'block';
+                loaderCheck.style.display = 'none';
+            };
+
+            const submitAjax = async (form, loadingMsg, loadingSub) => {
+                if (!form || typeof form.getAttribute !== 'function') {
+                    setLoaderState('error', 'Formulario no válido', 'Recarga la página e intenta nuevamente');
+                    setTimeout(() => hideLoader(), 1600);
+                    return;
+                }
+
+                setLoaderState('loading', loadingMsg, loadingSub);
+                const fd = new FormData(form);
+                // Usamos getAttribute para evitar colisiones con input[name="action"].
+                const endpoint = form.getAttribute('action') || window.location.href;
+                try {
+                    const resp = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': getCSRFToken(),
+                            'Accept': 'application/json',
+                        },
+                        body: fd,
+                    });
+
+                    const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+                    if (!contentType.includes('application/json')) {
+                        const rawBody = await resp.text();
+                        if (resp.status === 401 || resp.status === 403 || /iniciar sesi[oó]n|login/i.test(rawBody)) {
+                            throw new Error('Tu sesión expiró. Inicia sesión nuevamente.');
+                        }
+                        throw new Error('El servidor devolvió una respuesta inesperada. Recarga la página e inténtalo de nuevo.');
+                    }
+
+                    const data = await resp.json();
+                    if (!resp.ok || !data.ok) {
+                        throw new Error(data.error || 'No se pudo completar la acción.');
+                    }
+                    setLoaderState('success', data.message || 'Acción completada', 'Redirigiendo...');
+                    setTimeout(() => {
+                        window.location.href = data.redirect || window.location.href;
+                    }, 850);
+                } catch (err) {
+                    setLoaderState('error', err.message || 'Ocurrió un error', 'Revisa los datos');
+                    setTimeout(() => hideLoader(), 1400);
+                }
+            };
+
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = e.currentTarget.dataset.target;
+                    setActiveLink(targetId);
+                    activatePanel(targetId || 'mis-datos');
+                    const node = document.getElementById(targetId);
+                    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    history.replaceState(null, '', `#${targetId}`);
+                });
+            });
+
+            const initial = (window.location.hash || '#mis-datos').replace('#', '');
+            activatePanel(initial);
+            setActiveLink(initial);
+
+            ['form-update', 'form-pass'].forEach(id => {
+                const f = document.getElementById(id);
+                if (f) {
+                    f.addEventListener('submit', (e) => e.preventDefault());
+                }
+            });
+
+            const modal = document.getElementById('modal-confirm');
+            const modalPedido = document.getElementById('modal-pedido');
+            const openUpdate = document.getElementById('open-update-confirm');
+            const openPass = document.getElementById('open-pass-confirm');
+            const accept = document.getElementById('modal-accept');
+            let currentForm = null;
+
+            const showModal = (title, body, form) => {
+                currentForm = form;
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-body').textContent = body;
+                modal.classList.add('is-open');
+            };
+
+            const closeModal = () => {
+                modal.classList.remove('is-open');
+            };
+
+            modal.addEventListener('click', (e) => {
+                if (e.target.dataset.close === 'true') closeModal();
+            });
+            modal.querySelector('.modal-close').addEventListener('click', closeModal);
+            accept.addEventListener('click', () => {
+                if (currentForm) {
+                    closeModal();
+                    const isPass = currentForm.id === 'form-pass';
+                    submitAjax(currentForm, isPass ? 'Actualizando contraseña...' : 'Guardando cambios...', 'Aplicando validaciones');
+                }
+            });
+
+            if (openUpdate) {
+                openUpdate.addEventListener('click', () => {
+                    showModal('¿Actualizar tus datos?', 'Confirma para guardar los cambios.', document.getElementById('form-update'));
+                });
+            }
+
+            if (openPass) {
+                openPass.addEventListener('click', () => {
+                    showModal('¿Cambiar tu contraseña?', 'Asegúrate de recordar tu nueva contraseña.', document.getElementById('form-pass'));
+                });
+            }
+
+            const fillPedido = (btn) => {
+                document.getElementById('d-producto').textContent = btn.dataset.producto || '';
+                document.getElementById('d-cantidad').textContent = btn.dataset.cantidad || '';
+                document.getElementById('d-precio').textContent = btn.dataset.precio || '';
+                document.getElementById('d-direccion').textContent = btn.dataset.direccion || '';
+                modalPedido.classList.add('is-open');
+            };
+
+            modalPedido.addEventListener('click', (e) => {
+                if (e.target.dataset.close === 'true') modalPedido.classList.remove('is-open');
+            });
+            modalPedido.querySelector('.modal-close').addEventListener('click', () => modalPedido.classList.remove('is-open'));
+
+            document.querySelectorAll('[data-toggle="pedido"]').forEach(btn => {
+                btn.addEventListener('click', () => fillPedido(btn));
+            });
+
+            const countdownNode = document.querySelector('[data-session-countdown]');
+            const expireNode = document.querySelector('[data-session-expire-at]');
+            if (countdownNode && expireNode) {
+                const expiresAt = new Date(expireNode.getAttribute('data-session-expire-at')).getTime();
+                if (!Number.isNaN(expiresAt)) {
+                    const renderCountdown = () => {
+                        const diffMs = expiresAt - Date.now();
+                        if (diffMs <= 0) {
+                            countdownNode.textContent = 'expirada';
+                            return;
+                        }
+                        const totalMinutes = Math.floor(diffMs / 60000);
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = totalMinutes % 60;
+                        countdownNode.textContent = `${hours}h ${minutes}m`;
+                    };
+                    renderCountdown();
+                    setInterval(renderCountdown, 30000);
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

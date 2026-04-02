@@ -1,0 +1,35 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Carga masiva · Agendamientos{% endblock %}
+{% block page_title %}Carga masiva de agendamientos{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'lista_agendamientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Volver</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up" style="padding:20px;">
+  <div class="modal-header" style="justify-content: center; align-items:center;">
+    <div>
+      <h3>Carga masiva</h3>
+      <p class="section-subtitle">Columnas requeridas: cliente_email, servicio, fecha, hora. Opcional: empleado_email, estado, notas.</p>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="glass-form" style="margin-top:12px; display:flex; flex-direction:column; gap:14px;">
+    {% csrf_token %}
+    <div>
+      <label>Archivo CSV o Excel</label>
+      <input type="file" name="file" accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+    </div>
+    <div class="pill-tag">Estados válidos: Pendiente, Confirmado, Completado, Cancelado, No presentado. Si se omite, se usará Pendiente.</div>
+    <div class="form-actions" style="justify-content:flex-end; gap:10px;">
+      <a class="btn-ghost" href="{% url 'lista_agendamientos' %}">Cancelar</a>
+      <button class="btn-pill btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Procesar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

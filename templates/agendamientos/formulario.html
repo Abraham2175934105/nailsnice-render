@@ -1,0 +1,61 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Agendamiento{% endblock %}
+{% block page_title %}Agendamiento{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+
+  <div class="modal-header" style="justify-content: center; align-items:center;">
+    <div style="text-align:center; width:100%;">
+      <h3>Agendamiento</h3>
+      <p class="section-subtitle">Programa y administra citas con clientes.</p>
+    </div>
+  </div>
+
+  <form method="POST" class="form-grid">
+    {% csrf_token %}
+    <div class="field">
+      <label>Cliente</label>
+      {{ form.cliente }}
+      {% if form.cliente.errors %}<span class="badge-chip">{{ form.cliente.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Servicio</label>
+      {{ form.servicio }}
+      {% if form.servicio.errors %}<span class="badge-chip">{{ form.servicio.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Empleado</label>
+      {{ form.empleado }}
+      {% if form.empleado.errors %}<span class="badge-chip">{{ form.empleado.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Fecha</label>
+      {{ form.fecha_agendamiento }}
+      {% if form.fecha_agendamiento.errors %}<span class="badge-chip">{{ form.fecha_agendamiento.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Hora</label>
+      {{ form.hora_agendamiento }}
+      {% if form.hora_agendamiento.errors %}<span class="badge-chip">{{ form.hora_agendamiento.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      {{ form.estado_agendamiento }}
+      {% if form.estado_agendamiento.errors %}<span class="badge-chip">{{ form.estado_agendamiento.errors }}</span>{% endif %}
+    </div>
+    <div class="field" style="grid-column:1/-1;">
+      <label>Notas</label>
+      {{ form.notas }}
+      {% if form.notas.errors %}<span class="badge-chip">{{ form.notas.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+      <a class="btn-ghost" href="{% url 'lista_agendamientos' %}">Cancelar</a>
+      <button class="btn-pill btn-primary" type="submit">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
