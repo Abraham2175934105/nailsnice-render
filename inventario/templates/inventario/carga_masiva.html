@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carga masiva de inventario</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body class="glass-body">
+  <div class="modal-overlay show">
+    <div class="glass-modal fade-in-up">
+      <div class="modal-header">
+        <div>
+          <h3>Carga masiva</h3>
+          <p class="section-subtitle">Sube CSV/Excel con columnas: nombre, cantidad, stock, precio, marca, fecha_ingreso, descripcion, estado.</p>
+        </div>
+        <a class="btn-pill btn-danger" href="{% url 'lista_inventario' %}">✕ Cerrar</a>
+      </div>
+
+      <form method="POST" enctype="multipart/form-data" class="glass-form">
+        {% csrf_token %}
+        <div>
+          <label>Archivo CSV o Excel</label>
+          <input type="file" name="file" accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+        </div>
+        <div class="form-actions">
+          <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>
+          <button class="btn-pill btn-primary" type="submit">⬆️ Procesar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

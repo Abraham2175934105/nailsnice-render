@@ -1,0 +1,163 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Catálogos{% endblock %}
+{% block page_title %}Catálogos de producto{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'catalogo_productos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-box"></use></svg>Catálogo</a>
+  <a href="{% url 'catalogos_admin' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Refrescar</a>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if mensaje_ok %}<div class="glass-panel" style="padding:12px; color: var(--success);">{{ mensaje_ok }}</div>{% endif %}
+{% if mensaje_err %}<div class="glass-panel" style="padding:12px; color: var(--danger);">{{ mensaje_err }}</div>{% endif %}
+
+<div class="glass-panel" style="padding:18px;">
+  <div class="form-grid" style="display:flex; flex-direction:column; gap:18px;">
+
+    <section class="card-block">
+      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <h3 style="margin:0;">Categorías</h3>
+        <span class="pill">{{ categorias|length }} registradas</span>
+      </header>
+      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+        {% csrf_token %}
+        <input type="hidden" name="entity" value="categoria">
+        <input type="hidden" name="action" value="create">
+        <label>Nombre</label>
+        {{ categoria_form.nombre_categoria }}
+        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
+      </form>
+      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
+        <tbody>
+          {% for item in categorias %}
+          <tr>
+            <td style="width:100%;">
+              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="hidden" name="entity" value="categoria">
+                <input type="hidden" name="pk" value="{{ item.id }}">
+                <input type="text" name="nombre_categoria" value="{{ item.nombre_categoria }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
+                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
+                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar categoría?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin categorías</strong><span>Agrega la primera categoría para organizar productos.</span></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card-block">
+      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <h3 style="margin:0;">Marcas</h3>
+        <span class="pill">{{ marcas|length }} registradas</span>
+      </header>
+      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+        {% csrf_token %}
+        <input type="hidden" name="entity" value="marca">
+        <input type="hidden" name="action" value="create">
+        <label>Nombre</label>
+        {{ marca_form.nombre_marca }}
+        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
+      </form>
+      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
+        <tbody>
+          {% for item in marcas %}
+          <tr>
+            <td style="width:100%;">
+              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="hidden" name="entity" value="marca">
+                <input type="hidden" name="pk" value="{{ item.id }}">
+                <input type="text" name="nombre_marca" value="{{ item.nombre_marca }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
+                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
+                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar marca?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin marcas</strong><span>Registra marcas para completar la clasificación comercial.</span></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card-block">
+      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <h3 style="margin:0;">Colores</h3>
+        <span class="pill">{{ colores|length }} registrados</span>
+      </header>
+      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+        {% csrf_token %}
+        <input type="hidden" name="entity" value="color">
+        <input type="hidden" name="action" value="create">
+        <label>Nombre</label>
+        {{ color_form.nombre_color }}
+        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
+      </form>
+      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
+        <tbody>
+          {% for item in colores %}
+          <tr>
+            <td style="width:100%;">
+              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="hidden" name="entity" value="color">
+                <input type="hidden" name="pk" value="{{ item.id }}">
+                <input type="text" name="nombre_color" value="{{ item.nombre_color }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
+                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
+                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar color?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin colores</strong><span>Define colores para mejorar filtros y catálogo.</span></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card-block">
+      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <h3 style="margin:0;">Unidades de medida</h3>
+        <span class="pill">{{ unidades|length }} registradas</span>
+      </header>
+      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+        {% csrf_token %}
+        <input type="hidden" name="entity" value="unidad">
+        <input type="hidden" name="action" value="create">
+        <label>Nombre</label>
+        {{ unidad_form.nombre_medida }}
+        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
+      </form>
+      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
+        <tbody>
+          {% for item in unidades %}
+          <tr>
+            <td style="width:100%;">
+              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
+                {% csrf_token %}
+                <input type="hidden" name="entity" value="unidad">
+                <input type="hidden" name="pk" value="{{ item.id }}">
+                <input type="text" name="nombre_medida" value="{{ item.nombre_medida }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
+                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
+                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar unidad?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin unidades</strong><span>Agrega unidades para mantener medidas consistentes.</span></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
