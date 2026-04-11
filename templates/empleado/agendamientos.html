@@ -1,0 +1,96 @@
+{% extends 'empleado_base.html' %}
+{% load static %}
+
+{% block title %}Empleado · Agendamientos{% endblock %}
+{% block page_title %}Mis Agendamientos{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'empleado_crear_agendamiento' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo agendamiento</a>
+  <a href="{% url 'empleado_agendamientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-calendar"></use></svg>Mis agendamientos</a>
+  <a href="{% url 'empleado_pedidos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-clipboard"></use></svg>Mis pedidos</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel" style="padding:12px 14px; margin-bottom:14px;">
+  <span class="pill-tag">Gestión operativa de empleado</span>
+  <span class="pill-tag">Solo tus registros</span>
+</div>
+
+<form method="get" class="glass-panel" style="padding:16px; margin-bottom:14px;">
+  <div class="search-bar">
+    <input type="search" name="q" placeholder="Buscar por cliente, servicio o estado" value="{{ search|default:'' }}">
+    <label style="font-weight:700; color:var(--muted);">Por página
+      <select name="page_size" onchange="this.form.submit()">
+        <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
+        <option value="15" {% if page_size == 15 %}selected{% endif %}>15</option>
+        <option value="20" {% if page_size == 20 %}selected{% endif %}>20</option>
+        <option value="25" {% if page_size == 25 %}selected{% endif %}>25</option>
+        <option value="30" {% if page_size == 30 %}selected{% endif %}>30</option>
+      </select>
+    </label>
+    <button class="btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-search"></use></svg>Buscar</button>
+  </div>
+</form>
+
+<div class="glass-panel glass-table skeleton-onload">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Cliente</th><th>Servicio</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Notas</th><th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ag in agendamientos %}
+      <tr>
+        <td>{{ ag.id }}</td>
+        <td>{{ ag.cliente }}</td>
+        <td>{{ ag.servicio }}</td>
+        <td>{{ ag.fecha_agendamiento }}</td>
+        <td>{{ ag.hora_agendamiento }}</td>
+        <td>
+          {% if ag.estado_agendamiento == 'Confirmado' or ag.estado_agendamiento == 'Agendado' %}
+            <span class="badge badge-soft badge-active">{{ ag.estado_agendamiento }}</span>
+          {% else %}
+            <span class="badge badge-soft badge-inactive">{{ ag.estado_agendamiento }}</span>
+          {% endif %}
+        </td>
+        <td>{{ ag.notas|default:'-'|truncatechars:45 }}</td>
+        <td class="table-actions">
+          <a href="{% url 'empleado_editar_agendamiento' ag.id %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
+          <a href="{% url 'empleado_eliminar_agendamiento' ag.id %}" class="btn-danger-soft" onclick="return confirm('¿Eliminar este agendamiento?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="empty-row-cell">
+          <div class="empty-state-inline">
+            <strong>Sin agendamientos propios</strong>
+            <span>Registra tu primer agendamiento para empezar tu gestión diaria.</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="pagination" style="margin-top:14px;">
+  {% if page_obj %}
+    {% for num in page_obj.paginator.page_range %}
+      <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&page_size={{ page_size }}&q={{ search|urlencode }}">{{ num }}</a>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.skeleton-onload').forEach(function(el) {
+      setTimeout(function() { el.classList.remove('skeleton-onload'); }, 300);
+    });
+  });
+</script>
+{% endblock %}

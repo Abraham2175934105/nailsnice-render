@@ -1,4 +1,5 @@
 import io
+from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 from django.conf import settings
@@ -235,6 +236,19 @@ def _clamp_page_size(raw_value: str):
     return max(PAGE_MIN, min(PAGE_MAX, value))
 
 
+def _parse_decimal_filter(raw_value: str):
+    raw_text = str(raw_value or '').strip().replace(',', '.')
+    if not raw_text:
+        return None
+    try:
+        parsed = Decimal(raw_text)
+    except (InvalidOperation, ValueError):
+        return None
+    if parsed < 0:
+        return None
+    return parsed
+
+
 def _build_producto_rows(qs, selected):
     config = {
         'id': ('ID', lambda p: p.id),
@@ -287,6 +301,18 @@ def catalogo_productos(request):
         Producto.objects.select_related('id_categoria', 'id_marca', 'id_color', 'id_unidad_medida', 'inventario')
     )
     search = (request.GET.get('q') or '').strip()
+    categorias_selected = [
+        str(raw).strip() for raw in request.GET.getlist('categorias')
+        if str(raw).strip().isdigit()
+    ]
+    categoria_legacy = (request.GET.get('categoria') or '').strip()
+    if categoria_legacy.isdigit() and categoria_legacy not in categorias_selected:
+        categorias_selected.append(categoria_legacy)
+
+    precio_min_raw = (request.GET.get('precio_min') or '').strip()
+    precio_max_raw = (request.GET.get('precio_max') or '').strip()
+    orden_selected = (request.GET.get('orden') or 'recientes').strip().lower()
+
     if search:
         productos_qs = productos_qs.filter(
             Q(nombre__icontains=search)
@@ -295,6 +321,31 @@ def catalogo_productos(request):
             | Q(id_categoria__nombre_categoria__icontains=search)
         )
 
+    if categorias_selected:
+        productos_qs = productos_qs.filter(id_categoria_id__in=[int(value) for value in categorias_selected])
+
+    precio_min = _parse_decimal_filter(precio_min_raw)
+    precio_max = _parse_decimal_filter(precio_max_raw)
+    if precio_min is not None and precio_max is not None and precio_min > precio_max:
+        precio_min, precio_max = precio_max, precio_min
+
+    if precio_min is not None:
+        productos_qs = productos_qs.filter(precio__gte=precio_min)
+    if precio_max is not None:
+        productos_qs = productos_qs.filter(precio__lte=precio_max)
+
+    order_map = {
+        'recientes': ('-id',),
+        'precio_asc': ('precio', 'nombre'),
+        'precio_desc': ('-precio', 'nombre'),
+        'nombre_asc': ('nombre',),
+        'nombre_desc': ('-nombre',),
+        'categoria': ('id_categoria__nombre_categoria', 'nombre'),
+    }
+    if orden_selected not in order_map:
+        orden_selected = 'recientes'
+    productos_qs = productos_qs.order_by(*order_map[orden_selected])
+
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
     paginator = Paginator(productos_qs, page_size)
     page_number = request.GET.get('page')
@@ -302,11 +353,35 @@ def catalogo_productos(request):
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(PRODUCTO_COLUMNS)] or PRODUCTO_DEFAULT_COLUMNS
     export_scope = (request.GET.get('export_scope') or 'page').lower()
-    export_page = request.GET.get('export_page') or page_obj.number
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
 
     export_fmt = (request.GET.get('export') or '').lower()
     if export_fmt in {'csv', 'xlsx', 'pdf'}:
-        export_source = productos_qs if export_scope == 'all' else paginator.get_page(export_page).object_list
+        if export_scope == 'all':
+            export_source = productos_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
         response = _export_productos(request, export_source, selected_columns, export_fmt)
         if response:
             return response
@@ -320,6 +395,12 @@ def catalogo_productos(request):
         'selected_columns': selected_columns,
         'export_scope': export_scope,
         'export_page': export_page,
+        'export_pages': export_pages,
+        'categorias_selected': categorias_selected,
+        'precio_min': precio_min_raw,
+        'precio_max': precio_max_raw,
+        'orden_selected': orden_selected,
+        'categorias_export': Categoria.objects.order_by('nombre_categoria'),
     })
 
 

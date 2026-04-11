@@ -210,13 +210,12 @@ def login_view(request):
                 messages.success(request, 'Inicio de sesión exitoso.')
 
                 # Redirección según rol
-                rol_id = getattr(user_auth, 'id_rol_id', None)
-                if rol_id == 1 or getattr(user_auth, 'is_superuser', False):
+                role_name = str(getattr(getattr(user_auth, 'id_rol', None), 'nombre', '') or '').strip().lower()
+                if getattr(user_auth, 'is_superuser', False) or role_name in {'administrador', 'admin'}:
                     return redirect('dashboard')
-                elif rol_id == 2:
-                    return redirect('index')
-                else:
-                    return redirect('index')
+                if role_name == Rol.EMPLEADO.lower():
+                    return redirect('empleado_agendamientos')
+                return redirect('index')
 
         if field_errors:
             return render(request, 'login.html', {'field_errors': field_errors, 'session_notice': session_notice})
@@ -298,9 +297,9 @@ def register_view(request):
                 if len(local_part) < 6:
                     field_errors['correo'] = 'El correo debe tener al menos 6 caracteres antes del dominio.'
                     errores = True
-                # Debe tener letras y números y no ser solo números
-                if local_part.isdigit() or not (re.search(r'[A-Za-z]', local_part) and re.search(r'\d', local_part)):
-                    field_errors['correo'] = 'El correo debe contener letras y números y no puede ser solo números.'
+                # Se permite correo sin números, pero no puede estar compuesto solo por dígitos.
+                if local_part.isdigit():
+                    field_errors['correo'] = 'El correo no puede estar compuesto solo por números.'
                     errores = True
 
             if Usuario.objects.filter(email=correo).exists():

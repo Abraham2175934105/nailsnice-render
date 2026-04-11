@@ -12,13 +12,14 @@ body {
     align-items: center;
     justify-content: center;
     background-color: #fff7fb;
+    /* Login background image: /media/fondo login.png */
     background-image:
-        radial-gradient(1200px 800px at 10% 0%, rgba(251, 113, 148, 0.16), transparent 55%),
-        radial-gradient(1000px 700px at 90% 0%, rgba(244, 114, 182, 0.18), transparent 60%);
+        linear-gradient(135deg, rgba(255, 247, 251, 0.78), rgba(255, 240, 248, 0.7)),
+        url('/media/fondo%20login.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-blend-mode: soft-light;
+    background-attachment: fixed;
 }
 
 .auth-page {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NailsNice - Checkout</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260407d">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -90,6 +90,37 @@
                         <p class="page-eyebrow">Datos de envío</p>
                         <h3>Dirección y contacto</h3>
                     </div>
+
+                    <div class="checkout-user-preview" aria-label="Datos de la cuenta activa">
+                        <div class="checkout-user-preview__head">
+                            <div class="checkout-user-preview__identity">
+                                <div class="checkout-user-preview__avatar" aria-hidden="true">{{ request.user.nombre1|default:request.user.email|first|upper }}</div>
+                                <div>
+                                    <p class="checkout-user-preview__eyebrow">Cuenta en sesión</p>
+                                    <p class="checkout-user-preview__name">
+                                        {% if request.user.nombre1 or request.user.apellido1 %}
+                                            {{ request.user.nombre1|default:'' }} {{ request.user.apellido1|default:'' }}
+                                        {% else %}
+                                            {{ request.user.email }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="checkout-user-preview__badge">Activa</span>
+                        </div>
+
+                        <div class="checkout-user-preview__grid">
+                            <article class="checkout-user-preview__item">
+                                <p class="checkout-user-preview__label">Correo</p>
+                                <p class="checkout-user-preview__value">{{ request.user.email }}</p>
+                            </article>
+                            <article class="checkout-user-preview__item">
+                                <p class="checkout-user-preview__label">Teléfono</p>
+                                <p class="checkout-user-preview__value">{{ request.user.telefono|default:'No registrado' }}</p>
+                            </article>
+                        </div>
+                    </div>
+
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
                         <label class="field-label" for="direccion" style="margin:0;">Dirección de envío</label>
                         {% if direccion_prefill %}
@@ -126,6 +157,31 @@
                                 <p class="cart-muted">Procesamos el pago de forma segura y confirmamos en segundos.</p>
                             </div>
                         </label>
+                    </div>
+
+                    <div id="card-payment-fields" class="card-payment-fields" hidden>
+                        <div class="panel-header" style="margin-top:12px;">
+                            <p class="page-eyebrow">Tarjeta</p>
+                            <h3>Datos de pago</h3>
+                        </div>
+                        <p class="cart-muted card-note">Validamos tus datos para procesar el pago. No almacenamos tu número completo de tarjeta.</p>
+
+                        <label class="field-label" for="card_holder">Titular de la tarjeta</label>
+                        <input id="card_holder" name="card_holder" type="text" placeholder="Nombre como aparece en la tarjeta" autocomplete="cc-name" maxlength="80">
+
+                        <label class="field-label" for="card_number">Número de tarjeta</label>
+                        <input id="card_number" name="card_number" type="text" placeholder="1234 5678 9012 3456" inputmode="numeric" autocomplete="cc-number" maxlength="23">
+
+                        <div class="card-grid">
+                            <div>
+                                <label class="field-label" for="card_expiry">Expiración</label>
+                                <input id="card_expiry" name="card_expiry" type="text" placeholder="MM/AA" inputmode="numeric" autocomplete="cc-exp" maxlength="5">
+                            </div>
+                            <div>
+                                <label class="field-label" for="card_cvv">CVV</label>
+                                <input id="card_cvv" name="card_cvv" type="password" placeholder="123" inputmode="numeric" autocomplete="cc-csc" maxlength="4">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -189,11 +245,78 @@
             const form = document.querySelector('form.panel');
             const direccionInput = document.getElementById('direccion');
             const toggleDireccionBtn = document.getElementById('toggle-direccion-edit');
+            const metodoRadios = document.querySelectorAll('input[name="metodo_pago"]');
+            const cardFields = document.getElementById('card-payment-fields');
+            const cardHolder = document.getElementById('card_holder');
+            const cardNumber = document.getElementById('card_number');
+            const cardExpiry = document.getElementById('card_expiry');
+            const cardCvv = document.getElementById('card_cvv');
             const overlay = document.getElementById('loader-overlay');
             const textEl = overlay.querySelector('[data-loader-text]');
             const subEl = overlay.querySelector('[data-loader-sub]');
             const spinner = overlay.querySelector('.loader-spinner');
             const check = overlay.querySelector('.loader-check');
+
+            const cardInputs = [cardHolder, cardNumber, cardExpiry, cardCvv].filter(Boolean);
+
+            const luhnValid = (number) => {
+                const digits = (number || '').replace(/\D/g, '');
+                if (!digits) return false;
+                let checksum = 0;
+                const reversed = digits.split('').reverse();
+                reversed.forEach((char, idx) => {
+                    let digit = parseInt(char, 10);
+                    if (idx % 2 === 1) {
+                        digit *= 2;
+                        if (digit > 9) digit -= 9;
+                    }
+                    checksum += digit;
+                });
+                return checksum % 10 === 0;
+            };
+
+            const selectedPaymentMethod = () => {
+                const selected = document.querySelector('input[name="metodo_pago"]:checked');
+                return selected ? selected.value : '';
+            };
+
+            const toggleCardFields = () => {
+                const isCard = selectedPaymentMethod() === 'tarjeta';
+                if (cardFields) {
+                    cardFields.hidden = !isCard;
+                    cardFields.classList.toggle('is-visible', isCard);
+                }
+                cardInputs.forEach((input) => {
+                    input.required = isCard;
+                });
+            };
+
+            const validateCardFields = () => {
+                if (selectedPaymentMethod() !== 'tarjeta') return null;
+
+                const holder = (cardHolder?.value || '').trim();
+                const numberRaw = (cardNumber?.value || '').trim();
+                const numberDigits = numberRaw.replace(/\D/g, '');
+                const expiry = (cardExpiry?.value || '').trim();
+                const cvv = (cardCvv?.value || '').replace(/\D/g, '');
+
+                if (!holder) return 'Ingresa el nombre del titular de la tarjeta.';
+                if (!/^[A-Za-z\s]{5,80}$/.test(holder)) return 'El nombre del titular solo debe contener letras y espacios (5 a 80 caracteres).';
+                if (numberDigits.length < 13 || numberDigits.length > 19) return 'El número de tarjeta debe tener entre 13 y 19 dígitos.';
+                if (!luhnValid(numberDigits)) return 'El número de tarjeta no es válido.';
+
+                const match = expiry.match(/^(0[1-9]|1[0-2])\/(\d{2})$/);
+                if (!match) return 'La fecha de expiración debe tener formato MM/AA.';
+                const month = parseInt(match[1], 10);
+                const year = 2000 + parseInt(match[2], 10);
+                const now = new Date();
+                const currentMonth = now.getMonth() + 1;
+                const currentYear = now.getFullYear();
+                if (year < currentYear || (year === currentYear && month < currentMonth)) return 'La tarjeta está vencida.';
+
+                if (!/^\d{3,4}$/.test(cvv)) return 'El CVV debe tener 3 o 4 dígitos.';
+                return null;
+            };
 
             if (direccionInput && toggleDireccionBtn) {
                 const initialAddress = (direccionInput.value || '').trim();
@@ -215,6 +338,31 @@
                 });
             }
 
+            if (cardNumber) {
+                cardNumber.addEventListener('input', () => {
+                    const digits = cardNumber.value.replace(/\D/g, '').slice(0, 19);
+                    cardNumber.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+                });
+            }
+            if (cardExpiry) {
+                cardExpiry.addEventListener('input', () => {
+                    const digits = cardExpiry.value.replace(/\D/g, '').slice(0, 4);
+                    if (digits.length <= 2) {
+                        cardExpiry.value = digits;
+                    } else {
+                        cardExpiry.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                    }
+                });
+            }
+            if (cardCvv) {
+                cardCvv.addEventListener('input', () => {
+                    cardCvv.value = cardCvv.value.replace(/\D/g, '').slice(0, 4);
+                });
+            }
+
+            metodoRadios.forEach((radio) => radio.addEventListener('change', toggleCardFields));
+            toggleCardFields();
+
             const setState = (state, text, sub) => {
                 overlay.classList.add('is-visible');
                 textEl.textContent = text || '';
@@ -235,6 +383,14 @@
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const fd = new FormData(form);
+
+                    const cardError = validateCardFields();
+                    if (cardError) {
+                        setState('error', cardError, 'Revisa los datos de la tarjeta');
+                        setTimeout(() => hideOverlay(), 1500);
+                        return;
+                    }
+
                     setState('loading', 'Procesando tu pedido...', 'Validando stock y pago');
                     try {
                         const resp = await fetch(form.action, {

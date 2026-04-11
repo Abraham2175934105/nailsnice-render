@@ -40,7 +40,7 @@
     <table>
         <thead>
             <tr>
-                <th>ID</th><th>Nombre</th><th>Apellido</th><th>Dirección</th><th>Teléfono</th><th>Correo</th><th>Acciones</th>
+                <th>ID</th><th>Nombre</th><th>Apellido</th><th>Dirección</th><th>Teléfono</th><th>Correo</th><th>Rol</th><th>Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -52,6 +52,7 @@
                 <td>{{ cliente.direccion }}</td>
                 <td>{{ cliente.telefono }}</td>
                 <td>{{ cliente.correo }}</td>
+                <td>{{ cliente.rol_usuario|default:'-' }}</td>
                 <td class="table-actions">
                     <a href="{% url 'editar_cliente' cliente.id %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
                     <a href="{% url 'eliminar_cliente' cliente.id %}" class="btn-danger-soft" title="Desactivar" onclick="return confirm('¿Desactivar este cliente?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Desactivar</a>
@@ -59,7 +60,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" class="empty-row-cell">
+                <td colspan="8" class="empty-row-cell">
                     <div class="empty-state-inline">
                         <strong>Sin clientes registrados</strong>
                         <span>Agrega un cliente para iniciar la gestión comercial.</span>
@@ -73,47 +74,71 @@
 
 <div class="pagination" style="margin-top:14px;">
     {% for num in page_obj.paginator.page_range %}
-        {% with query='?page='|add:num|add:'&page_size='|add:page_size|add:'&q='|add:search %}
-            <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="{{ query }}">{{ num }}</a>
-        {% endwith %}
+        <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&page_size={{ page_size }}&q={{ search|urlencode }}">{{ num }}</a>
     {% endfor %}
 </div>
 
 <div class="modal-overlay" id="export-modal">
-    <div class="glass-modal export-modal">
-        <div class="modal-header" style="justify-content: space-between; align-items:center;">
+    <div class="glass-modal export-modal export-modal-rich">
+        <div class="modal-header export-modal-header">
             <div>
                 <h3>Exportar clientes</h3>
-                <p class="section-subtitle">Elige formato, alcance y columnas.</p>
+                <p class="section-subtitle">Configura alcance y columnas para generar tu reporte.</p>
             </div>
             <button type="button" class="btn-ghost" data-close-export><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Cancelar</button>
         </div>
-        <form method="get" id="export-form" class="export-options">
+        <form method="get" id="export-form" class="export-options export-layout">
             <input type="hidden" name="export" id="export-format" value="">
-            <input type="hidden" name="q" value="{{ search }}">
-            <input type="hidden" name="page_size" value="{{ page_size }}">
-            <div>
-                <p class="section-subtitle">Alcance</p>
-                <label><input type="radio" name="export_scope" value="page" {% if export_scope != 'all' %}checked{% endif %}> Solo página</label>
-                <label><input type="radio" name="export_scope" value="all" {% if export_scope == 'all' %}checked{% endif %}> Todo</label>
-                <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-                    <span>Página</span>
-                    <input type="number" name="export_page" value="{{ export_page }}" min="1" max="{{ page_obj.paginator.num_pages|default:1 }}" style="width:80px;">
-                    <span class="pill-tag">{{ page_obj.paginator.count }} registros</span>
+            <section class="export-card">
+                <h4>Alcance del reporte</h4>
+                <div class="export-radio-grid">
+                    <label class="export-radio-option"><input type="radio" name="export_scope" value="page" {% if export_scope == 'page' %}checked{% endif %}> Solo una página</label>
+                    <label class="export-radio-option"><input type="radio" name="export_scope" value="pages" {% if export_scope == 'pages' %}checked{% endif %}> Páginas específicas</label>
+                    <label class="export-radio-option"><input type="radio" name="export_scope" value="all" {% if export_scope == 'all' %}checked{% endif %}> Todos los resultados</label>
                 </div>
-            </div>
-            <div>
-                <p class="section-subtitle">Columnas</p>
-                <div class="checkbox-grid">
+                <label class="export-field">
+                    Página a exportar
+                    <select name="export_page" class="export-select" id="clientes-export-page">
+                        {% for num in page_obj.paginator.page_range %}
+                            <option value="{{ num }}" {% if export_page|stringformat:'s' == num|stringformat:'s' %}selected{% endif %}>Página {{ num }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="export-field">
+                    Páginas a exportar
+                    <select name="export_pages" class="export-select export-pages-select" id="clientes-export-pages" multiple size="6">
+                        {% for num in page_obj.paginator.page_range %}
+                            <option value="{{ num }}" {% if num in export_pages %}selected{% endif %}>Página {{ num }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <div class="export-meta">
+                    <span class="pill-tag">{{ page_obj.paginator.count }} registros</span>
+                    <span class="pill-tag">{{ page_obj.paginator.num_pages }} páginas</span>
+                </div>
+            </section>
+
+            <section class="export-card">
+                <div class="export-columns-head">
+                    <h4>Columnas a incluir</h4>
+                    <div class="export-inline-actions">
+                        <button type="button" class="btn-ghost btn-xs" data-check-columns>Marcar todas</button>
+                        <button type="button" class="btn-ghost btn-xs" data-uncheck-columns>Limpiar</button>
+                    </div>
+                </div>
+                <div class="checkbox-grid export-checkbox-grid">
                     {% for key,label in columns_options %}
                         <label><input type="checkbox" name="columns" value="{{ key }}" {% if key in selected_columns %}checked{% endif %}> {{ label }}</label>
                     {% endfor %}
                 </div>
-            </div>
+            </section>
+
+            <input type="hidden" name="q" value="{{ search }}">
+            <input type="hidden" name="page_size" value="{{ page_size }}">
             <div class="form-actions" style="justify-content:flex-end;">
-                <button type="submit" class="btn-pill btn-primary" onclick="document.getElementById('export-format').value='csv'"><svg aria-hidden="true"><use href="#icon-export"></use></svg>CSV</button>
-                <button type="submit" class="btn-pill" onclick="document.getElementById('export-format').value='xlsx'"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Excel</button>
-                <button type="submit" class="btn-pill" onclick="document.getElementById('export-format').value='pdf'"><svg aria-hidden="true"><use href="#icon-export"></use></svg>PDF</button>
+                <button type="submit" class="btn-pill btn-primary" data-export-format="csv"><svg aria-hidden="true"><use href="#icon-export"></use></svg>CSV</button>
+                <button type="submit" class="btn-pill" data-export-format="xlsx"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Excel</button>
+                <button type="submit" class="btn-pill" data-export-format="pdf"><svg aria-hidden="true"><use href="#icon-export"></use></svg>PDF</button>
             </div>
         </form>
     </div>
@@ -124,10 +149,75 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('export-modal');
+        const exportForm = document.getElementById('export-form');
         const trigger = document.querySelector('[data-export-trigger]');
         const closers = document.querySelectorAll('[data-close-export]');
+
         if (trigger && modal) { trigger.addEventListener('click', () => modal.classList.add('show')); }
         closers.forEach(btn => btn.addEventListener('click', () => modal.classList.remove('show')));
+
+        if (exportForm) {
+            const pageSelect = exportForm.querySelector('select[name="export_page"]');
+            const pagesSelect = exportForm.querySelector('select[name="export_pages"]');
+            const scopeInputs = exportForm.querySelectorAll('input[name="export_scope"]');
+            const formatField = document.getElementById('export-format');
+            const formatButtons = exportForm.querySelectorAll('[data-export-format]');
+            const colChecks = exportForm.querySelectorAll('input[name="columns"]');
+            const markAllBtn = exportForm.querySelector('[data-check-columns]');
+            const clearBtn = exportForm.querySelector('[data-uncheck-columns]');
+
+            const syncPageState = function() {
+                const pageScope = exportForm.querySelector('input[name="export_scope"][value="page"]');
+                const pagesScope = exportForm.querySelector('input[name="export_scope"][value="pages"]');
+                if (pageSelect && pageScope) {
+                    pageSelect.disabled = !pageScope.checked;
+                }
+                if (pagesSelect && pagesScope) {
+                    pagesSelect.disabled = !pagesScope.checked;
+                }
+            };
+
+            scopeInputs.forEach(function(input) {
+                input.addEventListener('change', syncPageState);
+            });
+            syncPageState();
+
+            formatButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (formatField) {
+                        formatField.value = this.getAttribute('data-export-format') || 'csv';
+                    }
+                });
+            });
+
+            if (markAllBtn) {
+                markAllBtn.addEventListener('click', function() {
+                    colChecks.forEach(function(input) { input.checked = true; });
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    colChecks.forEach(function(input) { input.checked = false; });
+                });
+            }
+
+            exportForm.addEventListener('submit', function() {
+                const pagesScope = exportForm.querySelector('input[name="export_scope"][value="pages"]');
+                if (pagesScope && pagesScope.checked && pagesSelect) {
+                    const anySelected = Array.from(pagesSelect.options).some(function(opt) { return opt.selected; });
+                    if (!anySelected) {
+                        const fallback = Array.from(pagesSelect.options).find(function(opt) {
+                            return opt.value === String(pageSelect ? pageSelect.value : '1');
+                        });
+                        if (fallback) {
+                            fallback.selected = true;
+                        }
+                    }
+                }
+            });
+        }
+
         document.querySelectorAll('.skeleton-onload').forEach(function(el) { setTimeout(() => el.classList.remove('skeleton-onload'), 350); });
     });
 </script>

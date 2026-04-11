@@ -26,6 +26,10 @@ from pedidos.views import (
     crear_pedido,
     editar_pedido,
     eliminar_pedido,
+    empleado_lista_pedidos,
+    empleado_crear_pedido,
+    empleado_editar_pedido,
+    empleado_eliminar_pedido,
     cart_view,
     cart_add,
     cart_update,
@@ -35,6 +39,7 @@ from pedidos.views import (
     invoice_pdf_view,
 )
 from inventario import views as inventario_views
+from servicios import views as servicios_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -73,6 +78,16 @@ urlpatterns = [
     path('pedidos/crear/', crear_pedido, name='crear_pedido'),
     path('pedidos/editar/<int:id>/', editar_pedido, name='editar_pedido'),
     path('pedidos/eliminar/<int:id>/', eliminar_pedido, name='eliminar_pedido'),
+
+    # CRUD Empleado (solo mis registros)
+    path('empleado/agendamientos/', servicios_views.empleado_lista_agendamientos, name='empleado_agendamientos'),
+    path('empleado/agendamientos/crear/', servicios_views.empleado_crear_agendamiento, name='empleado_crear_agendamiento'),
+    path('empleado/agendamientos/editar/<int:id>/', servicios_views.empleado_editar_agendamiento, name='empleado_editar_agendamiento'),
+    path('empleado/agendamientos/eliminar/<int:id>/', servicios_views.empleado_eliminar_agendamiento, name='empleado_eliminar_agendamiento'),
+    path('empleado/pedidos/', empleado_lista_pedidos, name='empleado_pedidos'),
+    path('empleado/pedidos/crear/', empleado_crear_pedido, name='empleado_crear_pedido'),
+    path('empleado/pedidos/editar/<int:id>/', empleado_editar_pedido, name='empleado_editar_pedido'),
+    path('empleado/pedidos/eliminar/<int:id>/', empleado_eliminar_pedido, name='empleado_eliminar_pedido'),
 
     # Carrito y checkout
     path('carrito/', cart_view, name='carrito'),

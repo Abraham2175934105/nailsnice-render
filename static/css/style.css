@@ -1689,10 +1689,127 @@ body {
 .checkout-summary { position: sticky; top: 110px; display: flex; flex-direction: column; gap: 12px; }
 .form-actions { margin-top: 20px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
+.checkout-user-preview {
+    margin: 10px 0 12px;
+    border: 1px solid rgba(214,122,167,0.24);
+    border-radius: 16px;
+    background:
+        radial-gradient(120% 120% at 100% 0%, rgba(214,122,167,0.16) 0%, rgba(255,255,255,0) 48%),
+        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95));
+    padding: 12px;
+    box-shadow: 0 8px 20px rgba(25,25,25,0.06);
+}
+
+.checkout-user-preview__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checkout-user-preview__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(45deg, #ce759e, #9a4f75);
+    box-shadow: 0 6px 12px rgba(154, 79, 117, 0.3);
+}
+
+.checkout-user-preview__identity {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.checkout-user-preview__eyebrow {
+    margin: 0;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.checkout-user-preview__name {
+    margin: 1px 0 0;
+    font-weight: 800;
+    font-size: 0.96rem;
+    color: var(--text);
+}
+
+.checkout-user-preview__badge {
+    border: 1px solid rgba(59, 148, 112, 0.34);
+    background: rgba(59, 148, 112, 0.12);
+    color: #2f7f61;
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.checkout-user-preview__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.checkout-user-preview__item {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(214,122,167,0.16);
+    background: rgba(255,255,255,0.88);
+}
+
+.checkout-user-preview__label {
+    margin: 0;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+
+.checkout-user-preview__value {
+    margin: 3px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+    line-height: 1.25;
+}
+
 .payment-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .payment-tile { border: 1px solid var(--panel-border); border-radius: 14px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer; background: rgba(255,255,255,0.95); box-shadow: var(--shadow-soft); }
 .payment-tile input { margin-top: 4px; accent-color: var(--accent-2); }
 .tile-title { font-weight: 700; margin: 0 0 4px 0; }
+
+.card-payment-fields {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid rgba(214,122,167,0.35);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.9);
+    box-shadow: var(--shadow-soft);
+}
+.card-payment-fields.is-visible {
+    animation: fadeInUp 0.22s ease;
+}
+.card-note {
+    margin-bottom: 8px;
+}
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
 
 .checkout-steps { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .step { padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(214,122,167,0.35); color: var(--muted); font-weight: 700; }
@@ -1745,6 +1862,15 @@ body {
     .cart-qty__controls { width: 100%; }
     .cart-qty input[type="number"] { width: 100%; }
     .checkout-steps { width: 100%; }
+    .checkout-user-preview__head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .checkout-user-preview__badge {
+        align-self: flex-start;
+    }
+    .checkout-user-preview__grid { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: 1fr; }
     .invoice-lines__head, .invoice-line { grid-template-columns: 1fr 1fr; grid-template-rows: repeat(2, auto); }
     .invoice-line span:nth-child(2), .invoice-line span:nth-child(3) { color: var(--muted); }
 }

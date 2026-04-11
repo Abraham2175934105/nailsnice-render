@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NailsNice Empleado{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260401">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="glass-body">
+  {% if messages %}
+    <div class="toast-stack">
+      {% for message in messages %}
+        <div class="toast {% if 'error' in message.tags %}toast-error{% elif 'success' in message.tags %}toast-success{% elif 'warning' in message.tags %}toast-warning{% else %}toast-info{% endif %}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <svg style="display:none">
+    <symbol id="icon-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-5.5H9.5V21H5a1 1 0 0 1-1-1z" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="icon-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5.5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5"/><path d="M9 9h6"/><path d="M9 13h6"/><path d="M9 17h3"/></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="14" rx="2"/><path d="M8 3v3"/><path d="M16 3v3"/><path d="M3.5 10h17"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M4.5 20.5 7 20l10.2-10.2a1.6 1.6 0 0 0 0-2.3l-1.7-1.7a1.6 1.6 0 0 0-2.3 0L7 16.1z"/><path d="M13.6 6.4 17.6 10.4"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M5 7h14"/><path d="M9.5 7V5.4A1.4 1.4 0 0 1 10.9 4h2.2A1.4 1.4 0 0 1 14.5 5.4V7"/><path d="M9 11v6"/><path d="M15 11v6"/><path d="M6.5 7v11a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V7"/></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4 4"/></symbol>
+    <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M13 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6"/><path d="m17 8 4 4-4 4"/><path d="M11 12h10"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-mark">NN</div>
+        <div class="brand-text">
+          <span class="brand-eyebrow">Panel</span>
+          <span class="brand-name">Empleado</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-link" href="{% url 'empleado_agendamientos' %}">
+          <svg aria-hidden="true"><use href="#icon-calendar"></use></svg>
+          <span>Mis Agendamientos</span>
+        </a>
+        <a class="nav-link" href="{% url 'empleado_pedidos' %}">
+          <svg aria-hidden="true"><use href="#icon-clipboard"></use></svg>
+          <span>Mis Pedidos</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="nav-link subtle" href="{% url 'logout' %}">
+          <svg aria-hidden="true"><use href="#icon-logout"></use></svg>
+          <span>Cerrar sesión</span>
+        </a>
+        <a class="nav-link subtle" href="{% url 'index' %}">
+          <svg aria-hidden="true"><use href="#icon-home"></use></svg>
+          <span>Ir a Inicio</span>
+        </a>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">NailsNice Empleado</p>
+          <h1 class="page-title">{% block page_title %}Operaciones{% endblock %}</h1>
+        </div>
+        <div class="header-actions">
+          <div class="user-chip">
+            <div class="avatar-circle">{{ request.user.nombre1|default:request.user.email|first|upper }}</div>
+            <div class="user-meta">
+              <span class="user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+              <span class="user-role">{{ request.user.id_rol.nombre|default:'Empleado' }}</span>
+            </div>
+          </div>
+          <a class="btn-icon danger" href="{% url 'logout' %}" aria-label="Cerrar sesión"><svg><use href="#icon-logout"></use></svg></a>
+        </div>
+      </header>
+
+      {% block page_actions %}{% endblock %}
+
+      <main class="app-content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

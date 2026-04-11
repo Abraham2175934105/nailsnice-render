@@ -15,6 +15,9 @@
 
     <form method="POST" class="form-grid">
         {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="badge-chip" style="grid-column:1/-1;">{{ form.non_field_errors }}</div>
+        {% endif %}
         <div class="field">
             <label>Nombre</label>
             {{ form.nombre }}
@@ -39,6 +42,37 @@
             <label>Correo</label>
             {{ form.correo }}
             {% if form.correo.errors %}<span class="badge-chip">{{ form.correo.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Rol de usuario</label>
+            {{ form.rol }}
+            {% if form.rol.errors %}<span class="badge-chip">{{ form.rol.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Primer nombre (usuario)</label>
+            {{ form.nombre1 }}
+            {% if form.nombre1.errors %}<span class="badge-chip">{{ form.nombre1.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Segundo nombre (usuario)</label>
+            {{ form.nombre2 }}
+            {% if form.nombre2.errors %}<span class="badge-chip">{{ form.nombre2.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Primer apellido (usuario)</label>
+            {{ form.apellido1 }}
+            {% if form.apellido1.errors %}<span class="badge-chip">{{ form.apellido1.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label>Segundo apellido (usuario)</label>
+            {{ form.apellido2 }}
+            {% if form.apellido2.errors %}<span class="badge-chip">{{ form.apellido2.errors }}</span>{% endif %}
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+            <label>Contraseña (opcional)</label>
+            {{ form.password }}
+            {% if form.password.help_text %}<small class="section-subtitle">{{ form.password.help_text }}</small>{% endif %}
+            {% if form.password.errors %}<span class="badge-chip">{{ form.password.errors }}</span>{% endif %}
         </div>
 
         <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">

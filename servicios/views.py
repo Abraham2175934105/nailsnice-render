@@ -9,12 +9,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from rest_framework import viewsets
 
 from core.audit import AuditViewSetMixin
-from core.auth import admin_required
+from core.auth import admin_required, employee_required
 from core.permissions import IsAdminOrReadOnly
 from core.pdf_reports import build_crud_pdf_response
 from clientes.models import Cliente
 from usuarios.models import Empleado
-from .forms import AgendamientoForm
+from .forms import AgendamientoForm, EmpleadoAgendamientoForm
 from .models import Agendamiento, Servicio, TipoServicio
 from .serializers import AgendamientoSerializer, ServicioSerializer, TipoServicioSerializer
 
@@ -124,11 +124,35 @@ def lista_agendamientos(request):
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(AGENDAMIENTO_COLUMNS)] or AGENDAMIENTO_DEFAULT_COLUMNS
     export_scope = (request.GET.get('export_scope') or 'page').lower()
-    export_page = request.GET.get('export_page') or page_obj.number
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
 
     export_fmt = (request.GET.get('export') or '').lower()
     if export_fmt in {'csv', 'xlsx', 'pdf'}:
-        export_source = ag_qs if export_scope == 'all' else paginator.get_page(export_page).object_list
+        if export_scope == 'all':
+            export_source = ag_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
         response = _export_agendamientos(request, export_source, selected_columns, export_fmt)
         if response:
             return response
@@ -142,6 +166,7 @@ def lista_agendamientos(request):
         'selected_columns': selected_columns,
         'export_scope': export_scope,
         'export_page': export_page,
+        'export_pages': export_pages,
     })
 
 
@@ -175,6 +200,94 @@ def eliminar_agendamiento(request, id):
     agendamiento = get_object_or_404(Agendamiento, id=id)
     agendamiento.delete()
     return redirect('lista_agendamientos')
+
+
+def _get_or_create_employee_for_user(user):
+    empleado, _ = Empleado.objects.get_or_create(usuario=user)
+    return empleado
+
+
+@employee_required
+def empleado_lista_agendamientos(request):
+    empleado = _get_or_create_employee_for_user(request.user)
+    ag_qs = (
+        Agendamiento.objects
+        .select_related('cliente__usuario', 'servicio', 'empleado__usuario')
+        .filter(empleado=empleado)
+    )
+
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        ag_qs = ag_qs.filter(
+            Q(cliente__usuario__nombre1__icontains=search)
+            | Q(cliente__usuario__apellido1__icontains=search)
+            | Q(cliente__usuario__email__icontains=search)
+            | Q(servicio__nombre_servicio__icontains=search)
+            | Q(estado_agendamiento__icontains=search)
+        )
+
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(ag_qs, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'empleado/agendamientos.html', {
+        'page_obj': page_obj,
+        'agendamientos': page_obj.object_list,
+        'search': search,
+        'page_size': page_size,
+    })
+
+
+@employee_required
+def empleado_crear_agendamiento(request):
+    empleado = _get_or_create_employee_for_user(request.user)
+    if request.method == 'POST':
+        form = EmpleadoAgendamientoForm(request.POST)
+        form.instance.empleado = empleado
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Agendamiento registrado correctamente.')
+            return redirect('empleado_agendamientos')
+        messages.error(request, 'Corrige los errores del formulario para guardar el agendamiento.')
+    else:
+        form = EmpleadoAgendamientoForm()
+
+    return render(request, 'empleado/agendamiento_form.html', {
+        'form': form,
+        'is_edit': False,
+    })
+
+
+@employee_required
+def empleado_editar_agendamiento(request, id):
+    empleado = _get_or_create_employee_for_user(request.user)
+    agendamiento = get_object_or_404(Agendamiento, id=id, empleado=empleado)
+    if request.method == 'POST':
+        form = EmpleadoAgendamientoForm(request.POST, instance=agendamiento)
+        form.instance.empleado = empleado
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Agendamiento actualizado correctamente.')
+            return redirect('empleado_agendamientos')
+        messages.error(request, 'Corrige los errores del formulario para actualizar el agendamiento.')
+    else:
+        form = EmpleadoAgendamientoForm(instance=agendamiento)
+
+    return render(request, 'empleado/agendamiento_form.html', {
+        'form': form,
+        'is_edit': True,
+        'agendamiento': agendamiento,
+    })
+
+
+@employee_required
+def empleado_eliminar_agendamiento(request, id):
+    empleado = _get_or_create_employee_for_user(request.user)
+    agendamiento = get_object_or_404(Agendamiento, id=id, empleado=empleado)
+    agendamiento.delete()
+    messages.info(request, 'Agendamiento eliminado.')
+    return redirect('empleado_agendamientos')
 
 
 @admin_required

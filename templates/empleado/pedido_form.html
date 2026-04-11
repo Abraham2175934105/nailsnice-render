@@ -1,0 +1,84 @@
+{% extends 'empleado_base.html' %}
+{% load static %}
+
+{% block title %}Empleado · {% if is_edit %}Editar{% else %}Crear{% endif %} Pedido{% endblock %}
+{% block page_title %}{% if is_edit %}Editar{% else %}Nuevo{% endif %} Pedido{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'empleado_pedidos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-clipboard"></use></svg>Volver a mis pedidos</a>
+  <a href="{% url 'empleado_agendamientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-calendar"></use></svg>Ir a mis agendamientos</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel" style="max-width:980px; margin:0 auto;">
+  <div class="modal-header" style="justify-content: center; align-items:center;">
+    <div style="text-align:center; width:100%;">
+      <h3>{% if is_edit %}Editar pedido{% else %}Nuevo pedido{% endif %}</h3>
+      <p class="section-subtitle">Registra y ajusta pedidos con un diseño limpio y consistente.</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="form-alert form-alert--error" style="grid-column:1 / -1;">
+      <strong>Revisa los campos antes de guardar:</strong>
+      <ul class="form-alert-list">
+        {% for field in form %}
+          {% for error in field.errors %}
+          <li>{{ field.label }}: {{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="badge-chip" style="grid-column:1 / -1;">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="{{ form.telefono.id_for_label }}">Teléfono</label>
+      {{ form.telefono }}
+      {% if form.telefono.errors %}<span class="badge-chip">{{ form.telefono.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.producto.id_for_label }}">Producto</label>
+      {{ form.producto }}
+      {% if form.producto.errors %}<span class="badge-chip">{{ form.producto.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.precio.id_for_label }}">Precio</label>
+      {{ form.precio }}
+      {% if form.precio.errors %}<span class="badge-chip">{{ form.precio.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.cantidad.id_for_label }}">Cantidad</label>
+      {{ form.cantidad }}
+      {% if form.cantidad.errors %}<span class="badge-chip">{{ form.cantidad.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field" style="grid-column:1 / -1;">
+      <label for="{{ form.direccion.id_for_label }}">Dirección</label>
+      {{ form.direccion }}
+      {% if form.direccion.errors %}<span class="badge-chip">{{ form.direccion.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+      <a class="btn-ghost" href="{% url 'empleado_pedidos' %}">Cancelar</a>
+      <button class="btn-pill btn-primary" type="submit">{% if is_edit %}Guardar cambios{% else %}Registrar pedido{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

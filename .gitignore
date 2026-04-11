@@ -34,6 +34,9 @@ db.sqlite3
 .env
 .env.local
 
+# Local TLS certificates (dev only)
+.certs/
+
 # OS
 .DS_Store
 Thumbs.db

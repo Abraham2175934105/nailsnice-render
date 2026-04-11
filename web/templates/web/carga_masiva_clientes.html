@@ -10,14 +10,92 @@
 </div>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+  .upload-feedback {
+    margin: 0 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 14px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .upload-feedback--success { border-color: #56c288; background: rgba(86, 194, 136, 0.12); }
+  .upload-feedback--warning { border-color: #f0b34f; background: rgba(240, 179, 79, 0.12); }
+  .upload-feedback--error { border-color: #ef6b6b; background: rgba(239, 107, 107, 0.12); }
+  .upload-feedback-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+  .upload-feedback-title { margin: 0; font-size: 1.05rem; }
+  .upload-feedback-summary { margin: 6px 0 0; color: var(--muted); }
+  .upload-feedback-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .upload-feedback-details { margin-top: 10px; }
+  .upload-feedback-errors {
+    margin-top: 8px;
+    max-height: 260px;
+    overflow: auto;
+    border: 1px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.12);
+  }
+  .upload-feedback-errors ol { margin: 0; padding-left: 18px; }
+  .upload-feedback-errors li { margin: 0 0 4px; white-space: pre-wrap; }
+  .upload-feedback-note { margin: 8px 0 0; font-size: 0.85rem; color: var(--muted); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="glass-panel fade-in-up" style="padding:20px;">
   <div class="modal-header" style="justify-content: center; align-items:center;">
     <div>
       <h3>Carga masiva</h3>
-      <p class="section-subtitle">Sube CSV o Excel con columnas: nombre, apellido, direccion, telefono, correo.</p>
+      <p class="section-subtitle">Sube CSV o Excel con columnas obligatorias: direccion, telefono, correo y nombres por legacy (nombre, apellido) o relacional (nombre1, apellido1). Opcionales: nombre2, apellido2, rol o id_rol, password o contrasena.</p>
     </div>
   </div>
+
+  {% if upload_feedback %}
+  <div id="upload-feedback" class="upload-feedback upload-feedback--{{ upload_feedback.status }}">
+    <div class="upload-feedback-head">
+      <div>
+        <h4 class="upload-feedback-title">Resultado de la carga</h4>
+        <p class="upload-feedback-summary">{{ upload_feedback.summary }}</p>
+      </div>
+      <button type="button" class="btn-ghost" data-dismiss-upload-feedback>Ocultar</button>
+    </div>
+
+    <div class="upload-feedback-meta">
+      <span class="pill-tag">Archivo: {{ upload_feedback.file_name|default:'(sin nombre)' }}</span>
+      <span class="pill-tag">Creados: {{ upload_feedback.creados }}</span>
+      <span class="pill-tag">Duplicados: {{ upload_feedback.duplicados }}</span>
+      <span class="pill-tag">Errores: {{ upload_feedback.errores_total }}</span>
+    </div>
+
+    {% if upload_feedback.warnings %}
+      {% for warning in upload_feedback.warnings %}
+      <div class="pill-tag" style="margin-top:8px;">{{ warning }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% if upload_feedback.errores %}
+    <details class="upload-feedback-details" {% if upload_feedback.status != 'success' %}open{% endif %}>
+      <summary>Ver detalle de errores</summary>
+      <div class="form-actions" style="justify-content:flex-start; margin-top:8px;">
+        <button type="button" class="btn-pill" data-copy-upload-errors>Copiar errores</button>
+      </div>
+      <div class="upload-feedback-errors">
+        <ol>
+          {% for error in upload_feedback.errores %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ol>
+      </div>
+      {% if upload_feedback.errors_truncated %}
+      <p class="upload-feedback-note">Se muestran los primeros 80 errores.</p>
+      {% endif %}
+      <textarea id="upload-errors-raw" style="display:none;">{% for error in upload_feedback.errores %}{{ error }}{% if not forloop.last %}
+{% endif %}{% endfor %}</textarea>
+    </details>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <form method="POST" enctype="multipart/form-data" class="glass-form" style="margin-top:12px; display:flex; flex-direction:column; gap:14px;">
     {% csrf_token %}
@@ -25,11 +103,46 @@
       <label>Archivo CSV o Excel</label>
       <input type="file" name="file" accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
     </div>
-    <div class="pill-tag">Tip: asegúrate de que el teléfono tenga 10 dígitos y el correo incluya @.</div>
+    <div class="pill-tag">Tip: teléfono con 10 dígitos, correo con @. Si no envías rol, se asigna Cliente; para admin puedes usar Admin o Administrador.</div>
+    <div class="pill-tag">Si envías password, debe incluir mayúscula, minúscula, número y carácter especial.</div>
+    <div class="pill-tag">No se permiten duplicados de correo o teléfono (ni en el archivo ni contra los datos existentes).</div>
     <div class="form-actions" style="justify-content:flex-end; gap:10px;">
       <a class="btn-ghost" href="{% url 'lista_clientes' %}">Cancelar</a>
       <button class="btn-pill btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Procesar</button>
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const feedback = document.getElementById('upload-feedback');
+    if (feedback) {
+      feedback.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    const dismissBtn = document.querySelector('[data-dismiss-upload-feedback]');
+    if (dismissBtn && feedback) {
+      dismissBtn.addEventListener('click', function () {
+        feedback.style.display = 'none';
+      });
+    }
+
+    const copyBtn = document.querySelector('[data-copy-upload-errors]');
+    const rawErrors = document.getElementById('upload-errors-raw');
+    if (copyBtn && rawErrors && navigator.clipboard) {
+      copyBtn.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(rawErrors.value || '');
+          copyBtn.textContent = 'Errores copiados';
+          setTimeout(function () { copyBtn.textContent = 'Copiar errores'; }, 1500);
+        } catch (_) {
+          copyBtn.textContent = 'No se pudo copiar';
+          setTimeout(function () { copyBtn.textContent = 'Copiar errores'; }, 1500);
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

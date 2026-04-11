@@ -104,11 +104,35 @@ def lista_inventario(request):
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(INVENTARIO_COLUMNS)] or INVENTARIO_DEFAULT_COLUMNS
     export_scope = (request.GET.get('export_scope') or 'page').lower()
-    export_page = request.GET.get('export_page') or page_obj.number
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
 
     export_fmt = (request.GET.get('export') or '').lower()
     if export_fmt in {'csv', 'xlsx', 'pdf'}:
-        export_source = productos_qs if export_scope == 'all' else paginator.get_page(export_page).object_list
+        if export_scope == 'all':
+            export_source = productos_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
         response = _export_inventory(request, export_source, selected_columns, export_fmt)
         if response:
             return response
@@ -122,6 +146,7 @@ def lista_inventario(request):
         'selected_columns': selected_columns,
         'export_scope': export_scope,
         'export_page': export_page,
+        'export_pages': export_pages,
     })
 
 @admin_required

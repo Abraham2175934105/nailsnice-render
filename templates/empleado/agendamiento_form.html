@@ -1,0 +1,90 @@
+{% extends 'empleado_base.html' %}
+{% load static %}
+
+{% block title %}Empleado · {% if is_edit %}Editar{% else %}Crear{% endif %} Agendamiento{% endblock %}
+{% block page_title %}{% if is_edit %}Editar{% else %}Nuevo{% endif %} Agendamiento{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'empleado_agendamientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-calendar"></use></svg>Volver a mis agendamientos</a>
+  <a href="{% url 'empleado_pedidos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-clipboard"></use></svg>Ir a mis pedidos</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel" style="max-width:980px; margin:0 auto;">
+  <div class="modal-header" style="justify-content: center; align-items:center;">
+    <div style="text-align:center; width:100%;">
+      <h3>{% if is_edit %}Editar agendamiento{% else %}Nuevo agendamiento{% endif %}</h3>
+      <p class="section-subtitle">Gestiona tu agenda diaria con un formulario claro y ordenado.</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-grid">
+    {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="form-alert form-alert--error" style="grid-column:1 / -1;">
+      <strong>Revisa los campos antes de guardar:</strong>
+      <ul class="form-alert-list">
+        {% for field in form %}
+          {% for error in field.errors %}
+          <li>{{ field.label }}: {{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="badge-chip" style="grid-column:1 / -1;">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="{{ form.cliente.id_for_label }}">Cliente</label>
+      {{ form.cliente }}
+      {% if form.cliente.errors %}<span class="badge-chip">{{ form.cliente.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.servicio.id_for_label }}">Servicio</label>
+      {{ form.servicio }}
+      {% if form.servicio.errors %}<span class="badge-chip">{{ form.servicio.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.fecha_agendamiento.id_for_label }}">Fecha</label>
+      {{ form.fecha_agendamiento }}
+      {% if form.fecha_agendamiento.errors %}<span class="badge-chip">{{ form.fecha_agendamiento.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.hora_agendamiento.id_for_label }}">Hora</label>
+      {{ form.hora_agendamiento }}
+      {% if form.hora_agendamiento.errors %}<span class="badge-chip">{{ form.hora_agendamiento.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="{{ form.estado_agendamiento.id_for_label }}">Estado</label>
+      {{ form.estado_agendamiento }}
+      {% if form.estado_agendamiento.errors %}<span class="badge-chip">{{ form.estado_agendamiento.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field" style="grid-column:1 / -1;">
+      <label for="{{ form.notas.id_for_label }}">Notas</label>
+      {{ form.notas }}
+      {% if form.notas.errors %}<span class="badge-chip">{{ form.notas.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+      <a class="btn-ghost" href="{% url 'empleado_agendamientos' %}">Cancelar</a>
+      <button class="btn-pill btn-primary" type="submit">{% if is_edit %}Guardar cambios{% else %}Registrar agendamiento{% endif %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

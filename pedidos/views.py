@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 import io
 import re
@@ -15,12 +16,12 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from weasyprint import HTML
 
-from core.auth import admin_required
+from core.auth import admin_required, employee_required
 from core.pdf_reports import build_crud_pdf_response
 from clientes.models import Cliente
 from inventario.models import ProductoMaquillaje
 from web.models import Clientes as LegacyClientes
-from .forms import PedidosForm
+from .forms import PedidosForm, EmpleadoPedidoForm
 from .models import Pedidos, Pedido, DetallePedido
 from .services import create_pedido_from_cart, delete_legacy_pedido, save_legacy_pedido
 
@@ -42,6 +43,55 @@ DIRECCION_COLOMBIA_RE = re.compile(r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|a
 
 def _is_valid_colombian_address(address: str) -> bool:
     return bool(DIRECCION_COLOMBIA_RE.match((address or '').strip()))
+
+
+def _is_valid_card_number_luhn(number_digits: str) -> bool:
+    if not number_digits or not number_digits.isdigit():
+        return False
+
+    checksum = 0
+    reversed_digits = number_digits[::-1]
+    for index, digit_char in enumerate(reversed_digits):
+        digit = int(digit_char)
+        if index % 2 == 1:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        checksum += digit
+    return checksum % 10 == 0
+
+
+def _validate_card_payment_payload(payload) -> str | None:
+    holder = (payload.get('card_holder') or '').strip()
+    raw_number = str(payload.get('card_number') or '')
+    number_digits = re.sub(r'\D', '', raw_number)
+    expiry = (payload.get('card_expiry') or '').strip()
+    cvv = re.sub(r'\D', '', str(payload.get('card_cvv') or ''))
+
+    if not holder:
+        return 'Ingresa el nombre del titular de la tarjeta.'
+    if not re.fullmatch(r'[A-Za-z\s]{5,80}', holder):
+        return 'El nombre del titular solo debe contener letras y espacios (5 a 80 caracteres).'
+
+    if len(number_digits) < 13 or len(number_digits) > 19:
+        return 'El número de tarjeta debe tener entre 13 y 19 dígitos.'
+    if not _is_valid_card_number_luhn(number_digits):
+        return 'El número de tarjeta no es válido.'
+
+    expiry_match = re.fullmatch(r'(0[1-9]|1[0-2])\s*/\s*(\d{2})', expiry)
+    if not expiry_match:
+        return 'La fecha de expiración debe tener formato MM/AA.'
+
+    month = int(expiry_match.group(1))
+    year = 2000 + int(expiry_match.group(2))
+    today = date.today()
+    if (year, month) < (today.year, today.month):
+        return 'La tarjeta está vencida.'
+
+    if not re.fullmatch(r'\d{3,4}', cvv):
+        return 'El CVV debe tener 3 o 4 dígitos.'
+
+    return None
 
 
 def _get_user_shipping_address(user) -> str:
@@ -177,11 +227,35 @@ def lista_pedidos(request):
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(PEDIDOS_COLUMNS)] or PEDIDOS_DEFAULT_COLUMNS
     export_scope = (request.GET.get('export_scope') or 'page').lower()
-    export_page = request.GET.get('export_page') or page_obj.number
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
 
     export_fmt = (request.GET.get('export') or '').lower()
     if export_fmt in {'csv', 'xlsx', 'pdf'}:
-        export_source = pedidos_qs if export_scope == 'all' else paginator.get_page(export_page).object_list
+        if export_scope == 'all':
+            export_source = pedidos_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
         response = _export_pedidos(request, export_source, selected_columns, export_fmt)
         if response:
             return response
@@ -195,6 +269,7 @@ def lista_pedidos(request):
         'selected_columns': selected_columns,
         'export_scope': export_scope,
         'export_page': export_page,
+        'export_pages': export_pages,
     })
 
 @admin_required
@@ -225,6 +300,98 @@ def eliminar_pedido(request, id):
     pedido = get_object_or_404(Pedidos, id=id, is_active=True)  # ← minúscula
     delete_legacy_pedido(pedido, user=request.user)
     return redirect('lista_pedidos')
+
+
+def _employee_owner_key(user):
+    return str(getattr(user, 'email', '') or '').strip().lower()
+
+
+def _employee_display_name(user):
+    nombre1 = str(getattr(user, 'nombre1', '') or '').strip()
+    apellido1 = str(getattr(user, 'apellido1', '') or '').strip()
+    return f"{nombre1} {apellido1}".strip()
+
+
+@employee_required
+def empleado_lista_pedidos(request):
+    owner_email = _employee_owner_key(request.user)
+    pedidos_qs = Pedidos.activos.filter(usuario__iexact=owner_email).order_by('-fecha', '-id')
+
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        pedidos_qs = pedidos_qs.filter(
+            Q(producto__icontains=search)
+            | Q(direccion__icontains=search)
+            | Q(telefono__icontains=search)
+        )
+
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(pedidos_qs, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'empleado/pedidos.html', {
+        'page_obj': page_obj,
+        'pedidos': page_obj.object_list,
+        'search': search,
+        'page_size': page_size,
+    })
+
+
+@employee_required
+def empleado_crear_pedido(request):
+    owner_email = _employee_owner_key(request.user)
+    owner_name = _employee_display_name(request.user)
+    if request.method == 'POST':
+        post_data = request.POST.copy()
+        if not str(post_data.get('telefono') or '').strip():
+            post_data['telefono'] = str(getattr(request.user, 'telefono', '') or '').strip()
+
+        form = EmpleadoPedidoForm(post_data)
+        form.instance.usuario = owner_email
+        if form.is_valid():
+            save_legacy_pedido(form, user=request.user)
+            messages.success(request, f'Pedido registrado correctamente para {owner_name or owner_email}.')
+            return redirect('empleado_pedidos')
+        messages.error(request, 'Corrige los errores del formulario para registrar el pedido.')
+    else:
+        form = EmpleadoPedidoForm(initial={'telefono': str(getattr(request.user, 'telefono', '') or '').strip()})
+
+    return render(request, 'empleado/pedido_form.html', {
+        'form': form,
+        'is_edit': False,
+    })
+
+
+@employee_required
+def empleado_editar_pedido(request, id):
+    owner_email = _employee_owner_key(request.user)
+    pedido = get_object_or_404(Pedidos, id=id, is_active=True, usuario__iexact=owner_email)
+    if request.method == 'POST':
+        form = EmpleadoPedidoForm(request.POST, instance=pedido)
+        form.instance.usuario = owner_email
+        if form.is_valid():
+            save_legacy_pedido(form, user=request.user)
+            messages.success(request, 'Pedido actualizado correctamente.')
+            return redirect('empleado_pedidos')
+        messages.error(request, 'Corrige los errores del formulario para actualizar el pedido.')
+    else:
+        form = EmpleadoPedidoForm(instance=pedido)
+
+    return render(request, 'empleado/pedido_form.html', {
+        'form': form,
+        'is_edit': True,
+        'pedido': pedido,
+    })
+
+
+@employee_required
+def empleado_eliminar_pedido(request, id):
+    owner_email = _employee_owner_key(request.user)
+    pedido = get_object_or_404(Pedidos, id=id, is_active=True, usuario__iexact=owner_email)
+    delete_legacy_pedido(pedido, user=request.user)
+    messages.info(request, 'Pedido eliminado.')
+    return redirect('empleado_pedidos')
 
 
 # --- Carrito y checkout (Phase C) ---
@@ -415,6 +582,14 @@ def checkout_view(request):
                 return JsonResponse({'ok': False, 'error': error_msg}, status=400)
             messages.error(request, error_msg)
             return redirect('checkout')
+
+        if metodo == 'tarjeta':
+            card_error = _validate_card_payment_payload(request.POST)
+            if card_error:
+                if is_ajax:
+                    return JsonResponse({'ok': False, 'error': card_error}, status=400)
+                messages.error(request, card_error)
+                return redirect('checkout')
 
         try:
             pedido = create_pedido_from_cart(request.user, items, direccion, metodo)

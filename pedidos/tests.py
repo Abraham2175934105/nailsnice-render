@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -149,6 +150,46 @@ class CartCheckoutTests(TestCase):
 		self.assertIsNotNone(legacy)
 		self.assertEqual(legacy.direccion, 'Avenida 12 #33-44')
 
+	def test_checkout_tarjeta_invalid_card_returns_error_ajax(self):
+		self._force_login()
+		session = self.client.session
+		session['cart'] = {str(self.producto.id_inventario): 1}
+		session.save()
+
+		resp = self.client.post(reverse('checkout'), {
+			'metodo_pago': 'tarjeta',
+			'direccion': 'Calle 123 #45-67',
+			'card_holder': 'Juan Perez',
+			'card_number': '4111 1111 1111 1112',
+			'card_expiry': '12/50',
+			'card_cvv': '123',
+		}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+		self.assertEqual(resp.status_code, 400)
+		self.assertFalse(resp.json().get('ok'))
+		self.assertIn('tarjeta', resp.json().get('error', '').lower())
+		self.assertEqual(Pedido.objects.count(), 0)
+
+	def test_checkout_tarjeta_valid_card_creates_order_ajax(self):
+		self._force_login()
+		session = self.client.session
+		session['cart'] = {str(self.producto.id_inventario): 1}
+		session.save()
+
+		resp = self.client.post(reverse('checkout'), {
+			'metodo_pago': 'tarjeta',
+			'direccion': 'Carrera 55 #12-30',
+			'card_holder': 'Juan Perez',
+			'card_number': '4111 1111 1111 1111',
+			'card_expiry': '12/50',
+			'card_cvv': '123',
+		}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		self.assertTrue(data.get('ok'))
+		self.assertEqual(Pedido.objects.count(), 1)
+
 
 class PedidoServiceTests(TestCase):
 	def setUp(self):
@@ -210,3 +251,125 @@ class LegacyPedidosAdminTests(TestCase):
 		})
 		self.assertEqual(create_resp.status_code, 302)
 		self.assertTrue(AuditLog.objects.filter(action='pedidos.legacy.create').exists())
+
+
+class EmployeeLegacyPedidosTests(TestCase):
+	def setUp(self):
+		self.client = Client()
+		self.rol_empleado, _ = Rol.objects.get_or_create(nombre=Rol.EMPLEADO)
+
+		self.employee = get_user_model().objects.create_user(
+			email='empleado1@test.com',
+			password='Pwd12345!',
+			id_rol=self.rol_empleado,
+			nombre1='Empleado',
+			telefono='3001234567',
+		)
+		self.other_employee = get_user_model().objects.create_user(
+			email='empleado2@test.com',
+			password='Pwd12345!',
+			id_rol=self.rol_empleado,
+			nombre1='Empleado2',
+			telefono='3007654321',
+		)
+
+		next_day = date.today() + timedelta(days=1)
+		self.my_pedido = Pedidos.objects.create(
+			usuario=self.employee.email,
+			telefono='3001234567',
+			producto='Base liquida',
+			precio=Decimal('15000'),
+			direccion='Calle 10 #20-30',
+			cantidad=1,
+			fecha=next_day,
+		)
+		self.other_pedido = Pedidos.objects.create(
+			usuario=self.other_employee.email,
+			telefono='3007654321',
+			producto='Delineador',
+			precio=Decimal('12000'),
+			direccion='Carrera 20 #30-40',
+			cantidad=1,
+			fecha=next_day,
+		)
+
+	def test_employee_list_only_shows_own_pedidos(self):
+		self.client.force_login(self.employee)
+		resp = self.client.get(reverse('empleado_pedidos'))
+
+		self.assertEqual(resp.status_code, 200)
+		listed_ids = [p.id for p in resp.context['pedidos']]
+		self.assertIn(self.my_pedido.id, listed_ids)
+		self.assertNotIn(self.other_pedido.id, listed_ids)
+
+	def test_employee_cannot_edit_other_employee_pedido(self):
+		self.client.force_login(self.employee)
+		resp = self.client.get(reverse('empleado_editar_pedido', args=[self.other_pedido.id]))
+		self.assertEqual(resp.status_code, 404)
+
+	def test_employee_create_pedido_sets_logged_owner(self):
+		self.client.force_login(self.employee)
+		payload = {
+			'telefono': '',
+			'producto': 'Labial mate',
+			'precio': '18000',
+			'direccion': 'Diagonal 50 #60-70',
+			'cantidad': 2,
+			'fecha': (date.today() + timedelta(days=2)).isoformat(),
+		}
+
+		resp = self.client.post(reverse('empleado_crear_pedido'), payload)
+
+		self.assertEqual(resp.status_code, 302)
+		nuevo = Pedidos.activos.order_by('-id').first()
+		self.assertEqual(nuevo.usuario, self.employee.email)
+		self.assertEqual(nuevo.telefono, '3001234567')
+
+
+class EmployeeLegacyPedidosValidationTests(TestCase):
+	def setUp(self):
+		self.client = Client()
+		self.rol_empleado, _ = Rol.objects.get_or_create(nombre=Rol.EMPLEADO)
+		self.employee = get_user_model().objects.create_user(
+			email='empleado.validacion@test.com',
+			password='Pwd12345!',
+			id_rol=self.rol_empleado,
+			nombre1='EmpleadoVal',
+			telefono='3003332211',
+		)
+
+	def test_employee_create_pedido_invalid_address_shows_alerts(self):
+		self.client.force_login(self.employee)
+		payload = {
+			'telefono': '3003332211',
+			'producto': 'Labial mate',
+			'precio': '25000',
+			'direccion': 'Direccion sin formato',
+			'cantidad': 1,
+			'fecha': (date.today() + timedelta(days=2)).isoformat(),
+		}
+
+		resp = self.client.post(reverse('empleado_crear_pedido'), payload)
+
+		self.assertEqual(resp.status_code, 200)
+		self.assertContains(resp, 'La dirección debe seguir un formato colombiano válido')
+		self.assertContains(resp, 'Revisa los campos antes de guardar')
+		self.assertContains(resp, 'Corrige los errores del formulario para registrar el pedido')
+		self.assertEqual(Pedidos.activos.count(), 0)
+
+	def test_employee_create_pedido_quantity_zero_shows_errors(self):
+		self.client.force_login(self.employee)
+		payload = {
+			'telefono': '3003332211',
+			'producto': 'Sombra',
+			'precio': '12000',
+			'direccion': 'Calle 10 #20-30',
+			'cantidad': 0,
+			'fecha': (date.today() + timedelta(days=2)).isoformat(),
+		}
+
+		resp = self.client.post(reverse('empleado_crear_pedido'), payload)
+
+		self.assertEqual(resp.status_code, 200)
+		self.assertContains(resp, 'La cantidad mínima es 1')
+		self.assertContains(resp, 'Revisa los campos antes de guardar')
