@@ -3,39 +3,38 @@ from decimal import Decimal
 import io
 import re
 
-import pandas as pd
+import pandas as pd  # type: ignore
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from weasyprint import HTML
+from weasyprint import HTML  # type: ignore
 
 from core.auth import admin_required, employee_required
 from core.pdf_reports import build_crud_pdf_response
-from clientes.models import Cliente
-from inventario.models import ProductoMaquillaje
-from web.models import Clientes as LegacyClientes
-from .forms import PedidosForm, EmpleadoPedidoForm
-from .models import Pedidos, Pedido, DetallePedido
-from .services import create_pedido_from_cart, delete_legacy_pedido, save_legacy_pedido
+from clientes.models import Cliente, DireccionUsuario
+from inventario.models import SaldoInventario
+from productos.models import VarianteProducto
+from .forms import PedidoVentaForm, EmpleadoPedidoForm
+from .models import PedidoVenta, DetallePedidoVenta, HistorialEstadoPedido
+from .services import create_pedido_from_cart, create_transaccion
+
 
 PEDIDOS_COLUMNS = [
-    ('id', 'ID'),
-    ('usuario', 'Usuario'),
-    ('telefono', 'Teléfono'),
-    ('producto', 'Producto'),
-    ('precio', 'Precio'),
-    ('direccion', 'Dirección'),
-    ('cantidad', 'Cantidad'),
+    ('numero', 'Pedido'),
+    ('cliente', 'Cliente'),
+    ('estado', 'Estado'),
+    ('total', 'Total'),
     ('fecha', 'Fecha'),
 ]
-PEDIDOS_DEFAULT_COLUMNS = ['id', 'usuario', 'producto', 'precio', 'cantidad', 'fecha']
+PEDIDOS_DEFAULT_COLUMNS = ['numero', 'cliente', 'estado', 'total', 'fecha']
 PAGE_MIN = 10
 PAGE_MAX = 30
 DIRECCION_COLOMBIA_RE = re.compile(r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+')
@@ -94,64 +93,116 @@ def _validate_card_payment_payload(payload) -> str | None:
     return None
 
 
-def _get_user_shipping_address(user) -> str:
-    try:
-        cliente = user.cliente
-        direccion_cliente = (cliente.direccion or '').strip()
-        if direccion_cliente:
-            return direccion_cliente
-    except (ObjectDoesNotExist, Cliente.DoesNotExist, AttributeError):
-        pass
+def _normalize_image_url(raw):
+    value = str(raw or '').strip().replace('\\', '/')
+    if not value:
+        return None
+    if value.startswith('http://') or value.startswith('https://'):
+        return value
 
-    legacy_cliente = LegacyClientes.objects.filter(correo__iexact=getattr(user, 'email', '')).first()
-    if legacy_cliente:
-        direccion_legacy = (legacy_cliente.direccion or '').strip()
-        if direccion_legacy:
-            return direccion_legacy
+    media_url = settings.MEDIA_URL or '/media/'
+    media_base = '/' + media_url.strip('/') + '/'
 
-    ultimo_pedido = Pedido.objects.filter(usuario=user).order_by('-creado_en').first()
-    if ultimo_pedido:
-        direccion_pedido = (ultimo_pedido.direccion_envio or '').strip()
-        if direccion_pedido:
-            return direccion_pedido
+    if value.startswith('//'):
+        value = '/' + value.lstrip('/')
 
-    ultimo_legacy_pedido = Pedidos.activos.filter(usuario__iexact=getattr(user, 'email', '')).order_by('-fecha', '-id').first()
-    if ultimo_legacy_pedido:
-        direccion_legacy_pedido = (ultimo_legacy_pedido.direccion or '').strip()
-        if direccion_legacy_pedido:
-            return direccion_legacy_pedido
-    return ''
+    if value.startswith(media_base):
+        while value.startswith(media_base):
+            value = value[len(media_base):]
+        value = value.lstrip('/')
+        return f"{media_base}{value}" if value else None
+
+    media_no_slash = media_base.lstrip('/')
+    if value.startswith(media_no_slash):
+        value = value[len(media_no_slash):].lstrip('/')
+        return f"{media_base}{value}" if value else None
+
+    if value.startswith('/'):
+        return value
+
+    return f"{media_base}{value}"
 
 
-def _sync_user_shipping_address(user, direccion: str):
-    direccion_limpia = (direccion or '').strip()
-    if not direccion_limpia:
+def _resolve_cart_image_url(request, variante):
+    if not variante:
+        return None
+
+    sources = []
+    imagenes = getattr(variante, 'imagenes', None)
+    if imagenes is not None:
+        for img in imagenes.all().order_by('-es_principal', 'orden', 'id_imagen'):
+            if img.ruta_almacenamiento:
+                sources.append(img.ruta_almacenamiento)
+
+    if not sources and getattr(variante, 'producto', None):
+        producto_imagenes = getattr(variante.producto, 'imagenes', None)
+        if producto_imagenes is not None:
+            for img in producto_imagenes.all().order_by('-es_principal', 'orden', 'id_imagen'):
+                if img.ruta_almacenamiento:
+                    sources.append(img.ruta_almacenamiento)
+
+    for source in sources:
+        normalized = _normalize_image_url(source)
+        if not normalized:
+            continue
+        if normalized.startswith('http://') or normalized.startswith('https://'):
+            return normalized
+        return request.build_absolute_uri(normalized)
+    return None
+
+
+def _get_user_shipping_address(user) -> dict:
+    direccion = (
+        DireccionUsuario.objects
+        .filter(usuario=user, es_predeterminada_envio=True)
+        .order_by('-actualizado_en')
+        .first()
+    )
+    if not direccion:
+        direccion = DireccionUsuario.objects.filter(usuario=user).order_by('-actualizado_en').first()
+    if not direccion:
+        return {}
+    return {
+        'linea1': direccion.linea1,
+        'ciudad': direccion.ciudad,
+        'departamento': direccion.departamento or '',
+        'codigo_postal': direccion.codigo_postal or '',
+        'nombre_destinatario': direccion.nombre_destinatario or '',
+    }
+
+
+def _sync_user_shipping_address(user, direccion_data: dict):
+    linea1 = (direccion_data.get('linea1') or '').strip()
+    ciudad = (direccion_data.get('ciudad') or '').strip()
+    if not linea1 or not ciudad:
         return
 
-    try:
-        cliente = user.cliente
-        if (cliente.direccion or '').strip() != direccion_limpia:
-            cliente.direccion = direccion_limpia
-            cliente.save(update_fields=['direccion'])
-    except (ObjectDoesNotExist, Cliente.DoesNotExist, AttributeError):
-        Cliente.objects.update_or_create(
-            usuario=user,
-            defaults={'direccion': direccion_limpia},
-        )
+    direccion = DireccionUsuario.objects.filter(usuario=user, es_predeterminada_envio=True).first()
+    if direccion:
+        direccion.linea1 = linea1
+        direccion.linea2 = (direccion_data.get('linea2') or '').strip() or None
+        direccion.ciudad = ciudad
+        direccion.departamento = (direccion_data.get('departamento') or '').strip() or None
+        direccion.codigo_postal = (direccion_data.get('codigo_postal') or '').strip() or None
+        direccion.nombre_destinatario = (direccion_data.get('nombre_destinatario') or direccion.nombre_destinatario)
+        direccion.save()
+        return
 
-    legacy_cliente = LegacyClientes.objects.filter(correo__iexact=user.email).first()
-    if legacy_cliente:
-        if (legacy_cliente.direccion or '').strip() != direccion_limpia:
-            legacy_cliente.direccion = direccion_limpia
-            legacy_cliente.save(update_fields=['direccion'])
-    else:
-        LegacyClientes.objects.create(
-            nombre=(getattr(user, 'nombre1', '') or 'Cliente')[:100],
-            apellido=(getattr(user, 'apellido1', '') or 'NailsNice')[:100],
-            direccion=direccion_limpia[:100],
-            telefono=(getattr(user, 'telefono', '') or '0000000000')[:100],
-            correo=(getattr(user, 'email', '') or '')[:100],
-        )
+    DireccionUsuario.objects.create(
+        usuario=user,
+        tipo_direccion='ENVIO',
+        etiqueta='Checkout',
+        nombre_destinatario=(direccion_data.get('nombre_destinatario') or user.correo)[:120],
+        linea1=linea1[:160],
+        linea2=(direccion_data.get('linea2') or '').strip()[:160] or None,
+        ciudad=ciudad[:80],
+        departamento=(direccion_data.get('departamento') or '').strip()[:80] or None,
+        codigo_postal=(direccion_data.get('codigo_postal') or '').strip()[:20] or None,
+        codigo_pais='CO',
+        es_predeterminada_envio=True,
+        es_predeterminada_factura=False,
+    )
+
 
 def inicio(request):
     return render(request, 'pedidos/index.html')
@@ -159,16 +210,13 @@ def inicio(request):
 
 def _build_pedidos_rows(queryset, selected):
     config = {
-        'id': ('ID', lambda p: p.id),
-        'usuario': ('Usuario', lambda p: p.usuario),
-        'telefono': ('Teléfono', lambda p: p.telefono),
-        'producto': ('Producto', lambda p: p.producto),
-        'precio': ('Precio', lambda p: p.precio),
-        'direccion': ('Dirección', lambda p: p.direccion),
-        'cantidad': ('Cantidad', lambda p: p.cantidad),
-        'fecha': ('Fecha', lambda p: p.fecha),
+        'numero': ('Pedido', lambda p: p.numero_pedido or p.id_pedido),
+        'cliente': ('Cliente', lambda p: p.cliente.usuario.correo),
+        'estado': ('Estado', lambda p: p.estado),
+        'total': ('Total', lambda p: p.monto_total),
+        'fecha': ('Fecha', lambda p: p.realizado_en),
     }
-    keys = [k for k in selected if k in config] or ['id', 'usuario', 'producto', 'precio', 'cantidad', 'fecha']
+    keys = [k for k in selected if k in config] or PEDIDOS_DEFAULT_COLUMNS
     rows = []
     for p in queryset:
         row = {}
@@ -209,15 +257,21 @@ def _export_pedidos(request, queryset, columns, fmt: str):
         )
     return None
 
+
 @admin_required
 def lista_pedidos(request):
-    pedidos_qs = Pedidos.activos.all().order_by('-fecha', '-id')
+    pedidos_qs = (
+        PedidoVenta.objects
+        .select_related('cliente__usuario')
+        .order_by('-realizado_en')
+    )
     search = (request.GET.get('q') or '').strip()
     if search:
         pedidos_qs = pedidos_qs.filter(
-            Q(usuario__icontains=search) |
-            Q(producto__icontains=search) |
-            Q(direccion__icontains=search)
+            Q(numero_pedido__icontains=search)
+            | Q(cliente__usuario__correo__icontains=search)
+            | Q(cliente__usuario__nombre__icontains=search)
+            | Q(cliente__usuario__apellido__icontains=search)
         )
 
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
@@ -272,57 +326,120 @@ def lista_pedidos(request):
         'export_pages': export_pages,
     })
 
+
 @admin_required
 def crear_pedido(request):
     if request.method == 'POST':
-        form = PedidosForm(request.POST)
+        form = PedidoVentaForm(request.POST)
         if form.is_valid():
-            save_legacy_pedido(form, user=request.user)
+            cliente = form.cleaned_data['cliente']
+            variante = form.cleaned_data['variante']
+            cantidad = form.cleaned_data['cantidad']
+            direccion_data = {
+                'linea1': form.cleaned_data['direccion_linea1'],
+                'ciudad': form.cleaned_data['ciudad'],
+                'departamento': form.cleaned_data.get('departamento'),
+                'codigo_postal': form.cleaned_data.get('codigo_postal'),
+                'nombre_destinatario': form.cleaned_data.get('nombre_destinatario'),
+            }
+            create_pedido_from_cart(
+                request.user,
+                [{'variante': variante, 'cantidad': cantidad}],
+                direccion_data,
+                'manual',
+                cliente=cliente,
+                estado=form.cleaned_data['estado'],
+            )
             return redirect('lista_pedidos')
     else:
-        form = PedidosForm()
-    return render(request, 'pedidos/formulario.html', {'form': form})
+        form = PedidoVentaForm()
+    return render(request, 'pedidos/formulario.html', {'form': form, 'is_edit': False})
+
 
 @admin_required
 def editar_pedido(request, id):
-    pedido = get_object_or_404(Pedidos, id=id, is_active=True)
+    pedido = get_object_or_404(PedidoVenta, id_pedido=id)
+    # CORRECCIÓN PYLANCE: Consulta directa mediante el modelo para saltar el atributo inverso dinámico '.detalles'
+    detalle = DetallePedidoVenta.objects.filter(pedido=pedido).select_related('variante').first()
+    direccion = pedido.direccion_envio
+    initial = {
+        'cliente': pedido.cliente,
+        'variante': detalle.variante if detalle else None,
+        'cantidad': detalle.cantidad if detalle else 1,
+        'direccion_linea1': getattr(direccion, 'linea1', ''),
+        'ciudad': getattr(direccion, 'ciudad', ''),
+        'departamento': getattr(direccion, 'departamento', ''),
+        'codigo_postal': getattr(direccion, 'codigo_postal', ''),
+        'nombre_destinatario': getattr(direccion, 'nombre_destinatario', ''),
+        'estado': pedido.estado,
+    }
     if request.method == 'POST':
-        form = PedidosForm(request.POST, instance=pedido)
+        form = PedidoVentaForm(request.POST)
+        form.fields['cliente'].disabled = True
+        form.fields['variante'].disabled = True
+        form.fields['cantidad'].disabled = True
         if form.is_valid():
-            save_legacy_pedido(form, user=request.user)
+            nuevo_estado = form.cleaned_data['estado']
+            if pedido.estado != nuevo_estado:
+                HistorialEstadoPedido.objects.create(
+                    pedido=pedido,
+                    estado=nuevo_estado,
+                    cambiado_por=request.user,
+                    nota='Cambio de estado desde panel',
+                )
+            pedido.estado = nuevo_estado
+            if pedido.direccion_envio:
+                pedido.direccion_envio.linea1 = form.cleaned_data['direccion_linea1']
+                pedido.direccion_envio.ciudad = form.cleaned_data['ciudad']
+                pedido.direccion_envio.departamento = form.cleaned_data.get('departamento') or None
+                pedido.direccion_envio.codigo_postal = form.cleaned_data.get('codigo_postal') or None
+                pedido.direccion_envio.nombre_destinatario = form.cleaned_data.get('nombre_destinatario') or pedido.direccion_envio.nombre_destinatario
+                pedido.direccion_envio.save()
+            pedido.save(update_fields=['estado', 'actualizado_en'])
             return redirect('lista_pedidos')
     else:
-        form = PedidosForm(instance=pedido)
-    return render(request, 'pedidos/formulario.html', {'form': form})
+        form = PedidoVentaForm(initial=initial)
+        form.fields['cliente'].disabled = True
+        form.fields['variante'].disabled = True
+        form.fields['cantidad'].disabled = True
+    return render(request, 'pedidos/formulario.html', {'form': form, 'is_edit': True, 'pedido': pedido})
+
 
 @admin_required
 def eliminar_pedido(request, id):
-    pedido = get_object_or_404(Pedidos, id=id, is_active=True)  # ← minúscula
-    delete_legacy_pedido(pedido, user=request.user)
+    pedido = get_object_or_404(PedidoVenta, id_pedido=id)
+    pedido.estado = 'CANCELADO'
+    pedido.save(update_fields=['estado', 'actualizado_en'])
     return redirect('lista_pedidos')
 
 
 def _employee_owner_key(user):
-    return str(getattr(user, 'email', '') or '').strip().lower()
+    return str(getattr(user, 'correo', '') or '').strip().lower()
 
 
 def _employee_display_name(user):
-    nombre1 = str(getattr(user, 'nombre1', '') or '').strip()
-    apellido1 = str(getattr(user, 'apellido1', '') or '').strip()
-    return f"{nombre1} {apellido1}".strip()
+    nombre = str(getattr(user, 'nombre', '') or '').strip()
+    apellido = str(getattr(user, 'apellido', '') or '').strip()
+    return f"{nombre} {apellido}".strip()
 
 
 @employee_required
 def empleado_lista_pedidos(request):
-    owner_email = _employee_owner_key(request.user)
-    pedidos_qs = Pedidos.activos.filter(usuario__iexact=owner_email).order_by('-fecha', '-id')
+    cliente = Cliente.objects.filter(usuario=request.user).first()
+    pedidos_qs = PedidoVenta.objects.none()
+    if cliente:
+        pedidos_qs = (
+            PedidoVenta.objects
+            .filter(cliente=cliente)
+            .select_related('cliente__usuario')
+            .order_by('-realizado_en')
+        )
 
     search = (request.GET.get('q') or '').strip()
     if search:
         pedidos_qs = pedidos_qs.filter(
-            Q(producto__icontains=search)
-            | Q(direccion__icontains=search)
-            | Q(telefono__icontains=search)
+            Q(numero_pedido__icontains=search)
+            | Q(estado__icontains=search)
         )
 
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
@@ -343,19 +460,31 @@ def empleado_crear_pedido(request):
     owner_email = _employee_owner_key(request.user)
     owner_name = _employee_display_name(request.user)
     if request.method == 'POST':
-        post_data = request.POST.copy()
-        if not str(post_data.get('telefono') or '').strip():
-            post_data['telefono'] = str(getattr(request.user, 'telefono', '') or '').strip()
-
-        form = EmpleadoPedidoForm(post_data)
-        form.instance.usuario = owner_email
+        form = EmpleadoPedidoForm(request.POST)
         if form.is_valid():
-            save_legacy_pedido(form, user=request.user)
+            cliente = Cliente.objects.get_or_create(usuario=request.user)[0]
+            variante = form.cleaned_data['variante']
+            cantidad = form.cleaned_data['cantidad']
+            direccion_data = {
+                'linea1': form.cleaned_data['direccion_linea1'],
+                'ciudad': form.cleaned_data['ciudad'],
+                'departamento': form.cleaned_data.get('departamento'),
+                'codigo_postal': form.cleaned_data.get('codigo_postal'),
+                'nombre_destinatario': form.cleaned_data.get('nombre_destinatario'),
+            }
+            create_pedido_from_cart(
+                request.user,
+                [{'variante': variante, 'cantidad': cantidad}],
+                direccion_data,
+                'manual',
+                cliente=cliente,
+                estado=form.cleaned_data['estado'],
+            )
             messages.success(request, f'Pedido registrado correctamente para {owner_name or owner_email}.')
             return redirect('empleado_pedidos')
         messages.error(request, 'Corrige los errores del formulario para registrar el pedido.')
     else:
-        form = EmpleadoPedidoForm(initial={'telefono': str(getattr(request.user, 'telefono', '') or '').strip()})
+        form = EmpleadoPedidoForm()
 
     return render(request, 'empleado/pedido_form.html', {
         'form': form,
@@ -366,17 +495,50 @@ def empleado_crear_pedido(request):
 @employee_required
 def empleado_editar_pedido(request, id):
     owner_email = _employee_owner_key(request.user)
-    pedido = get_object_or_404(Pedidos, id=id, is_active=True, usuario__iexact=owner_email)
+    cliente = Cliente.objects.filter(usuario=request.user).first()
+    pedido = get_object_or_404(PedidoVenta, id_pedido=id, cliente=cliente)
+    # CORRECCIÓN PYLANCE: Igualmente, resolvemos a través de DetallePedidoVenta explícitamente
+    detalle = DetallePedidoVenta.objects.filter(pedido=pedido).select_related('variante').first()
+    direccion = pedido.direccion_envio
+    initial = {
+        'variante': detalle.variante if detalle else None,
+        'cantidad': detalle.cantidad if detalle else 1,
+        'direccion_linea1': getattr(direccion, 'linea1', ''),
+        'ciudad': getattr(direccion, 'ciudad', ''),
+        'departamento': getattr(direccion, 'departamento', ''),
+        'codigo_postal': getattr(direccion, 'codigo_postal', ''),
+        'nombre_destinatario': getattr(direccion, 'nombre_destinatario', ''),
+        'estado': pedido.estado,
+    }
     if request.method == 'POST':
-        form = EmpleadoPedidoForm(request.POST, instance=pedido)
-        form.instance.usuario = owner_email
+        form = EmpleadoPedidoForm(request.POST)
+        form.fields['variante'].disabled = True
+        form.fields['cantidad'].disabled = True
         if form.is_valid():
-            save_legacy_pedido(form, user=request.user)
+            nuevo_estado = form.cleaned_data['estado']
+            if pedido.estado != nuevo_estado:
+                HistorialEstadoPedido.objects.create(
+                    pedido=pedido,
+                    estado=nuevo_estado,
+                    cambiado_por=request.user,
+                    nota='Cambio de estado desde panel',
+                )
+            pedido.estado = nuevo_estado
+            if pedido.direccion_envio:
+                pedido.direccion_envio.linea1 = form.cleaned_data['direccion_linea1']
+                pedido.direccion_envio.ciudad = form.cleaned_data['ciudad']
+                pedido.direccion_envio.departamento = form.cleaned_data.get('departamento') or None
+                pedido.direccion_envio.codigo_postal = form.cleaned_data.get('codigo_postal') or None
+                pedido.direccion_envio.nombre_destinatario = form.cleaned_data.get('nombre_destinatario') or pedido.direccion_envio.nombre_destinatario
+                pedido.direccion_envio.save()
+            pedido.save(update_fields=['estado', 'actualizado_en'])
             messages.success(request, 'Pedido actualizado correctamente.')
             return redirect('empleado_pedidos')
         messages.error(request, 'Corrige los errores del formulario para actualizar el pedido.')
     else:
-        form = EmpleadoPedidoForm(instance=pedido)
+        form = EmpleadoPedidoForm(initial=initial)
+        form.fields['variante'].disabled = True
+        form.fields['cantidad'].disabled = True
 
     return render(request, 'empleado/pedido_form.html', {
         'form': form,
@@ -388,8 +550,10 @@ def empleado_editar_pedido(request, id):
 @employee_required
 def empleado_eliminar_pedido(request, id):
     owner_email = _employee_owner_key(request.user)
-    pedido = get_object_or_404(Pedidos, id=id, is_active=True, usuario__iexact=owner_email)
-    delete_legacy_pedido(pedido, user=request.user)
+    cliente = Cliente.objects.filter(usuario=request.user).first()
+    pedido = get_object_or_404(PedidoVenta, id_pedido=id, cliente=cliente)
+    pedido.estado = 'CANCELADO'
+    pedido.save(update_fields=['estado', 'actualizado_en'])
     messages.info(request, 'Pedido eliminado.')
     return redirect('empleado_pedidos')
 
@@ -415,7 +579,7 @@ def cart_add(request, product_id):
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'error': 'Método no permitido'}, status=405) if is_ajax else redirect('carrito')
 
-    producto = get_object_or_404(ProductoMaquillaje.activos, pk=product_id)
+    variante = get_object_or_404(VarianteProducto, pk=product_id, activo=True)
     try:
         qty = int(request.POST.get('cantidad', '1'))
     except ValueError:
@@ -434,7 +598,9 @@ def cart_add(request, product_id):
         new_qty = 10
         messages.warning(request, 'Máximo 10 unidades por producto.')
 
-    if new_qty > producto.stock:
+    saldo = SaldoInventario.objects.filter(variante=variante).first()
+    disponible = max(0, (saldo.cantidad_existencia or 0) - (saldo.cantidad_reservada or 0)) if saldo else 0
+    if new_qty > disponible:
         error_msg = 'No hay stock suficiente para esa cantidad.'
         if is_ajax:
             return JsonResponse({'ok': False, 'error': error_msg, 'cart_count': _cart_count(cart)}, status=400)
@@ -458,8 +624,21 @@ def cart_view(request):
     cart_changed = False
 
     if cart:
-        productos = ProductoMaquillaje.activos.filter(id_inventario__in=[int(pid) for pid in cart.keys()])
-        map_prod = {p.id_inventario: p for p in productos}
+        variantes = (
+            VarianteProducto.objects
+            .filter(id_variante__in=[int(pid) for pid in cart.keys()], activo=True)
+            .select_related('producto')
+            .prefetch_related('imagenes', 'producto__imagenes')
+        )
+        # CORRECCIÓN PYLANCE: Acceso estricto tipado usando 'saldo.variante.id_variante' en vez de propiedad mágica latente
+        saldo_map = {
+            saldo.variante.id_variante: saldo
+            for saldo in SaldoInventario.objects
+                .filter(variante__id_variante__in=[v.id_variante for v in variantes])
+                .select_related('variante')
+                .only('variante__id_variante', 'cantidad_existencia', 'cantidad_reservada')
+        }
+        map_prod = {v.id_variante: v for v in variantes}
         for pid, qty in list(cart.items()):
             prod = map_prod.get(int(pid))
             if not prod:
@@ -468,21 +647,28 @@ def cart_view(request):
                 continue
 
             qty_int = int(qty)
-            if prod.stock <= 0:
+            saldo = saldo_map.get(prod.id_variante)
+            disponible = max(0, (saldo.cantidad_existencia or 0) - (saldo.cantidad_reservada or 0)) if saldo else 0
+            if disponible <= 0:
                 cart.pop(str(pid), None)
                 cart_changed = True
                 continue
-            if qty_int > prod.stock:
-                qty_int = prod.stock
+            if qty_int > disponible:
+                qty_int = disponible
                 cart[str(pid)] = qty_int
                 cart_changed = True
 
             subtotal = Decimal(prod.precio) * qty_int
             total += subtotal
             items.append({
-                'producto': prod,
+                'producto': prod.producto,
+                'variante': prod,
                 'cantidad': qty_int,
                 'subtotal': subtotal,
+                'precio_unitario': prod.precio,
+                'stock_disponible': disponible,
+                'inventario_id': prod.id_variante,
+                'imagen_url': _resolve_cart_image_url(request, prod),
             })
 
     if cart_changed:
@@ -501,7 +687,7 @@ def cart_update(request, product_id):
     if request.method != 'POST':
         return redirect('carrito')
 
-    producto = get_object_or_404(ProductoMaquillaje.activos, pk=product_id)
+    producto = get_object_or_404(VarianteProducto, pk=product_id, activo=True)
     try:
         qty = int(request.POST.get('cantidad', '1'))
     except ValueError:
@@ -509,7 +695,9 @@ def cart_update(request, product_id):
 
     qty = max(1, min(qty, 10))
 
-    if qty > producto.stock:
+    saldo = SaldoInventario.objects.filter(variante=producto).first()
+    disponible = max(0, (saldo.cantidad_existencia or 0) - (saldo.cantidad_reservada or 0)) if saldo else 0
+    if qty > disponible:
         messages.error(request, 'No hay stock suficiente para esa cantidad.')
         return redirect('carrito')
 
@@ -540,8 +728,12 @@ def checkout_view(request):
             return JsonResponse({'ok': False, 'error': 'Tu carrito está vacío.'}, status=400)
         return redirect('carrito')
 
-    productos = ProductoMaquillaje.activos.filter(id_inventario__in=[int(pid) for pid in cart.keys()])
-    map_prod = {p.id_inventario: p for p in productos}
+    variantes = (
+        VarianteProducto.objects
+        .filter(id_variante__in=[int(pid) for pid in cart.keys()], activo=True)
+        .select_related('producto')
+    )
+    map_prod = {v.id_variante: v for v in variantes}
 
     items = []
     total = Decimal('0')
@@ -554,15 +746,29 @@ def checkout_view(request):
         qty_int = int(qty)
         subtotal = Decimal(prod.precio) * qty_int
         total += subtotal
-        items.append({'producto': prod, 'cantidad': qty_int, 'subtotal': subtotal})
+        items.append({
+            'producto': prod.producto,
+            'variante': prod,
+            'cantidad': qty_int,
+            'subtotal': subtotal,
+            'precio_unitario': prod.precio,
+        })
 
     if request.method == 'POST':
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         metodo = request.POST.get('metodo_pago')
-        direccion = (request.POST.get('direccion') or '').strip()
+        direccion_linea1 = (request.POST.get('direccion') or '').strip()
+        ciudad = (request.POST.get('ciudad') or '').strip()
+        departamento = (request.POST.get('departamento') or '').strip()
+        codigo_postal = (request.POST.get('codigo_postal') or '').strip()
+        nombre_destinatario = (request.POST.get('nombre_destinatario') or '').strip()
 
-        if not direccion and direccion_prefill:
-            direccion = direccion_prefill
+        if not direccion_linea1 and direccion_prefill:
+            direccion_linea1 = direccion_prefill.get('linea1', '')
+            ciudad = direccion_prefill.get('ciudad', '')
+            departamento = direccion_prefill.get('departamento', '')
+            codigo_postal = direccion_prefill.get('codigo_postal', '')
+            nombre_destinatario = direccion_prefill.get('nombre_destinatario', '')
 
         if metodo not in ['contraentrega', 'tarjeta']:
             error_msg = 'Selecciona un método de pago.'
@@ -570,14 +776,20 @@ def checkout_view(request):
                 return JsonResponse({'ok': False, 'error': error_msg}, status=400)
             messages.error(request, error_msg)
             return redirect('checkout')
-        if not direccion:
+        if not direccion_linea1:
             error_msg = 'La dirección de envío es obligatoria.'
             if is_ajax:
                 return JsonResponse({'ok': False, 'error': error_msg}, status=400)
             messages.error(request, error_msg)
             return redirect('checkout')
-        if not _is_valid_colombian_address(direccion):
+        if not _is_valid_colombian_address(direccion_linea1):
             error_msg = 'La dirección debe tener un formato de vía colombiano (ej: "Calle 123 #45-67").'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect('checkout')
+        if not ciudad:
+            error_msg = 'La ciudad es obligatoria.'
             if is_ajax:
                 return JsonResponse({'ok': False, 'error': error_msg}, status=400)
             messages.error(request, error_msg)
@@ -592,7 +804,15 @@ def checkout_view(request):
                 return redirect('checkout')
 
         try:
-            pedido = create_pedido_from_cart(request.user, items, direccion, metodo)
+            direccion_data = {
+                'linea1': direccion_linea1,
+                'ciudad': ciudad,
+                'departamento': departamento,
+                'codigo_postal': codigo_postal,
+                'nombre_destinatario': nombre_destinatario,
+            }
+            pedido = create_pedido_from_cart(request.user, items, direccion_data, metodo)
+            create_transaccion(pedido, metodo, request.user)
         except ValidationError as exc:
             error_msg = '; '.join(v[0] for v in exc.message_dict.values()) if hasattr(exc, 'message_dict') else str(exc)
             if is_ajax:
@@ -600,14 +820,20 @@ def checkout_view(request):
             messages.error(request, error_msg)
             return redirect('carrito')
 
-        _sync_user_shipping_address(request.user, direccion)
+        _sync_user_shipping_address(request.user, {
+            'linea1': direccion_linea1,
+            'ciudad': ciudad,
+            'departamento': departamento,
+            'codigo_postal': codigo_postal,
+            'nombre_destinatario': nombre_destinatario,
+        })
 
         _save_cart(request.session, {})
         if is_ajax:
-            factura_url = request.build_absolute_uri(reverse('factura', kwargs={'pedido_id': pedido.id}))
+            factura_url = request.build_absolute_uri(reverse('factura', kwargs={'pedido_id': pedido.id_pedido}))
             return JsonResponse({'ok': True, 'factura_url': factura_url})
         messages.success(request, 'Pedido creado con éxito.')
-        return redirect('factura', pedido_id=pedido.id)
+        return redirect('factura', pedido_id=pedido.id_pedido)
 
     return render(request, 'checkout.html', {
         'items': items,
@@ -619,16 +845,31 @@ def checkout_view(request):
 
 @login_required
 def invoice_view(request, pedido_id):
-    pedido = get_object_or_404(Pedido, pk=pedido_id, usuario=request.user)
+    pedido = get_object_or_404(PedidoVenta, pk=pedido_id, cliente__usuario=request.user)
     cart = _get_cart(request.session)
     return render(request, 'factura.html', {'pedido': pedido, 'cart': cart})
 
 
 @login_required
 def invoice_pdf_view(request, pedido_id):
-    pedido = get_object_or_404(Pedido, pk=pedido_id, usuario=request.user)
+    pedido = get_object_or_404(PedidoVenta, pk=pedido_id, cliente__usuario=request.user)
     html_string = render_to_string('factura_pdf.html', {'pedido': pedido, 'request': request})
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="factura_{pedido.id}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="factura_{pedido.id_pedido}.pdf"'
     return response
+
+
+@admin_required
+def detalle_pedido(request, id):
+    pedido = get_object_or_404(
+        PedidoVenta.objects
+        .select_related('cliente__usuario', 'direccion_envio')
+        .prefetch_related(
+            'detalles__variante__producto',
+            'historial_estados__cambiado_por',
+            'transacciones__proveedor',
+        ),
+        id_pedido=id,
+    )
+    return render(request, 'pedidos/detalle.html', {'pedido': pedido})

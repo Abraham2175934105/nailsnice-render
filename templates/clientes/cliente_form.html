@@ -1,0 +1,114 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}{{ accion }} cliente — NailsNice Admin{% endblock %}
+{% block page_title %}{{ accion }} cliente{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label {
+    font-size: 0.78rem; font-weight: 700; color: #7d6474;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .form-group input,
+  .form-group select {
+    padding: 9px 12px;
+    border: 1px solid rgba(244,92,150,0.28);
+    border-radius: 10px;
+    font-family: inherit; font-size: 0.93rem;
+    background: rgba(255,255,255,0.7);
+    outline: none; transition: border-color .2s;
+    width: 100%; box-sizing: border-box;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #d9487a; }
+  .form-error { color: #d9487a; font-size: 0.82rem; margin-top: 2px; }
+  .form-divider {
+    margin: 20px 0 14px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(244,92,150,0.15);
+  }
+  .form-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .btn-primary {
+    padding: 9px 22px; background: #d9487a; color: #fff;
+    border: none; border-radius: 999px; font-family: inherit;
+    font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: background .2s;
+  }
+  .btn-primary:hover { background: #c03060; }
+  .btn-secondary-sm {
+    padding: 9px 22px; background: rgba(244,92,150,0.10);
+    color: #d9487a; border: 1px solid rgba(244,92,150,0.3);
+    border-radius: 999px; font-family: inherit;
+    font-weight: 700; font-size: 0.9rem; text-decoration: none;
+  }
+</style>
+{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'clientes:cliente_list' %}" class="btn-pill">
+    <svg aria-hidden="true"><use href="#icon-users"></use></svg>Todos los clientes
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="table-card glass-panel" style="max-width:740px;">
+  <h3 style="margin-bottom:20px;">{{ accion }} cliente</h3>
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <p class="eyebrow form-divider">Datos de acceso</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="{{ form.correo.id_for_label }}">Correo electrónico *</label>
+        {{ form.correo }}
+        {% if form.correo.errors %}<span class="form-error">{{ form.correo.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.password.id_for_label }}">Contraseña *</label>
+        {{ form.password }}
+        {% if form.password.errors %}<span class="form-error">{{ form.password.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="eyebrow form-divider">Información personal</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="{{ form.nombre.id_for_label }}">Nombre *</label>
+        {{ form.nombre }}
+        {% if form.nombre.errors %}<span class="form-error">{{ form.nombre.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.apellido.id_for_label }}">Apellido</label>
+        {{ form.apellido }}
+        {% if form.apellido.errors %}<span class="form-error">{{ form.apellido.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.fecha_nacimiento.id_for_label }}">Fecha de nacimiento</label>
+        {{ form.fecha_nacimiento }}
+        {% if form.fecha_nacimiento.errors %}<span class="form-error">{{ form.fecha_nacimiento.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="eyebrow form-divider">Fidelización</p>
+    <div style="margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.93rem;">
+        {{ form.acepta_fidelizacion }}
+        <span>Acepta programa de fidelización</span>
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">{{ accion }} cliente</button>
+      <a href="{% url 'clientes:cliente_list' %}" class="btn-secondary-sm">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

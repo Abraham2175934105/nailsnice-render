@@ -2,123 +2,133 @@ import re
 
 from django import forms
 
-from .models import Clientes
-from usuarios.models import Rol, Usuario
+from clientes.models import Cliente
+from usuarios.models import RolAcceso, Usuario, UsuarioRol
 
-class ClientesForm(forms.ModelForm):
-    rol = forms.ModelChoiceField(
-        queryset=Rol.objects.none(),
-        required=False,
-        empty_label=None,
-        label='Rol',
-    )
-    nombre1 = forms.CharField(max_length=50, required=False, label='Primer nombre')
-    nombre2 = forms.CharField(max_length=50, required=False, label='Segundo nombre')
-    apellido1 = forms.CharField(max_length=50, required=False, label='Primer apellido')
-    apellido2 = forms.CharField(max_length=50, required=False, label='Segundo apellido')
+
+ESTADO_CHOICES = [
+    ('ACTIVO', 'Activo'),
+    ('INACTIVO', 'Inactivo'),
+    ('BLOQUEADO', 'Bloqueado'),
+]
+
+
+class ClienteForm(forms.Form):
+    correo = forms.EmailField(label='Correo', max_length=150)
+    nombre = forms.CharField(label='Nombre(s)', max_length=80, required=False)
+    apellido = forms.CharField(label='Apellido(s)', max_length=80, required=False)
+    telefono = forms.CharField(label='Telefono', max_length=30, required=False)
+    fecha_nacimiento = forms.DateField(label='Fecha de nacimiento', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    acepta_fidelizacion = forms.BooleanField(label='Acepta fidelizacion', required=False, initial=True)
+    estado = forms.ChoiceField(label='Estado', choices=ESTADO_CHOICES)
+    rol = forms.ModelChoiceField(queryset=RolAcceso.objects.none(), required=False, label='Rol')
+    es_staff = forms.BooleanField(label='Es staff', required=False)
+    es_superusuario = forms.BooleanField(label='Es superusuario', required=False)
     password = forms.CharField(
         max_length=128,
         required=False,
-        label='Contraseña',
+        label='Contrasena',
         widget=forms.PasswordInput(render_value=False, attrs={'autocomplete': 'new-password'}),
-        help_text='Opcional. Si la dejas vacía, la contraseña actual se conserva.',
+        help_text='Opcional. Si la dejas vacia, se conserva la contrasena actual.',
     )
 
-    class Meta:
-        model = Clientes
-        fields = ['nombre', 'apellido', 'direccion', 'telefono', 'correo']
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, usuario=None, perfil=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['rol'].queryset = Rol.objects.all().order_by('nombre')
+        self.usuario_instance = usuario
+        self.perfil_instance = perfil
+        self.fields['rol'].queryset = RolAcceso.objects.all().order_by('nombre')
 
-        role_cliente, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE, defaults={'descripcion': 'Cliente'})
+        role_cliente, _ = RolAcceso.objects.get_or_create(
+            nombre='Cliente',
+            defaults={'descripcion': 'Cliente', 'codigo': 'CLIENTE'},
+        )
         self.fields['rol'].initial = role_cliente
 
-        instance = getattr(self, 'instance', None)
-        self.fields['nombre1'].initial = getattr(instance, 'nombre', '') if instance else ''
-        self.fields['apellido1'].initial = getattr(instance, 'apellido', '') if instance else ''
-        if instance and getattr(instance, 'pk', None):
-            user = Usuario.objects.filter(email__iexact=getattr(instance, 'correo', '')).select_related('id_rol').first()
-            if user:
-                if user.id_rol_id:
-                    self.fields['rol'].initial = user.id_rol
-                self.fields['nombre1'].initial = user.nombre1 or self.fields['nombre1'].initial
-                self.fields['nombre2'].initial = user.nombre2 or ''
-                self.fields['apellido1'].initial = user.apellido1 or self.fields['apellido1'].initial
-                self.fields['apellido2'].initial = user.apellido2 or ''
+        if usuario:
+            self.fields['correo'].initial = usuario.correo
+            self.fields['nombre'].initial = usuario.nombre or ''
+            self.fields['apellido'].initial = usuario.apellido or ''
+            self.fields['telefono'].initial = usuario.telefono or ''
+            self.fields['estado'].initial = usuario.estado or 'ACTIVO'
+            self.fields['es_staff'].initial = bool(usuario.is_staff)
+            self.fields['es_superusuario'].initial = bool(usuario.is_superuser)
+            if getattr(usuario, 'rol_asignado', None) and getattr(usuario.rol_asignado, 'rol', None):
+                self.fields['rol'].initial = usuario.rol_asignado.rol
+
+        if perfil:
+            self.fields['fecha_nacimiento'].initial = perfil.fecha_nacimiento
+            self.fields['acepta_fidelizacion'].initial = perfil.acepta_fidelizacion
 
     def clean_nombre(self):
-        nombre = self.cleaned_data.get('nombre')
-        if not nombre.replace(' ', '').isalpha():
-            raise forms.ValidationError("El nombre solo puede contener letras.")
+        nombre = (self.cleaned_data.get('nombre') or '').strip()
+        if nombre and not re.fullmatch(r'[A-Za-z\s]+', nombre):
+            raise forms.ValidationError('El nombre solo puede contener letras y espacios.')
         return nombre
 
     def clean_apellido(self):
-        apellido = self.cleaned_data.get('apellido')
-        if not apellido.replace(' ', '').isalpha():
-            raise forms.ValidationError("El apellido solo puede contener letras.")
+        apellido = (self.cleaned_data.get('apellido') or '').strip()
+        if apellido and not re.fullmatch(r'[A-Za-z\s]+', apellido):
+            raise forms.ValidationError('El apellido solo puede contener letras y espacios.')
         return apellido
 
     def clean_telefono(self):
-        telefono = self.cleaned_data.get('telefono')
-        if not telefono.isdigit():
-            raise forms.ValidationError("El teléfono solo puede contener números.")
-        if len(telefono) != 10:
-            raise forms.ValidationError("El teléfono debe tener exactamente 10 dígitos.")
+        telefono = (self.cleaned_data.get('telefono') or '').strip()
+        if telefono and not telefono.isdigit():
+            raise forms.ValidationError('El telefono solo puede contener numeros.')
+        if telefono and len(telefono) not in {7, 10, 11}:
+            raise forms.ValidationError('El telefono debe tener 7, 10 o 11 digitos.')
         return telefono
-
-    def clean_correo(self):
-        correo = self.cleaned_data.get('correo')
-        if '@' not in correo:
-            raise forms.ValidationError("El correo debe contener @.")
-        return correo
-
-    def clean_nombre1(self):
-        nombre1 = (self.cleaned_data.get('nombre1') or '').strip()
-        if nombre1 and not nombre1.replace(' ', '').isalpha():
-            raise forms.ValidationError("El primer nombre solo puede contener letras.")
-        return nombre1
-
-    def clean_nombre2(self):
-        nombre2 = (self.cleaned_data.get('nombre2') or '').strip()
-        if nombre2 and not nombre2.replace(' ', '').isalpha():
-            raise forms.ValidationError("El segundo nombre solo puede contener letras.")
-        return nombre2
-
-    def clean_apellido1(self):
-        apellido1 = (self.cleaned_data.get('apellido1') or '').strip()
-        if apellido1 and not apellido1.replace(' ', '').isalpha():
-            raise forms.ValidationError("El primer apellido solo puede contener letras.")
-        return apellido1
-
-    def clean_apellido2(self):
-        apellido2 = (self.cleaned_data.get('apellido2') or '').strip()
-        if apellido2 and not apellido2.replace(' ', '').isalpha():
-            raise forms.ValidationError("El segundo apellido solo puede contener letras.")
-        return apellido2
 
     def clean_password(self):
         password = (self.cleaned_data.get('password') or '').strip()
         if not password:
             return ''
-
         if len(password) < 8 or len(password) > 20:
-            raise forms.ValidationError('La contraseña debe tener entre 8 y 20 caracteres.')
+            raise forms.ValidationError('La contrasena debe tener entre 8 y 20 caracteres.')
         if not re.search(r'[A-Z]', password):
-            raise forms.ValidationError('La contraseña debe incluir al menos una mayúscula.')
+            raise forms.ValidationError('La contrasena debe incluir al menos una mayuscula.')
         if not re.search(r'[a-z]', password):
-            raise forms.ValidationError('La contraseña debe incluir al menos una minúscula.')
+            raise forms.ValidationError('La contrasena debe incluir al menos una minuscula.')
         if not re.search(r'\d', password):
-            raise forms.ValidationError('La contraseña debe incluir al menos un número.')
+            raise forms.ValidationError('La contrasena debe incluir al menos un numero.')
         if not re.search(r'[^A-Za-z0-9]', password):
-            raise forms.ValidationError('La contraseña debe incluir al menos un carácter especial.')
+            raise forms.ValidationError('La contrasena debe incluir al menos un caracter especial.')
         return password
 
-    def clean_rol(self):
-        rol = self.cleaned_data.get('rol')
-        if rol:
-            return rol
+    def save(self):
+        data = self.cleaned_data
+        rol = data.get('rol')
+        role_cliente, _ = RolAcceso.objects.get_or_create(
+            nombre='Cliente',
+            defaults={'descripcion': 'Cliente', 'codigo': 'CLIENTE'},
+        )
+        rol = rol or role_cliente
 
-        role_cliente, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE, defaults={'descripcion': 'Cliente'})
-        return role_cliente
+        usuario = self.usuario_instance or Usuario()
+        usuario.correo = data['correo'].strip().lower()
+        usuario.nombre = data.get('nombre') or None
+        usuario.apellido = data.get('apellido') or None
+        usuario.telefono = data.get('telefono') or None
+        usuario.estado = data.get('estado') or 'ACTIVO'
+        usuario.is_staff = bool(data.get('es_staff'))
+        usuario.is_superuser = bool(data.get('es_superusuario'))
+
+        raw_password = data.get('password')
+        if raw_password:
+            usuario.set_password(raw_password)
+        elif not usuario.pk:
+            usuario.set_unusable_password()
+
+        usuario.save()
+
+        perfil = self.perfil_instance
+        if not perfil:
+            perfil = Cliente(usuario=usuario)
+        perfil.fecha_nacimiento = data.get('fecha_nacimiento')
+        perfil.acepta_fidelizacion = bool(data.get('acepta_fidelizacion'))
+        perfil.save()
+
+        if rol:
+            UsuarioRol.objects.update_or_create(usuario=usuario, defaults={'rol': rol})
+
+        return usuario, perfil

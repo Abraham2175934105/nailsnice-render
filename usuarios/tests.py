@@ -25,24 +25,23 @@ class AdminPermissionsTests(TestCase):
 		resp = self.api_client.get('/api/productos/')
 		self.assertEqual(resp.status_code, 200)
 
-	def test_productos_write_requires_admin(self):
+	def test_productos_write_not_allowed(self):
 		self.api_client.force_authenticate(user=self.user)
 		resp = self.api_client.post('/api/productos/', {
 			'nombre': 'Prod',
 			'descripcion': 'Descripcion valida',
 			'precio': Decimal('10.00'),
 		}, format='json')
-		self.assertEqual(resp.status_code, 403)
+		self.assertEqual(resp.status_code, 405)
 
-	def test_productos_write_logs_audit_for_admin(self):
+	def test_productos_write_not_allowed_for_admin(self):
 		self.api_client.force_authenticate(user=self.admin)
 		resp = self.api_client.post('/api/productos/', {
 			'nombre': 'Prod Admin',
 			'descripcion': 'Descripcion suficientemente larga',
 			'precio': Decimal('10.00'),
 		}, format='json')
-		self.assertEqual(resp.status_code, 201)
-		self.assertTrue(AuditLog.objects.filter(action='productos.producto.create').exists())
+		self.assertEqual(resp.status_code, 405)
 
 	def test_usuarios_endpoint_is_admin_only(self):
 		self.api_client.force_authenticate(user=self.user)

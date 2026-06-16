@@ -14,16 +14,15 @@
 {% endblock %}
 
 {% block content %}
-<div class="glass-panel" style="padding:12px 14px; margin-bottom:14px;">
-    <span class="pill-tag">Clientes legacy: {{ legacy_count }}</span>
-    <span class="pill-tag">Clientes relacionales: {{ rel_count }}</span>
-    <span class="pill-tag">Sincronización activa por correo</span>
+<div class="glass-panel crud-info-panel">
+    <span class="pill-tag">Clientes registrados: {{ total_count }}</span>
+    <span class="pill-tag">Fuente: Perfil cliente (3FN)</span>
 </div>
 
-<form method="get" class="glass-panel" style="padding:16px; margin-bottom:14px;">
+<form method="get" class="glass-panel u-p-16 u-mb-14">
     <div class="search-bar">
         <input type="search" name="q" placeholder="Buscar por nombre, apellido o correo" value="{{ search|default:'' }}">
-        <label style="font-weight:700; color:var(--muted);">Por página
+        <label class="filter-label">Por página
             <select name="page_size" onchange="this.form.submit()">
                 <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
                 <option value="15" {% if page_size == 15 %}selected{% endif %}>15</option>
@@ -40,27 +39,28 @@
     <table>
         <thead>
             <tr>
-                <th>ID</th><th>Nombre</th><th>Apellido</th><th>Dirección</th><th>Teléfono</th><th>Correo</th><th>Rol</th><th>Acciones</th>
+                <th>ID</th><th>Nombre</th><th>Apellido</th><th>Correo</th><th>Teléfono</th><th>Estado</th><th>Rol</th><th>Fidelización</th><th>Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% for cliente in clientes %}
             <tr>
-                <td>{{ cliente.id }}</td>
-                <td>{{ cliente.nombre }}</td>
-                <td>{{ cliente.apellido }}</td>
-                <td>{{ cliente.direccion }}</td>
-                <td>{{ cliente.telefono }}</td>
-                <td>{{ cliente.correo }}</td>
+                <td>{{ cliente.usuario_id }}</td>
+                <td>{{ cliente.usuario.nombre|default:'-' }}</td>
+                <td>{{ cliente.usuario.apellido|default:'-' }}</td>
+                <td>{{ cliente.usuario.correo }}</td>
+                <td>{{ cliente.usuario.telefono|default:'-' }}</td>
+                <td>{{ cliente.usuario.estado }}</td>
                 <td>{{ cliente.rol_usuario|default:'-' }}</td>
+                <td>{% if cliente.acepta_fidelizacion %}Sí{% else %}No{% endif %}</td>
                 <td class="table-actions">
-                    <a href="{% url 'editar_cliente' cliente.id %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
-                    <a href="{% url 'eliminar_cliente' cliente.id %}" class="btn-danger-soft" title="Desactivar" onclick="return confirm('¿Desactivar este cliente?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Desactivar</a>
+                    <a href="{% url 'editar_cliente' cliente.usuario_id %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
+                    <a href="{% url 'eliminar_cliente' cliente.usuario_id %}" class="btn-danger-soft" title="Desactivar" onclick="return confirm('¿Desactivar este cliente?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Desactivar</a>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" class="empty-row-cell">
+                <td colspan="9" class="empty-row-cell">
                     <div class="empty-state-inline">
                         <strong>Sin clientes registrados</strong>
                         <span>Agrega un cliente para iniciar la gestión comercial.</span>
@@ -72,7 +72,7 @@
     </table>
 </div>
 
-<div class="pagination" style="margin-top:14px;">
+<div class="pagination u-mt-14">
     {% for num in page_obj.paginator.page_range %}
         <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&page_size={{ page_size }}&q={{ search|urlencode }}">{{ num }}</a>
     {% endfor %}
@@ -135,7 +135,7 @@
 
             <input type="hidden" name="q" value="{{ search }}">
             <input type="hidden" name="page_size" value="{{ page_size }}">
-            <div class="form-actions" style="justify-content:flex-end;">
+            <div class="form-actions form-actions-end">
                 <button type="submit" class="btn-pill btn-primary" data-export-format="csv"><svg aria-hidden="true"><use href="#icon-export"></use></svg>CSV</button>
                 <button type="submit" class="btn-pill" data-export-format="xlsx"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Excel</button>
                 <button type="submit" class="btn-pill" data-export-format="pdf"><svg aria-hidden="true"><use href="#icon-export"></use></svg>PDF</button>

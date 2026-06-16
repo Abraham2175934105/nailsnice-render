@@ -1,0 +1,33 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Producto legacy | Editar{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
+      <h3>Editar producto</h3>
+      <p class="section-subtitle">Actualiza los datos de inventario legacy.</p>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="form-grid">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+          <span class="badge-chip">{{ field.errors|join:", " }}</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="form-actions form-actions-center u-grid-full">
+      <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>
+      <button type="submit" class="btn-pill btn-primary">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

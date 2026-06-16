@@ -1,31 +1,47 @@
 from django.contrib import admin
-from .models import Rol, Usuario, Empleado
+from .models import Usuario, RolAcceso, PermisoAcceso, UsuarioRol, RolPermiso, Empleado
 
-@admin.register(Rol)
-class RolAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'descripcion', 'creado_en')
-    search_fields = ('nombre',)
+@admin.register(RolAcceso)
+class RolAccesoAdmin(admin.ModelAdmin):
+    # CORRECCIÓN SENIOR: Se quita 'creado_en' porque el modelo RolAcceso de la BD no lo posee
+    list_display = ('id_rol', 'codigo', 'nombre', 'es_sistema')
+    search_fields = ('codigo', 'nombre')
+    list_filter = ('es_sistema',)
+
 
 @admin.register(Usuario)
 class UsuarioAdmin(admin.ModelAdmin):
-    list_display = ('email', 'nombre1', 'apellido1', 'id_rol', 'estado_usuario', 'creado_en')
-    list_filter = ('id_rol', 'estado_usuario', 'creado_en')
-    search_fields = ('email', 'nombre1', 'apellido1')
+    # Ajustado a las columnas reales e indexadas de la tabla 3FN 'usuario'
+    list_display = ('id_usuario', 'correo', 'nombre', 'apellido', 'estado', 'creado_en')
+    list_filter = ('estado', 'creado_en')
+    search_fields = ('correo', 'nombre', 'apellido')
     readonly_fields = ('creado_en', 'actualizado_en')
+    
     fieldsets = (
         ('Información Personal', {
-            'fields': ('email', 'nombre1', 'nombre2', 'apellido1', 'apellido2', 'telefono')
+            'fields': ('correo', 'nombre', 'apellido', 'telefono')
         }),
         ('Permisos y Estado', {
-            'fields': ('id_rol', 'estado_usuario', 'is_active', 'is_staff', 'is_superuser')
+            # CORRECCIÓN: Se quita 'is_active' (que es una property) y se manejan los campos físicos de la BD
+            'fields': ('estado', 'is_staff', 'is_superuser')
         }),
-        ('Fechas', {
+        ('Fechas de Auditoría', {
             'fields': ('creado_en', 'actualizado_en'),
             'classes': ('collapse',)
         }),
     )
 
+
 @admin.register(Empleado)
 class EmpleadoAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'id')
-    search_fields = ('usuario__email',)
+    # Mapeo idéntico para la tabla 'perfil_empleado'
+    list_display = ('usuario', 'codigo_empleado', 'cargo', 'activo', 'creado_en')
+    search_fields = ('usuario__correo', 'codigo_empleado', 'cargo')
+    list_filter = ('activo', 'fecha_contratacion')
+    readonly_fields = ('creado_en', 'actualizado_en')
+
+
+# Registros adicionales de tablas relacionales/intermedias del sistema de seguridad
+admin.site.register(PermisoAcceso)
+admin.site.register(UsuarioRol)
+admin.site.register(RolPermiso)

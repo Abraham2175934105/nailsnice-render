@@ -1,0 +1,98 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Servicios | NailsNice{% endblock %}
+{% block page_title %}Catálogo de Servicios{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'crear_servicio' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo Servicio</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Búsqueda y Filtros -->
+<form method="get" class="glass-panel u-p-16 u-mb-14">
+  <div class="search-bar">
+    <input type="search" name="q" placeholder="Buscar por nombre..." value="{{ search|default:'' }}">
+    <label class="filter-label">Tipo
+      <select name="tipo" onchange="this.form.submit()">
+        <option value="">Todos los tipos</option>
+        {% for tipo in tipos %}
+        <option value="{{ tipo.id_tipo_servicio }}" {% if filtro_tipo == tipo.id_tipo_servicio|stringformat:"s" %}selected{% endif %}>
+            {{ tipo.nombre }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-search"></use></svg>Buscar</button>
+  </div>
+</form>
+
+<!-- Tabla de Servicios -->
+<div class="glass-panel glass-table skeleton-onload">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Tipo</th>
+        <th>Categoría</th>
+        <th>Duración</th>
+        <th>Precio Base</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for servicio in servicios %}
+      <tr>
+        <td>{{ servicio.id_servicio }}</td>
+        <td><strong>{{ servicio.nombre }}</strong></td>
+        <td><span class="badge badge-soft badge-active">{{ servicio.tipo_servicio.nombre }}</span></td>
+        <td>{{ servicio.categoria_servicio.nombre }}</td>
+        <td>{{ servicio.duracion_minutos }} min</td>
+        <td>${{ servicio.precio_base }}</td>
+        <td>
+          {% if servicio.activo %}
+          <span class="badge badge-soft badge-active">Activo</span>
+          {% else %}
+          <span class="badge badge-soft badge-inactive">Inactivo</span>
+          {% endif %}
+        </td>
+        <td class="table-actions">
+          <a href="{% url 'editar_servicio' servicio.id_servicio %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
+          <a href="{% url 'eliminar_servicio' servicio.id_servicio %}" class="btn-danger-soft" onclick="return confirm('¿Eliminar este servicio?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="empty-row-cell">
+          <div class="empty-state-inline">
+            <strong>No hay servicios registrados</strong>
+            <span>Crea un nuevo servicio para comenzar.</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Paginación -->
+<div class="pagination u-mt-14">
+  {% if page_obj %}
+    {% for num in page_obj.paginator.page_range %}
+      <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&q={{ search|urlencode }}&tipo={{ filtro_tipo|urlencode }}">{{ num }}</a>
+    {% endfor %}
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.skeleton-onload').forEach(function(el) { 
+      setTimeout(() => el.classList.remove('skeleton-onload'), 350); 
+    });
+  });
+</script>
+{% endblock %}

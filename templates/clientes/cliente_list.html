@@ -1,0 +1,64 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Clientes — NailsNice Admin{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'clientes:cliente_create' %}" class="btn-pill">
+    <svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo cliente
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="table-card glass-panel">
+  <div class="chart-head">
+    <h3>Todos los clientes</h3>
+    <span class="mini-badge">{{ clientes|length }} registros</span>
+  </div>
+
+  {% if clientes %}
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Correo</th>
+          <th>Nombre</th>
+          <th>F. Nacimiento</th>
+          <th>Fidelización</th>
+          <th>Registrado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cliente in clientes %}
+        <tr>
+          <td>{{ cliente.usuario.correo }}</td>
+          <td>{{ cliente.usuario.nombre|default:"—" }} {{ cliente.usuario.apellido|default:"" }}</td>
+          <td>{{ cliente.fecha_nacimiento|date:"d M Y"|default:"—" }}</td>
+          <td>
+            {% if cliente.acepta_fidelizacion %}
+              <span class="badge badge-success">Activa</span>
+            {% else %}
+              <span class="badge badge-warning">Inactiva</span>
+            {% endif %}
+          </td>
+          <td>{{ cliente.creado_en|date:"d M Y" }}</td>
+          <td>
+            <a href="{% url 'clientes:cliente_detail' cliente.pk %}"
+               class="btn-icon" aria-label="Ver detalle">
+              <svg aria-hidden="true"><use href="#icon-edit"></use></svg>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">No hay clientes registrados aún.</div>
+  {% endif %}
+</section>
+{% endblock %}

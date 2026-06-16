@@ -1,0 +1,56 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Asignar Servicio | Crear / Editar{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
+      <h3>Asignar Servicio a Empleado</h3>
+      <p class="section-subtitle">Vincula un servicio con un empleado específico y personaliza su precio o duración si es necesario.</p>
+    </div>
+  </div>
+
+  <form method="POST" class="form-grid">
+    {% csrf_token %}
+    
+    <div class="field">
+      <label for="id_empleado">Empleado *</label>
+      {{ form.empleado }}
+      {% if form.empleado.errors %}<span class="badge-chip">{{ form.empleado.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="id_servicio">Servicio *</label>
+      {{ form.servicio }}
+      {% if form.servicio.errors %}<span class="badge-chip">{{ form.servicio.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="id_duracion_personalizada_minutos">Duración Personalizada (minutos)</label>
+      {{ form.duracion_personalizada_minutos }}
+      <small class="text-muted d-block mt-1">Opcional. Dejar vacío para usar la duración del servicio.</small>
+      {% if form.duracion_personalizada_minutos.errors %}<span class="badge-chip">{{ form.duracion_personalizada_minutos.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="id_precio_personalizado">Precio Personalizado ($)</label>
+      {{ form.precio_personalizado }}
+      <small class="text-muted d-block mt-1">Opcional. Dejar vacío para usar el precio base del servicio.</small>
+      {% if form.precio_personalizado.errors %}<span class="badge-chip">{{ form.precio_personalizado.errors }}</span>{% endif %}
+    </div>
+
+    <div class="field">
+      <label for="id_activo">Asignación Activa</label>
+      {{ form.activo }}
+      {% if form.activo.errors %}<span class="badge-chip">{{ form.activo.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions form-actions-center u-grid-full">
+      <a class="btn-ghost" href="{% url 'lista_empleado_servicios' %}">Cancelar</a>
+      <button type="submit" class="btn-pill btn-primary">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

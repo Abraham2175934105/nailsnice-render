@@ -1,0 +1,104 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Movimientos de Inventario{% endblock %}
+{% block page_title %}Movimientos de Inventario{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+    <a href="{% url 'crear_movimiento' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo</a>
+    <a href="{% url 'lista_movimientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Refrescar</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="get" class="glass-panel u-p-16 u-mb-14">
+    <div class="search-bar">
+        <label class="filter-label">Bodega
+            <select name="bodega" onchange="this.form.submit()">
+                <option value="">Todas</option>
+                {% for bodega in bodegas %}
+                    <option value="{{ bodega.id_bodega }}" {% if filtros.bodega == bodega.id_bodega|stringformat:'s' %}selected{% endif %}>{{ bodega.nombre }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="filter-label">Tipo
+            <select name="tipo" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id_tipo_movimiento }}" {% if filtros.tipo == tipo.id_tipo_movimiento|stringformat:'s' %}selected{% endif %}>{{ tipo.descripcion }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="filter-label">Desde
+            <input type="date" name="fecha_desde" value="{{ filtros.fecha_desde|default:'' }}">
+        </label>
+        <label class="filter-label">Hasta
+            <input type="date" name="fecha_hasta" value="{{ filtros.fecha_hasta|default:'' }}">
+        </label>
+        <button class="btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-search"></use></svg>Filtrar</button>
+        <a href="{% url 'lista_movimientos' %}" class="btn-pill">Limpiar</a>
+    </div>
+</form>
+
+<div class="glass-panel glass-table skeleton-onload">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Tipo</th>
+                <th>Bodega</th>
+                <th>Items</th>
+                <th>Notas</th>
+                <th>Creado por</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mov in movimientos %}
+            <tr>
+                <td>{{ mov.id_movimiento }}</td>
+                <td><span class="pill-tag">{{ mov.tipo_movimiento.descripcion }}</span></td>
+                <td>{{ mov.bodega.nombre }}</td>
+                <td>
+                    {% for item in mov.items.all %}
+                        <div>{{ item.variante.sku }} — {{ item.cantidad }} uds.</div>
+                    {% empty %}
+                        <span class="text-muted">—</span>
+                    {% endfor %}
+                </td>
+                <td>{{ mov.notas|default:"—" }}</td>
+                <td>{{ mov.creado_por.correo|default:"Sistema" }}</td>
+                <td>{{ mov.creado_en|date:"d M Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="empty-row-cell">
+                    <div class="empty-state-inline">
+                        <strong>Sin movimientos registrados</strong>
+                        <span>Registra entradas y salidas de inventario para verlas aquí.</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="pagination u-mt-14">
+    {% for num in page_obj.paginator.page_range %}
+        <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&bodega={{ filtros.bodega|default:'' }}&tipo={{ filtros.tipo|default:'' }}&fecha_desde={{ filtros.fecha_desde|default:'' }}&fecha_hasta={{ filtros.fecha_hasta|default:'' }}">{{ num }}</a>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.skeleton-onload').forEach(function(el) {
+            setTimeout(() => el.classList.remove('skeleton-onload'), 350);
+        });
+    });
+</script>
+{% endblock %}

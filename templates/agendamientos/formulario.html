@@ -1,14 +1,13 @@
-{% extends 'base_form.html' %}
+﻿{% extends 'base_form.html' %}
 {% load static %}
 
-{% block title %}Agendamiento{% endblock %}
+{% block title %}Agendamiento | Crear / Editar{% endblock %}
 {% block page_title %}Agendamiento{% endblock %}
 
 {% block content %}
 <div class="glass-panel fade-in-up crud-form-panel">
-
-  <div class="modal-header" style="justify-content: center; align-items:center;">
-    <div style="text-align:center; width:100%;">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
       <h3>Agendamiento</h3>
       <p class="section-subtitle">Programa y administra citas con clientes.</p>
     </div>
@@ -17,42 +16,47 @@
   <form method="POST" class="form-grid">
     {% csrf_token %}
     <div class="field">
-      <label>Cliente</label>
+      <label for="id_cliente">Cliente</label>
       {{ form.cliente }}
       {% if form.cliente.errors %}<span class="badge-chip">{{ form.cliente.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Servicio</label>
+      <label for="id_servicio">Servicio</label>
       {{ form.servicio }}
       {% if form.servicio.errors %}<span class="badge-chip">{{ form.servicio.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Empleado</label>
+      <label for="id_empleado">Empleado</label>
       {{ form.empleado }}
       {% if form.empleado.errors %}<span class="badge-chip">{{ form.empleado.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Fecha</label>
-      {{ form.fecha_agendamiento }}
-      {% if form.fecha_agendamiento.errors %}<span class="badge-chip">{{ form.fecha_agendamiento.errors }}</span>{% endif %}
+      <label for="id_inicia_en">Fecha y Hora de Inicio</label>
+      {{ form.inicia_en }}
+      {% if form.inicia_en.errors %}<span class="badge-chip">{{ form.inicia_en.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Hora</label>
-      {{ form.hora_agendamiento }}
-      {% if form.hora_agendamiento.errors %}<span class="badge-chip">{{ form.hora_agendamiento.errors }}</span>{% endif %}
+      <label for="id_termina_en">Fecha y Hora de Fin</label>
+      {{ form.termina_en }}
+      {% if form.termina_en.errors %}<span class="badge-chip">{{ form.termina_en.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Estado</label>
-      {{ form.estado_agendamiento }}
-      {% if form.estado_agendamiento.errors %}<span class="badge-chip">{{ form.estado_agendamiento.errors }}</span>{% endif %}
+      <label for="id_estado">Estado</label>
+      {{ form.estado }}
+      {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
     </div>
-    <div class="field" style="grid-column:1/-1;">
-      <label>Notas</label>
+    <div class="field">
+      <label for="id_canal">Canal de Reserva</label>
+      {{ form.canal }}
+      {% if form.canal.errors %}<span class="badge-chip">{{ form.canal.errors }}</span>{% endif %}
+    </div>
+    <div class="field u-grid-full">
+      <label for="id_notas">Notas</label>
       {{ form.notas }}
       {% if form.notas.errors %}<span class="badge-chip">{{ form.notas.errors }}</span>{% endif %}
     </div>
 
-    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+    <div class="form-actions form-actions-center u-grid-full">
       <a class="btn-ghost" href="{% url 'lista_agendamientos' %}">Cancelar</a>
       <button class="btn-pill btn-primary" type="submit">Guardar</button>
     </div>

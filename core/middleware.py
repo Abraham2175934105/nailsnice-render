@@ -33,6 +33,12 @@ class AnonymousRouteGuardMiddleware:
         '/api/inventario-productos/',
     )
 
+    def _has_force_authentication(self, request):
+        return (
+            getattr(request, '_force_auth_user', None) is not None
+            or getattr(request, '_force_auth_token', None) is not None
+        )
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -43,7 +49,7 @@ class AnonymousRouteGuardMiddleware:
 
     def __call__(self, request):
         user = getattr(request, 'user', None)
-        if not getattr(user, 'is_authenticated', False) and not self._is_public_path(request.path):
+        if not getattr(user, 'is_authenticated', False) and not self._has_force_authentication(request) and not self._is_public_path(request.path):
             if request.path.startswith('/api/'):
                 return JsonResponse({'ok': False, 'error': 'Autenticación requerida.'}, status=401)
 

@@ -1,0 +1,154 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}{{ accion }} dirección — NailsNice Admin{% endblock %}
+{% block page_title %}{{ accion }} dirección{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px; margin-bottom: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label {
+    font-size: 0.78rem; font-weight: 700; color: #7d6474;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .form-group input,
+  .form-group select {
+    padding: 9px 12px;
+    border: 1px solid rgba(244,92,150,0.28);
+    border-radius: 10px; font-family: inherit; font-size: 0.93rem;
+    background: rgba(255,255,255,0.7); outline: none;
+    transition: border-color .2s; width: 100%; box-sizing: border-box;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #d9487a; }
+  .form-error { color: #d9487a; font-size: 0.82rem; margin-top: 2px; }
+  .form-divider {
+    margin: 20px 0 14px; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(244,92,150,0.15);
+  }
+  .form-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .btn-primary {
+    padding: 9px 22px; background: #d9487a; color: #fff; border: none;
+    border-radius: 999px; font-family: inherit; font-weight: 700;
+    font-size: 0.9rem; cursor: pointer; transition: background .2s;
+  }
+  .btn-primary:hover { background: #c03060; }
+  .btn-secondary-sm {
+    padding: 9px 22px; background: rgba(244,92,150,0.10);
+    color: #d9487a; border: 1px solid rgba(244,92,150,0.3);
+    border-radius: 999px; font-family: inherit; font-weight: 700;
+    font-size: 0.9rem; text-decoration: none;
+  }
+  .client-info-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(244,92,150,0.07);
+    border: 1px solid rgba(244,92,150,0.2);
+    border-radius: 12px; margin-bottom: 20px;
+    font-size: 0.9rem; color: #6e3057;
+  }
+  .client-info-bar svg { width:16px; height:16px; flex-shrink:0; }
+</style>
+{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'clientes:cliente_detail' cliente.pk %}#direcciones" class="btn-pill">
+    <svg aria-hidden="true"><use href="#icon-users"></use></svg>Volver al cliente
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="table-card glass-panel" style="max-width:740px;">
+
+  <div class="client-info-bar">
+    <svg aria-hidden="true"><use href="#icon-user"></use></svg>
+    <span>Cliente: <strong>{{ cliente.usuario.nombre|default:"" }} {{ cliente.usuario.apellido|default:"" }}</strong>
+    &nbsp;·&nbsp;{{ cliente.usuario.correo }}</span>
+  </div>
+
+  <h3 style="margin-bottom:20px;">{{ accion }} dirección</h3>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <p class="eyebrow form-divider">Clasificación</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="{{ form.tipo_direccion.id_for_label }}">Tipo de dirección *</label>
+        {{ form.tipo_direccion }}
+        {% if form.tipo_direccion.errors %}<span class="form-error">{{ form.tipo_direccion.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.etiqueta.id_for_label }}">Etiqueta</label>
+        {{ form.etiqueta }}
+        {% if form.etiqueta.errors %}<span class="form-error">{{ form.etiqueta.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="eyebrow form-divider">Destinatario</p>
+    <div class="form-row" style="grid-template-columns:1fr;">
+      <div class="form-group">
+        <label for="{{ form.nombre_destinatario.id_for_label }}">Nombre del destinatario *</label>
+        {{ form.nombre_destinatario }}
+        {% if form.nombre_destinatario.errors %}<span class="form-error">{{ form.nombre_destinatario.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="eyebrow form-divider">Dirección</p>
+    <div class="form-row" style="grid-template-columns:1fr;">
+      <div class="form-group">
+        <label for="{{ form.linea1.id_for_label }}">Línea 1 *</label>
+        {{ form.linea1 }}
+        {% if form.linea1.errors %}<span class="form-error">{{ form.linea1.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;">
+      <div class="form-group">
+        <label for="{{ form.linea2.id_for_label }}">Línea 2 <span style="font-weight:400;text-transform:none;">(opcional)</span></label>
+        {{ form.linea2 }}
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="{{ form.ciudad.id_for_label }}">Ciudad *</label>
+        {{ form.ciudad }}
+        {% if form.ciudad.errors %}<span class="form-error">{{ form.ciudad.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.departamento.id_for_label }}">Departamento</label>
+        {{ form.departamento }}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.codigo_postal.id_for_label }}">Código postal</label>
+        {{ form.codigo_postal }}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.codigo_pais.id_for_label }}">País (ISO)</label>
+        {{ form.codigo_pais }}
+        {% if form.codigo_pais.errors %}<span class="form-error">{{ form.codigo_pais.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="eyebrow form-divider">Configuración</p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.93rem;">
+        {{ form.es_predeterminada_envio }}<span>Dirección de envío predeterminada</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.93rem;">
+        {{ form.es_predeterminada_factura }}<span>Dirección de factura predeterminada</span>
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">{{ accion }} dirección</button>
+      <a href="{% url 'clientes:cliente_detail' cliente.pk %}#direcciones" class="btn-secondary-sm">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

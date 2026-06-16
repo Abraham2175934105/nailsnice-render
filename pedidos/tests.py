@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from itertools import count
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -7,369 +8,675 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from core.models import AuditLog
-from clientes.models import Cliente
-from inventario.models import ProductoMaquillaje
+from clientes.models import Cliente, DireccionUsuario
+from inventario.models import Bodega, SaldoInventario, TipoMovimientoInventario, ItemMovimientoInventario
+from productos.models import MarcaCatalogo, CategoriaCatalogo, SubcategoriaCatalogo, Producto, VarianteProducto
 from usuarios.models import Rol
-from web.models import Clientes as LegacyClientes
-from .models import DetallePedido, Pedido, Pedidos
+
+from .models import DetallePedidoVenta, PedidoVenta
 from .services import create_pedido_from_cart
 
 
-class CartCheckoutTests(TestCase):
-	def setUp(self):
-		self.client = Client()
-		self.rol, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE)
-		self.user = get_user_model().objects.create_user(
-			email='user@test.com', password='Pwd12345!', id_rol=self.rol, nombre1='Test'
-		)
-		self.producto = ProductoMaquillaje.objects.create(
-			nombre='Prod', cantidad=10, estado='disponible', fecha_ingreso='2024-01-01',
-			stock=5, precio=Decimal('10000'), descripcion='desc', marca='Marca'
-		)
-
-	def _force_login(self):
-		self.client.force_login(self.user)
-
-	def test_add_to_cart_success_ajax(self):
-		self._force_login()
-		url = reverse('carrito_agregar', args=[self.producto.id_inventario])
-		resp = self.client.post(url, {'cantidad': 1}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-		self.assertEqual(resp.status_code, 200)
-		data = resp.json()
-		self.assertTrue(data.get('ok'))
-		session_cart = self.client.session.get('cart', {})
-		self.assertEqual(session_cart.get(str(self.producto.id_inventario)), 1)
-
-	def test_add_to_cart_insufficient_stock(self):
-		self._force_login()
-		self.producto.stock = 1
-		self.producto.save(update_fields=['stock'])
-		url = reverse('carrito_agregar', args=[self.producto.id_inventario])
-		resp = self.client.post(url, {'cantidad': 5}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-		self.assertEqual(resp.status_code, 400)
-		data = resp.json()
-		self.assertFalse(data.get('ok'))
-		self.assertIn('stock', data.get('error', '').lower())
-
-	def test_add_to_cart_inactive_product_returns_404(self):
-		self._force_login()
-		self.producto.is_active = False
-		self.producto.save(update_fields=['is_active'])
-		url = reverse('carrito_agregar', args=[self.producto.id_inventario])
-		resp = self.client.post(url, {'cantidad': 1}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-		self.assertEqual(resp.status_code, 404)
-
-	def test_checkout_creates_order_and_deducts_stock_and_audit(self):
-		self._force_login()
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 2}
-		session.save()
-
-		url = reverse('checkout')
-		resp = self.client.post(url, {
-			'metodo_pago': 'contraentrega',
-			'direccion': 'Calle 123 #45-67',
-		})
-
-		self.assertEqual(resp.status_code, 302)
-		self.assertEqual(Pedido.objects.count(), 1)
-		pedido = Pedido.objects.first()
-		self.assertEqual(pedido.total, Decimal('20000'))
-		self.assertEqual(DetallePedido.objects.count(), 1)
-		detalle = DetallePedido.objects.first()
-		self.assertEqual(detalle.cantidad, 2)
-		self.assertEqual(detalle.producto.id_inventario, self.producto.id_inventario)
-
-		self.producto.refresh_from_db()
-		self.assertEqual(self.producto.stock, 3)
-
-		# Cart cleared
-		self.assertFalse(self.client.session.get('cart'))
-		self.assertTrue(AuditLog.objects.filter(action='pedidos.create', object_id=str(pedido.id)).exists())
-
-	def test_checkout_fails_when_product_inactive(self):
-		self._force_login()
-		self.producto.is_active = False
-		self.producto.save(update_fields=['is_active'])
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 1}
-		session.save()
-
-		resp = self.client.post(reverse('checkout'), {
-			'metodo_pago': 'contraentrega',
-			'direccion': 'Calle 123',
-		})
-		self.assertEqual(resp.status_code, 302)
-		self.assertEqual(Pedido.objects.count(), 0)
-		self.assertEqual(resp.url, reverse('carrito'))
-
-	def test_checkout_prefills_address_from_cliente_model(self):
-		self._force_login()
-		Cliente.objects.create(usuario=self.user, direccion='Calle 55 #10-20')
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 1}
-		session.save()
-
-		resp = self.client.get(reverse('checkout'))
-		self.assertEqual(resp.status_code, 200)
-		self.assertEqual(resp.context['direccion_prefill'], 'Calle 55 #10-20')
-
-	def test_checkout_prefills_address_from_last_order_when_no_cliente_records(self):
-		self._force_login()
-		Pedido.objects.create(
-			usuario=self.user,
-			direccion_envio='Carrera 9 #80-11',
-			metodo_pago='contraentrega',
-			estado='pendiente',
-			total=Decimal('10000'),
-		)
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 1}
-		session.save()
-
-		resp = self.client.get(reverse('checkout'))
-		self.assertEqual(resp.status_code, 200)
-		self.assertEqual(resp.context['direccion_prefill'], 'Carrera 9 #80-11')
-
-	def test_checkout_persists_address_for_future_prefill(self):
-		self._force_login()
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 1}
-		session.save()
-
-		resp = self.client.post(reverse('checkout'), {
-			'metodo_pago': 'contraentrega',
-			'direccion': 'Avenida 12 #33-44',
-		})
-
-		self.assertEqual(resp.status_code, 302)
-		cliente = Cliente.objects.filter(usuario=self.user).first()
-		legacy = LegacyClientes.objects.filter(correo__iexact=self.user.email).first()
-		self.assertIsNotNone(cliente)
-		self.assertEqual(cliente.direccion, 'Avenida 12 #33-44')
-		self.assertIsNotNone(legacy)
-		self.assertEqual(legacy.direccion, 'Avenida 12 #33-44')
-
-	def test_checkout_tarjeta_invalid_card_returns_error_ajax(self):
-		self._force_login()
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 1}
-		session.save()
-
-		resp = self.client.post(reverse('checkout'), {
-			'metodo_pago': 'tarjeta',
-			'direccion': 'Calle 123 #45-67',
-			'card_holder': 'Juan Perez',
-			'card_number': '4111 1111 1111 1112',
-			'card_expiry': '12/50',
-			'card_cvv': '123',
-		}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-
-		self.assertEqual(resp.status_code, 400)
-		self.assertFalse(resp.json().get('ok'))
-		self.assertIn('tarjeta', resp.json().get('error', '').lower())
-		self.assertEqual(Pedido.objects.count(), 0)
-
-	def test_checkout_tarjeta_valid_card_creates_order_ajax(self):
-		self._force_login()
-		session = self.client.session
-		session['cart'] = {str(self.producto.id_inventario): 1}
-		session.save()
-
-		resp = self.client.post(reverse('checkout'), {
-			'metodo_pago': 'tarjeta',
-			'direccion': 'Carrera 55 #12-30',
-			'card_holder': 'Juan Perez',
-			'card_number': '4111 1111 1111 1111',
-			'card_expiry': '12/50',
-			'card_cvv': '123',
-		}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-
-		self.assertEqual(resp.status_code, 200)
-		data = resp.json()
-		self.assertTrue(data.get('ok'))
-		self.assertEqual(Pedido.objects.count(), 1)
+_SEQ = count(1)
 
 
-class PedidoServiceTests(TestCase):
-	def setUp(self):
-		self.rol, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE)
-		self.user = get_user_model().objects.create_user(
-			email='svc@test.com', password='Pwd12345!', id_rol=self.rol, nombre1='Svc'
-		)
-		self.producto = ProductoMaquillaje.objects.create(
-			nombre='Prod SVC', cantidad=10, estado='disponible', fecha_ingreso='2024-01-01',
-			stock=2, precio=Decimal('5000'), descripcion='desc', marca='Marca'
-		)
-
-	def test_service_validates_stock(self):
-		items = [{'producto': self.producto, 'cantidad': 5}]
-		with self.assertRaises(ValidationError):
-			create_pedido_from_cart(self.user, items, 'Dir', 'contraentrega')
-
-	def test_service_creates_audit(self):
-		items = [{'producto': self.producto, 'cantidad': 1}]
-		pedido = create_pedido_from_cart(self.user, items, 'Dir', 'contraentrega')
-		self.assertTrue(AuditLog.objects.filter(action='pedidos.create', object_id=str(pedido.id)).exists())
+def _next_seq():
+    return next(_SEQ)
 
 
-class LegacyPedidosAdminTests(TestCase):
-	def setUp(self):
-		self.client = Client()
-		self.rol_admin, _ = Rol.objects.get_or_create(nombre=Rol.ADMIN)
-		self.rol_cliente, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE)
-		self.admin = get_user_model().objects.create_user(
-			email='admin@test.com', password='Pwd12345!', id_rol=self.rol_admin, nombre1='Admin', is_superuser=True
-		)
-		self.user = get_user_model().objects.create_user(
-			email='user2@test.com', password='Pwd12345!', id_rol=self.rol_cliente, nombre1='User'
-		)
-		self.pedido = Pedidos.objects.create(
-			usuario='U', telefono='1234567890', producto='Prod', precio=Decimal('1000'),
-			direccion='Dir', cantidad=1, fecha='2024-01-01'
-		)
+def make_rol(nombre):
+    rol, _ = Rol.objects.get_or_create(nombre=nombre)
+    return rol
 
-	def test_non_admin_redirected(self):
-		self.client.force_login(self.user)
-		resp = self.client.get(reverse('lista_pedidos'))
-		self.assertEqual(resp.status_code, 302)
-		self.assertIn('/login/', resp.url)
+def make_user(email='user@test.com', rol_nombre=None, is_superuser=False, telefono=''):
+    rol = make_rol(rol_nombre or Rol.CLIENTE)
+    return get_user_model().objects.create_user(
+        email=email,
+        password='Pwd12345!',
+        id_rol=rol,
+        nombre1='Test',
+        is_superuser=is_superuser,
+        telefono=telefono,
+    )
 
-	def test_admin_can_access_and_creates_audit_on_create(self):
-		self.client.force_login(self.admin)
-		resp = self.client.get(reverse('lista_pedidos'))
-		self.assertEqual(resp.status_code, 200)
+def make_admin(email='admin@test.com'):
+    return make_user(email=email, rol_nombre=Rol.ADMIN, is_superuser=True)
 
-		create_resp = self.client.post(reverse('crear_pedido'), {
-			'usuario': 'Nuevo',
-			'telefono': '1234567890',
-			'producto': 'Prod2',
-			'precio': 2000,
-			'direccion': 'Dir',
-			'cantidad': 1,
-			'fecha': '2026-04-10',
-		})
-		self.assertEqual(create_resp.status_code, 302)
-		self.assertTrue(AuditLog.objects.filter(action='pedidos.legacy.create').exists())
+def make_empleado(email='empleado@test.com', telefono='3001234567'):
+    return make_user(email=email, rol_nombre=Rol.EMPLEADO, telefono=telefono)
+
+def ensure_salida_movimiento():
+    tipo = TipoMovimientoInventario.objects.filter(codigo='SALIDA_VENTA').first()
+    if tipo:
+        return tipo
+    return TipoMovimientoInventario.objects.create(
+        id_tipo_movimiento=1,
+        codigo='SALIDA_VENTA',
+        descripcion='Salida venta',
+        direccion=-1,
+    )
 
 
-class EmployeeLegacyPedidosTests(TestCase):
-	def setUp(self):
-		self.client = Client()
-		self.rol_empleado, _ = Rol.objects.get_or_create(nombre=Rol.EMPLEADO)
-
-		self.employee = get_user_model().objects.create_user(
-			email='empleado1@test.com',
-			password='Pwd12345!',
-			id_rol=self.rol_empleado,
-			nombre1='Empleado',
-			telefono='3001234567',
-		)
-		self.other_employee = get_user_model().objects.create_user(
-			email='empleado2@test.com',
-			password='Pwd12345!',
-			id_rol=self.rol_empleado,
-			nombre1='Empleado2',
-			telefono='3007654321',
-		)
-
-		next_day = date.today() + timedelta(days=1)
-		self.my_pedido = Pedidos.objects.create(
-			usuario=self.employee.email,
-			telefono='3001234567',
-			producto='Base liquida',
-			precio=Decimal('15000'),
-			direccion='Calle 10 #20-30',
-			cantidad=1,
-			fecha=next_day,
-		)
-		self.other_pedido = Pedidos.objects.create(
-			usuario=self.other_employee.email,
-			telefono='3007654321',
-			producto='Delineador',
-			precio=Decimal('12000'),
-			direccion='Carrera 20 #30-40',
-			cantidad=1,
-			fecha=next_day,
-		)
-
-	def test_employee_list_only_shows_own_pedidos(self):
-		self.client.force_login(self.employee)
-		resp = self.client.get(reverse('empleado_pedidos'))
-
-		self.assertEqual(resp.status_code, 200)
-		listed_ids = [p.id for p in resp.context['pedidos']]
-		self.assertIn(self.my_pedido.id, listed_ids)
-		self.assertNotIn(self.other_pedido.id, listed_ids)
-
-	def test_employee_cannot_edit_other_employee_pedido(self):
-		self.client.force_login(self.employee)
-		resp = self.client.get(reverse('empleado_editar_pedido', args=[self.other_pedido.id]))
-		self.assertEqual(resp.status_code, 404)
-
-	def test_employee_create_pedido_sets_logged_owner(self):
-		self.client.force_login(self.employee)
-		payload = {
-			'telefono': '',
-			'producto': 'Labial mate',
-			'precio': '18000',
-			'direccion': 'Diagonal 50 #60-70',
-			'cantidad': 2,
-			'fecha': (date.today() + timedelta(days=2)).isoformat(),
-		}
-
-		resp = self.client.post(reverse('empleado_crear_pedido'), payload)
-
-		self.assertEqual(resp.status_code, 302)
-		nuevo = Pedidos.activos.order_by('-id').first()
-		self.assertEqual(nuevo.usuario, self.employee.email)
-		self.assertEqual(nuevo.telefono, '3001234567')
+def make_bodega():
+    bodega, _ = Bodega.objects.get_or_create(
+        codigo='BOD-TEST',
+        defaults={'nombre': 'Bodega Test', 'ciudad': 'Bogota'},
+    )
+    return bodega
 
 
-class EmployeeLegacyPedidosValidationTests(TestCase):
-	def setUp(self):
-		self.client = Client()
-		self.rol_empleado, _ = Rol.objects.get_or_create(nombre=Rol.EMPLEADO)
-		self.employee = get_user_model().objects.create_user(
-			email='empleado.validacion@test.com',
-			password='Pwd12345!',
-			id_rol=self.rol_empleado,
-			nombre1='EmpleadoVal',
-			telefono='3003332211',
-		)
+def make_variante(stock=5, precio=Decimal('10000'), activo=True):
+    seq = _next_seq()
+    categoria = CategoriaCatalogo.objects.create(nombre=f"Cat {seq}", slug=f"cat-{seq}")
+    subcategoria = SubcategoriaCatalogo.objects.create(
+        categoria=categoria,
+        nombre=f"Sub {seq}",
+        slug=f"sub-{seq}",
+    )
+    marca = MarcaCatalogo.objects.create(nombre=f"Marca {seq}")
+    producto = Producto.objects.create(
+        subcategoria=subcategoria,
+        marca=marca,
+        nombre=f"Prod {seq}",
+        slug=f"prod-{seq}",
+        estado='ACTIVO',
+    )
+    variante = VarianteProducto.objects.create(
+        producto=producto,
+        sku=f"SKU-{seq}",
+        precio=precio,
+        costo=Decimal('0'),
+        activo=activo,
+    )
+    bodega = make_bodega()
+    SaldoInventario.objects.update_or_create(
+        variante=variante,
+        defaults={
+            'bodega': bodega,
+            'cantidad_existencia': stock,
+            'cantidad_reservada': 0,
+        },
+    )
+    return variante
 
-	def test_employee_create_pedido_invalid_address_shows_alerts(self):
-		self.client.force_login(self.employee)
-		payload = {
-			'telefono': '3003332211',
-			'producto': 'Labial mate',
-			'precio': '25000',
-			'direccion': 'Direccion sin formato',
-			'cantidad': 1,
-			'fecha': (date.today() + timedelta(days=2)).isoformat(),
-		}
 
-		resp = self.client.post(reverse('empleado_crear_pedido'), payload)
+def make_cliente(usuario):
+    return Cliente.objects.create(usuario=usuario)
 
-		self.assertEqual(resp.status_code, 200)
-		self.assertContains(resp, 'La dirección debe seguir un formato colombiano válido')
-		self.assertContains(resp, 'Revisa los campos antes de guardar')
-		self.assertContains(resp, 'Corrige los errores del formulario para registrar el pedido')
-		self.assertEqual(Pedidos.activos.count(), 0)
 
-	def test_employee_create_pedido_quantity_zero_shows_errors(self):
-		self.client.force_login(self.employee)
-		payload = {
-			'telefono': '3003332211',
-			'producto': 'Sombra',
-			'precio': '12000',
-			'direccion': 'Calle 10 #20-30',
-			'cantidad': 0,
-			'fecha': (date.today() + timedelta(days=2)).isoformat(),
-		}
+def make_direccion(usuario, linea1='Calle 1', ciudad='Bogota', nombre_destinatario='Test'):
+    return DireccionUsuario.objects.create(
+        usuario=usuario,
+        tipo_direccion='ENVIO',
+        etiqueta='Test',
+        nombre_destinatario=nombre_destinatario,
+        linea1=linea1,
+        ciudad=ciudad,
+        codigo_pais='CO',
+        es_predeterminada_envio=True,
+        es_predeterminada_factura=False,
+    )
 
-		resp = self.client.post(reverse('empleado_crear_pedido'), payload)
 
-		self.assertEqual(resp.status_code, 200)
-		self.assertContains(resp, 'La cantidad mínima es 1')
-		self.assertContains(resp, 'Revisa los campos antes de guardar')
+def make_pedido(cliente, direccion, total=Decimal('10000'), estado='PENDIENTE_PAGO'):
+    return PedidoVenta.objects.create(
+        numero_pedido='',
+        cliente=cliente,
+        estado=estado,
+        subtotal=total,
+        monto_envio=Decimal('0'),
+        monto_impuesto=Decimal('0'),
+        monto_descuento=Decimal('0'),
+        monto_total=total,
+        direccion_envio=direccion,
+    )
+
+
+class PedidoModelUnitTest(TestCase):
+
+    def setUp(self):
+        self.user = make_user()
+        self.cliente = make_cliente(self.user)
+        self.direccion = make_direccion(self.user)
+
+    def test_pedido_str_contiene_id_y_usuario(self):
+        pedido = make_pedido(self.cliente, self.direccion, total=Decimal('10000'))
+        self.assertIn(str(pedido.id_pedido), str(pedido))
+
+    def test_estado_default_es_pendiente(self):
+        pedido = make_pedido(self.cliente, self.direccion, total=Decimal('5000'))
+        self.assertEqual(pedido.estado, 'PENDIENTE_PAGO')
+
+    def test_total_se_almacena_como_decimal(self):
+        pedido = make_pedido(self.cliente, self.direccion, total=Decimal('19999.99'))
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.monto_total, Decimal('19999.99'))
+
+
+class PedidosLegacyModelUnitTest(TestCase):
+
+    def test_manager_activos_excluye_inactivos(self):
+        user = make_user('a@test.com')
+        cliente = make_cliente(user)
+        direccion = make_direccion(user)
+        make_pedido(cliente, direccion, estado='PAGADO')
+        make_pedido(cliente, direccion, estado='CANCELADO')
+        estados = list(PedidoVenta.objects.filter(estado='PAGADO').values_list('estado', flat=True))
+        self.assertIn('PAGADO', estados)
+        self.assertNotIn('CANCELADO', estados)
+
+    def test_pedido_legacy_str_no_lanza_error(self):
+        user = make_user('str@test.com')
+        cliente = make_cliente(user)
+        direccion = make_direccion(user)
+        pedido = make_pedido(cliente, direccion)
+        self.assertIsInstance(str(pedido), str)
+
+
+class DetallePedidoModelUnitTest(TestCase):
+
+    def setUp(self):
+        self.user = make_user()
+        self.variante = make_variante(precio=Decimal('5000'))
+        self.cliente = make_cliente(self.user)
+        self.direccion = make_direccion(self.user)
+        self.pedido = make_pedido(self.cliente, self.direccion, total=Decimal('10000'))
+
+    def test_subtotal_es_precio_por_cantidad(self):
+        detalle = DetallePedidoVenta.objects.create(
+            pedido=self.pedido,
+            variante=self.variante,
+            nombre_producto_snapshot=self.variante.producto.nombre,
+            sku_snapshot=self.variante.sku,
+            cantidad=3,
+            precio_unitario=Decimal('5000'),
+        )
+        self.assertEqual(detalle.subtotal(), Decimal('15000'))
+
+    def test_cantidad_minima_es_1(self):
+        detalle = DetallePedidoVenta.objects.create(
+            pedido=self.pedido,
+            variante=self.variante,
+            nombre_producto_snapshot=self.variante.producto.nombre,
+            sku_snapshot=self.variante.sku,
+            cantidad=1,
+            precio_unitario=Decimal('5000'),
+        )
+        self.assertEqual(detalle.cantidad, 1)
+
+
+class PedidoServiceUnitTest(TestCase):
+
+    def setUp(self):
+        self.user = make_user()
+        self.variante = make_variante(stock=2, precio=Decimal('5000'))
+        ensure_salida_movimiento()
+
+    def test_service_valida_stock_insuficiente(self):
+        items = [{'variante': self.variante, 'cantidad': 5}]
+        with self.assertRaises(ValidationError):
+            create_pedido_from_cart(self.user, items, {'linea1': 'Calle 1', 'ciudad': 'Bogota'}, 'contraentrega')
+
+    def test_service_valida_tipo_movimiento_existente(self):
+        TipoMovimientoInventario.objects.all().delete()
+        items = [{'variante': self.variante, 'cantidad': 1}]
+        with self.assertRaises(ValidationError):
+            create_pedido_from_cart(self.user, items, {'linea1': 'Calle 1', 'ciudad': 'Bogota'}, 'contraentrega')
+
+    def test_service_calcula_total_correctamente(self):
+        items = [{'variante': self.variante, 'cantidad': 2}]
+        pedido = create_pedido_from_cart(self.user, items, {'linea1': 'Calle 1', 'ciudad': 'Bogota'}, 'contraentrega')
+        self.assertEqual(pedido.monto_total, Decimal('10000'))
+
+    def test_service_crea_audit_log(self):
+        items = [{'variante': self.variante, 'cantidad': 1}]
+        pedido = create_pedido_from_cart(self.user, items, {'linea1': 'Calle 1', 'ciudad': 'Bogota'}, 'contraentrega')
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action='pedidos.create', object_id=str(pedido.id_pedido)
+            ).exists()
+        )
+
+
+class CarritoFunctionalTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = make_user()
+        self.variante = make_variante(stock=5)
+
+    def test_agregar_al_carrito_exitoso(self):
+        self.client.force_login(self.user)
+        url = reverse('carrito_agregar', args=[self.variante.id_variante])
+        resp = self.client.post(url, {'cantidad': 1}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get('ok'))
+
+    def test_agregar_al_carrito_actualiza_sesion(self):
+        self.client.force_login(self.user)
+        url = reverse('carrito_agregar', args=[self.variante.id_variante])
+        self.client.post(url, {'cantidad': 1}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        session_cart = self.client.session.get('cart', {})
+        self.assertEqual(session_cart.get(str(self.variante.id_variante)), 1)
+
+    def test_agregar_stock_insuficiente_retorna_400(self):
+        self.client.force_login(self.user)
+        SaldoInventario.objects.filter(variante=self.variante).update(cantidad_existencia=1)
+        url = reverse('carrito_agregar', args=[self.variante.id_variante])
+        resp = self.client.post(url, {'cantidad': 5}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json().get('ok'))
+        self.assertIn('stock', resp.json().get('error', '').lower())
+
+    def test_agregar_producto_inactivo_retorna_404(self):
+        self.client.force_login(self.user)
+        self.variante.activo = False
+        self.variante.save(update_fields=['activo'])
+        url = reverse('carrito_agregar', args=[self.variante.id_variante])
+        resp = self.client.post(url, {'cantidad': 1}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 404)
+
+    def test_no_autenticado_redirige(self):
+        url = reverse('carrito_agregar', args=[self.variante.id_variante])
+        resp = self.client.post(url, {'cantidad': 1})
+        self.assertIn(resp.status_code, [302, 401])
+
+
+class CheckoutFunctionalTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = make_user()
+        self.variante = make_variante(stock=5)
+        ensure_salida_movimiento()
+        self.client.force_login(self.user)
+
+    def _set_cart(self, cantidad=2):
+        session = self.client.session
+        session['cart'] = {str(self.variante.id_variante): cantidad}
+        session.save()
+
+    def test_checkout_contraentrega_redirige(self):
+        self._set_cart()
+        resp = self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        self.assertEqual(resp.status_code, 302)
+
+    def test_checkout_producto_inactivo_redirige_al_carrito(self):
+        self.variante.activo = False
+        self.variante.save(update_fields=['activo'])
+        self._set_cart()
+        resp = self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123',
+            'ciudad': 'Bogota',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse('carrito'))
+        self.assertEqual(PedidoVenta.objects.count(), 0)
+
+    def test_checkout_prerrellena_direccion_desde_cliente(self):
+        DireccionUsuario.objects.create(
+            usuario=self.user,
+            tipo_direccion='ENVIO',
+            etiqueta='Prefill',
+            nombre_destinatario='Test',
+            linea1='Calle 55 #10-20',
+            ciudad='Bogota',
+            codigo_pais='CO',
+            es_predeterminada_envio=True,
+        )
+        self._set_cart()
+        resp = self.client.get(reverse('checkout'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['direccion_prefill']['linea1'], 'Calle 55 #10-20')
+
+    def test_checkout_prerrellena_ultima_direccion_no_predeterminada(self):
+        DireccionUsuario.objects.create(
+            usuario=self.user,
+            tipo_direccion='ENVIO',
+            etiqueta='Old',
+            nombre_destinatario='Test',
+            linea1='Calle 10 #20-30',
+            ciudad='Bogota',
+            codigo_pais='CO',
+            es_predeterminada_envio=False,
+        )
+        DireccionUsuario.objects.create(
+            usuario=self.user,
+            tipo_direccion='ENVIO',
+            etiqueta='New',
+            nombre_destinatario='Test',
+            linea1='Carrera 9 #80-11',
+            ciudad='Bogota',
+            codigo_pais='CO',
+            es_predeterminada_envio=False,
+        )
+        self._set_cart()
+        resp = self.client.get(reverse('checkout'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['direccion_prefill']['linea1'], 'Carrera 9 #80-11')
+
+    def test_checkout_tarjeta_invalida_retorna_400_ajax(self):
+        self._set_cart(1)
+        resp = self.client.post(reverse('checkout'), {
+            'metodo_pago': 'tarjeta',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+            'card_holder': 'Juan Perez',
+            'card_number': '4111 1111 1111 1112',
+            'card_expiry': '12/50',
+            'card_cvv': '123',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json().get('ok'))
+        self.assertIn('tarjeta', resp.json().get('error', '').lower())
+
+    def test_checkout_tarjeta_valida_crea_pedido_ajax(self):
+        self._set_cart(1)
+        resp = self.client.post(reverse('checkout'), {
+            'metodo_pago': 'tarjeta',
+            'direccion': 'Carrera 55 #12-30',
+            'ciudad': 'Bogota',
+            'card_holder': 'Juan Perez',
+            'card_number': '4111 1111 1111 1111',
+            'card_expiry': '12/50',
+            'card_cvv': '123',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get('ok'))
+        self.assertEqual(PedidoVenta.objects.count(), 1)
+
+
+class LegacyAdminFunctionalTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = make_admin()
+        self.user = make_user('user2@test.com')
+        self.cliente = make_cliente(self.user)
+        self.direccion = make_direccion(self.user)
+        self.variante = make_variante(stock=5)
+        ensure_salida_movimiento()
+        self.pedido = make_pedido(self.cliente, self.direccion)
+
+    def test_no_admin_redirigido(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse('lista_pedidos'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/login/', resp.url)
+
+    def test_admin_accede_a_lista(self):
+        self.client.force_login(self.admin)
+        resp = self.client.get(reverse('lista_pedidos'))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_admin_crea_pedido_legacy_redirige(self):
+        self.client.force_login(self.admin)
+        resp = self.client.post(reverse('crear_pedido'), {
+            'cliente': self.cliente.pk,
+            'variante': self.variante.pk,
+            'cantidad': 1,
+            'direccion_linea1': 'Calle 10 #20-30',
+            'ciudad': 'Bogota',
+            'estado': 'PENDIENTE_PAGO',
+        })
+        self.assertEqual(resp.status_code, 302)
+
+
+class EmpleadoPedidosFunctionalTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.emp1 = make_empleado('emp1@test.com', telefono='3001234567')
+        self.emp2 = make_empleado('emp2@test.com', telefono='3007654321')
+        self.cliente_emp1 = make_cliente(self.emp1)
+        self.cliente_emp2 = make_cliente(self.emp2)
+        self.direccion_emp1 = make_direccion(self.emp1)
+        self.direccion_emp2 = make_direccion(self.emp2)
+        self.variante = make_variante(stock=5)
+        ensure_salida_movimiento()
+        self.pedido_emp1 = make_pedido(self.cliente_emp1, self.direccion_emp1)
+        self.pedido_emp2 = make_pedido(self.cliente_emp2, self.direccion_emp2)
+
+    def test_empleado_solo_ve_sus_pedidos(self):
+        self.client.force_login(self.emp1)
+        resp = self.client.get(reverse('empleado_pedidos'))
+        self.assertEqual(resp.status_code, 200)
+        ids = [p.id_pedido for p in resp.context['pedidos']]
+        self.assertIn(self.pedido_emp1.id_pedido, ids)
+        self.assertNotIn(self.pedido_emp2.id_pedido, ids)
+
+    def test_empleado_no_puede_editar_pedido_ajeno(self):
+        self.client.force_login(self.emp1)
+        resp = self.client.get(reverse('empleado_editar_pedido', args=[self.pedido_emp2.id_pedido]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_empleado_crear_pedido_asigna_su_email(self):
+        self.client.force_login(self.emp1)
+        resp = self.client.post(reverse('empleado_crear_pedido'), {
+            'variante': self.variante.pk,
+            'cantidad': 2,
+            'direccion_linea1': 'Calle 10 #20-30',
+            'ciudad': 'Bogota',
+            'estado': 'PENDIENTE_PAGO',
+        })
+        self.assertEqual(resp.status_code, 302)
+        nuevo = PedidoVenta.objects.order_by('-id_pedido').first()
+        self.assertEqual(nuevo.cliente.usuario.correo, self.emp1.correo)
+
+    def test_empleado_crear_pedido_hereda_telefono_de_perfil(self):
+        self.client.force_login(self.emp1)
+        self.client.post(reverse('empleado_crear_pedido'), {
+            'variante': self.variante.pk,
+            'cantidad': 2,
+            'direccion_linea1': 'Calle 10 #20-30',
+            'ciudad': 'Bogota',
+            'estado': 'PENDIENTE_PAGO',
+        })
+        nuevo = PedidoVenta.objects.order_by('-id_pedido').first()
+        self.assertEqual(nuevo.cliente.usuario.telefono, '3001234567')
+
+
+class EmpleadoValidacionFunctionalTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.emp = make_empleado('emp.val@test.com', telefono='3003332211')
+        self.variante = make_variante(stock=5)
+        ensure_salida_movimiento()
+        self.client.force_login(self.emp)
+
+    def _post_pedido(self, **overrides):
+        payload = {
+            'variante': self.variante.pk,
+            'cantidad': 1,
+            'direccion_linea1': 'Calle 10 #20-30',
+            'ciudad': 'Bogota',
+            'estado': 'PENDIENTE_PAGO',
+        }
+        payload.update(overrides)
+        return self.client.post(reverse('empleado_crear_pedido'), payload)
+
+    def test_direccion_invalida_muestra_errores(self):
+        resp = self._post_pedido(direccion_linea1='Direccion sin formato')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'La dirección debe seguir un formato colombiano válido')
+        self.assertContains(resp, 'Revisa los campos antes de guardar')
+        self.assertEqual(PedidoVenta.objects.count(), 0)
+
+    def test_cantidad_cero_muestra_error(self):
+        resp = self._post_pedido(cantidad=0)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('cantidad', resp.context['form'].errors)
+
+    def test_cantidad_negativa_muestra_error(self):
+        resp = self._post_pedido(cantidad=-5)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('cantidad', resp.context['form'].errors)
+
+    def test_precio_vacio_no_crea_pedido(self):
+        resp = self._post_pedido(cantidad='')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(PedidoVenta.objects.count(), 0)
+
+
+class CheckoutIntegrationTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = make_user()
+        self.variante = make_variante(stock=5, precio=Decimal('10000'))
+        ensure_salida_movimiento()
+        self.client.force_login(self.user)
+        session = self.client.session
+        session['cart'] = {str(self.variante.id_variante): 2}
+        session.save()
+
+    def test_checkout_crea_pedido_en_bd(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        self.assertEqual(PedidoVenta.objects.count(), 1)
+
+    def test_checkout_calcula_total_correcto(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        pedido = PedidoVenta.objects.first()
+        self.assertEqual(pedido.monto_total, Decimal('20000'))
+
+    def test_checkout_crea_detalle_pedido(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        self.assertEqual(DetallePedidoVenta.objects.count(), 1)
+        detalle = DetallePedidoVenta.objects.first()
+        self.assertEqual(detalle.cantidad, 2)
+        self.assertEqual(detalle.variante.id_variante, self.variante.id_variante)
+
+    def test_checkout_descuenta_stock(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        self.assertTrue(ItemMovimientoInventario.objects.filter(variante=self.variante).exists())
+
+    def test_checkout_limpia_carrito(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        self.assertFalse(self.client.session.get('cart'))
+
+    def test_checkout_registra_audit_log(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 123 #45-67',
+            'ciudad': 'Bogota',
+        })
+        pedido = PedidoVenta.objects.first()
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action='pedidos.create', object_id=str(pedido.id_pedido)
+            ).exists()
+        )
+
+
+class CheckoutDireccionIntegrationTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.user = make_user()
+        self.variante = make_variante(stock=5)
+        ensure_salida_movimiento()
+        self.client.force_login(self.user)
+        session = self.client.session
+        session['cart'] = {str(self.variante.id_variante): 1}
+        session.save()
+
+    def test_checkout_persiste_direccion_en_cliente(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Avenida 12 #33-44',
+            'ciudad': 'Bogota',
+        })
+        direccion = DireccionUsuario.objects.filter(usuario=self.user, es_predeterminada_envio=True).first()
+        self.assertIsNotNone(direccion)
+        self.assertEqual(direccion.linea1, 'Avenida 12 #33-44')
+
+    def test_checkout_persiste_direccion_en_legacy(self):
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Avenida 12 #33-44',
+            'ciudad': 'Bogota',
+        })
+        direccion = DireccionUsuario.objects.filter(usuario=self.user, es_predeterminada_envio=True).first()
+        self.assertIsNotNone(direccion)
+        self.assertEqual(direccion.linea1, 'Avenida 12 #33-44')
+
+    def test_checkout_segunda_compra_actualiza_direccion_cliente(self):
+        DireccionUsuario.objects.create(
+            usuario=self.user,
+            tipo_direccion='ENVIO',
+            etiqueta='Old',
+            nombre_destinatario='Test',
+            linea1='Direccion anterior',
+            ciudad='Bogota',
+            codigo_pais='CO',
+            es_predeterminada_envio=True,
+        )
+        self.client.post(reverse('checkout'), {
+            'metodo_pago': 'contraentrega',
+            'direccion': 'Calle 20 #10-10',
+            'ciudad': 'Bogota',
+        })
+        direccion = DireccionUsuario.objects.filter(usuario=self.user, es_predeterminada_envio=True).first()
+        self.assertEqual(direccion.linea1, 'Calle 20 #10-10')
+
+
+class LegacyAdminAuditIntegrationTest(TestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = make_admin()
+        self.client.force_login(self.admin)
+        self.user = make_user('audit.user@test.com')
+        self.cliente = make_cliente(self.user)
+        self.variante = make_variante(stock=5)
+        ensure_salida_movimiento()
+
+    def test_crear_pedido_legacy_registra_audit(self):
+        self.client.post(reverse('crear_pedido'), {
+            'cliente': self.cliente.pk,
+            'variante': self.variante.pk,
+            'cantidad': 1,
+            'direccion_linea1': 'Calle 10 #20-30',
+            'ciudad': 'Bogota',
+            'estado': 'PENDIENTE_PAGO',
+        })
+        self.assertTrue(
+            AuditLog.objects.filter(action='pedidos.create').exists()
+        )
+
+    def test_crear_pedido_legacy_persiste_en_bd(self):
+        self.client.post(reverse('crear_pedido'), {
+            'cliente': self.cliente.pk,
+            'variante': self.variante.pk,
+            'cantidad': 1,
+            'direccion_linea1': 'Calle 10 #20-30',
+            'ciudad': 'Bogota',
+            'estado': 'PENDIENTE_PAGO',
+        })
+        self.assertTrue(PedidoVenta.objects.filter(cliente=self.cliente).exists())

@@ -16,11 +16,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 from django.core.exceptions import ImproperlyConfigured
 
-import pymysql
-pymysql.install_as_MySQLdb()
-# Bypass para versiones antiguas de MariaDB (10.4)
-from django.db.backends.base.base import BaseDatabaseWrapper
-BaseDatabaseWrapper.check_database_version_supported = lambda self: None
+DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite').strip().lower()
+if DB_ENGINE in {'mysql', 'mariadb'}:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    # Bypass para versiones antiguas de MariaDB (10.4)
+    from django.db.backends.base.base import BaseDatabaseWrapper
+    BaseDatabaseWrapper.check_database_version_supported = lambda self: None
 
 # Patch para compatibilidad de Django 4.2 con Python 3.14+ (Template Context)
 from django.template import context
@@ -66,7 +68,7 @@ def get_env_list(name: str, default: str = ""):
     parts = [p.strip() for p in raw.replace(';', ',').split(',')]
     return [p for p in parts if p]
 
-ALLOWED_HOSTS = get_env_list('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost')
+ALLOWED_HOSTS = get_env_list('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
 
 
 # Application definition
@@ -80,13 +82,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'core',
-    'usuarios',
     'productos',
     'pedidos',
     'clientes',
     'servicios',
     'inventario',
     'web',
+    'django_extensions',
+    'usuarios',
 ]
 
 MIDDLEWARE = [
@@ -127,22 +130,40 @@ WSGI_APPLICATION = 'nailsnice.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'nails_nice'),
-        'USER': os.environ.get('DB_USER', 'root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'",
-            'charset': 'utf8mb4',
-        },
+if DB_ENGINE in {'postgres', 'postgresql'}:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'nailsnice'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
     }
-}
+elif DB_ENGINE in {'mysql', 'mariadb'}:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'nailsnice'),
+            'USER': os.environ.get('DB_USER', 'root'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
-# Use SQLite automatically for tests to avoid MySQL dependency during CI/local runs.
+# Use SQLite automatically for tests to avoid external DB dependency during CI/local runs.
 if 'test' in sys.argv:
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -255,6 +276,26 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+# Cache (LocMem por defecto; Redis si REDIS_URL esta definido)
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'nailsnice-local',
+        }
+    }
+
 # --- Configuración de correo (reset de contraseña, notificaciones, etc.) ---
 
 # ACTIVADO: Ahora los correos se verán en la terminal de VS Code
@@ -316,3 +357,4 @@ LOGGING = {
         },
     },
 }
+AUTH_USER_MODEL = 'usuarios.Usuario'

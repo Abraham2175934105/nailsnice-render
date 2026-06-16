@@ -1,0 +1,145 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Registrar Movimiento{% endblock %}
+{% block page_title %}Registrar Movimiento de Inventario{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+    <a href="{% url 'lista_movimientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Volver</a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+<div class="u-mb-14">
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" id="movimiento-form">
+    {% csrf_token %}
+
+    <div class="glass-panel u-p-16 u-mb-14">
+        <h3 class="section-title">Información del movimiento</h3>
+        <div class="form-grid">
+            <label class="form-field">
+                {{ mov_form.tipo_movimiento.label }}
+                {{ mov_form.tipo_movimiento }}
+                {% if mov_form.tipo_movimiento.errors %}
+                    <span class="field-error">{{ mov_form.tipo_movimiento.errors.0 }}</span>
+                {% endif %}
+            </label>
+            <label class="form-field">
+                {{ mov_form.bodega.label }}
+                {{ mov_form.bodega }}
+                {% if mov_form.bodega.errors %}
+                    <span class="field-error">{{ mov_form.bodega.errors.0 }}</span>
+                {% endif %}
+            </label>
+            <label class="form-field" style="grid-column: 1 / -1;">
+                {{ mov_form.notas.label }}
+                {{ mov_form.notas }}
+                {% if mov_form.notas.errors %}
+                    <span class="field-error">{{ mov_form.notas.errors.0 }}</span>
+                {% endif %}
+            </label>
+        </div>
+    </div>
+
+    <div class="glass-panel u-p-16 u-mb-14">
+        <div class="section-header u-mb-14">
+            <h3 class="section-title">Productos</h3>
+            <button type="button" class="btn-pill btn-primary" id="agregar-item">
+                <svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar producto
+            </button>
+        </div>
+
+        <div id="items-container">
+            <div class="item-row glass-panel u-p-16 u-mb-10" data-index="0">
+                <div class="form-grid">
+                    <label class="form-field">
+                        Variante
+                        <select name="variante" required>
+                            <option value="">— Selecciona —</option>
+                            {% for v in variantes %}
+                                <option value="{{ v.id_variante }}">{{ v.producto.nombre }} — {{ v.sku }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="form-field">
+                        Cantidad
+                        <input type="number" name="cantidad" min="1" value="1" required>
+                    </label>
+                    <label class="form-field">
+                        Costo unitario (opcional)
+                        <input type="number" name="costo_unitario" min="0" step="0.01" placeholder="0.00">
+                    </label>
+                    <div class="form-field" style="display:flex; align-items:flex-end;">
+                        <button type="button" class="btn-danger-soft btn-remove-item" style="display:none;">
+                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="{% url 'lista_movimientos' %}" class="btn-pill">Cancelar</a>
+        <button type="submit" class="btn-pill btn-primary">
+            <svg aria-hidden="true"><use href="#icon-plus"></use></svg>Registrar movimiento
+        </button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('items-container');
+    const agregarBtn = document.getElementById('agregar-item');
+    const firstRow = container.querySelector('.item-row');
+    let index = 1;
+
+    function updateRemoveButtons() {
+        const rows = container.querySelectorAll('.item-row');
+        rows.forEach(function(row) {
+            const btn = row.querySelector('.btn-remove-item');
+            if (btn) btn.style.display = rows.length > 1 ? 'inline-flex' : 'none';
+        });
+    }
+
+    agregarBtn.addEventListener('click', function() {
+        const newRow = firstRow.cloneNode(true);
+        newRow.dataset.index = index++;
+        newRow.querySelector('select[name="variante"]').value = '';
+        newRow.querySelector('input[name="cantidad"]').value = 1;
+        newRow.querySelector('input[name="costo_unitario"]').value = '';
+        const removeBtn = newRow.querySelector('.btn-remove-item');
+        if (removeBtn) {
+            removeBtn.style.display = 'inline-flex';
+            removeBtn.addEventListener('click', function() {
+                newRow.remove();
+                updateRemoveButtons();
+            });
+        }
+        container.appendChild(newRow);
+        updateRemoveButtons();
+    });
+
+    container.querySelectorAll('.btn-remove-item').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            btn.closest('.item-row').remove();
+            updateRemoveButtons();
+        });
+    });
+
+    updateRemoveButtons();
+});
+</script>
+{% endblock %}

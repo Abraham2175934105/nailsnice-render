@@ -4,7 +4,10 @@ from decimal import Decimal
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
-from weasyprint import HTML
+
+# PARCHE SENIOR: Desactivamos weasyprint para permitir el despliegue local en Windows
+# from weasyprint import HTML
+HTML = None
 
 
 def _format_cell(value):
@@ -72,6 +75,15 @@ def build_crud_pdf_response(*, request, report_title: str, rows, filename: str):
     }
 
     html_string = render_to_string('reportes/crud_export_pdf.html', context)
+    
+    # CONTROL DE ERRORES: Si HTML es None, devolvemos un mensaje amigable en vez de tumbar el servidor
+    if HTML is None:
+        return HttpResponse(
+            "<h3>Exportación a PDF deshabilitada temporalmente en entorno local.</h3>"
+            "<p>El motor gráfico GTK no está instalado en este sistema Windows.</p>",
+            status=501
+        )
+
     pdf = HTML(
         string=html_string,
         base_url=request.build_absolute_uri('/'),

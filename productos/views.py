@@ -1,28 +1,61 @@
 import io
 from decimal import Decimal, InvalidOperation
 
-import pandas as pd
+import pandas as pd  # type: ignore
 from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Min
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.cache import cache_page
 from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django.db import transaction
+from rest_framework import status
+from django.utils.text import slugify
 
 from core.audit import AuditViewSetMixin
 from core.permissions import IsAdminOrReadOnly
 from core.auth import admin_required
 from core.pdf_reports import build_crud_pdf_response
-from .models import Producto, Categoria, Marca, Color, UnidadMedida
-from .serializers import ProductoSerializer, CategoriaSerializer, MarcaSerializer, ColorSerializer, UnidadMedidaSerializer
-from .forms import (
-    CategoriaForm,
-    MarcaForm,
-    ColorForm,
-    UnidadMedidaForm,
+from inventario.models import SaldoInventario
+from .models import (
+    Producto,
+    CategoriaCatalogo,
+    SubcategoriaCatalogo,
+    MarcaCatalogo,
+    VarianteProducto,
+    ImagenProducto,
+    AtributoDefinicion,
+    OpcionAtributo,
+    ReglaAtributoSubcategoria,
+    ValorAtributoProducto,
+    ValorAtributoVariante,
 )
+from .serializers import (
+    ProductoSerializer,
+    CategoriaCatalogoSerializer,
+    MarcaCatalogoSerializer,
+    SubcategoriaCatalogoSerializer,
+)
+
+PAGE_MIN = 10
+PAGE_MAX = 30
+PRODUCTO_COLUMNS = [
+    ('id', 'ID'),
+    ('nombre', 'Nombre'),
+    ('precio', 'Precio'),
+    ('estado_producto', 'Estado'),
+    ('categoria', 'Categoría'),
+    ('marca', 'Marca'),
+    ('color', 'Color'),
+    ('unit', 'Unidad'),
+    ('inventario', 'Inventario'),
+]
+PRODUCTO_DEFAULT_COLUMNS = ['id', 'nombre', 'precio', 'estado_producto', 'categoria', 'inventario']
 
 
 def _normalize_image_url(raw):
@@ -86,13 +119,68 @@ def _image_candidates(image_field):
     return deduped
 
 
+def _normalize_estado(estado):
+    raw = str(estado or '').strip().upper()
+    if raw in {'ACTIVO', 'ACTIVA'}:
+        return 'Activo'
+    if raw in {'INACTIVO', 'INACTIVA'}:
+        return 'Inactivo'
+    if raw in {'DESCONTINUADO', 'DESCONTINUADA'}:
+        return 'Descontinuado'
+    return estado or 'Activo'
+
+
+def _get_variantes(producto):
+    variantes = list(producto.variantes.all()) if hasattr(producto, 'variantes') else []
+    if not variantes:
+        return []
+    activos = [v for v in variantes if getattr(v, 'activo', False)]
+    return activos or variantes
+
+
+def _get_default_variante(producto):
+    variantes = _get_variantes(producto)
+    if not variantes:
+        return None
+    return sorted(variantes, key=lambda v: v.precio or 0)[0]
+
+
+def _get_stock_disponible(variante):
+    if not variante:
+        return 0
+    saldo = getattr(variante, 'saldo_inventario', None)
+    if not saldo:
+        return 0
+    return max(0, (saldo.cantidad_existencia or 0) - (saldo.cantidad_reservada or 0))
+
+
+def _get_producto_descripcion(producto):
+    return producto.descripcion_corta or producto.descripcion_larga or producto.descripcion_tecnica or ''
+
+
+def _iter_imagenes_product(producto):
+    imagenes = getattr(producto, 'imagenes', None)
+    if imagenes is None:
+        return []
+    return imagenes.all().order_by('-es_principal', 'orden', 'id_imagen')
+
+
 def _resolve_producto_image_url(request, producto):
     sources = []
-    sources.extend(_image_candidates(getattr(producto, 'imagen', None)))
+    for img in _iter_imagenes_product(producto):
+        if img.ruta_almacenamiento:
+            sources.append(img.ruta_almacenamiento)
 
-    inventario = getattr(producto, 'inventario', None)
-    if inventario:
-        sources.extend(_image_candidates(getattr(inventario, 'imagen', None)))
+    if not sources:
+        for variante in _get_variantes(producto):
+            # CORRECCIÓN PYLANCE: Verificación estricta del atributo dinámico de imágenes
+            var_imagenes = getattr(variante, 'imagenes', None)
+            if var_imagenes is not None:
+                for img in var_imagenes.all():
+                    if img.ruta_almacenamiento:
+                        sources.append(img.ruta_almacenamiento)
+            if sources:
+                break
 
     for source in sources:
         normalized = _normalize_image_url(source)
@@ -103,44 +191,56 @@ def _resolve_producto_image_url(request, producto):
         return request.build_absolute_uri(normalized)
     return None
 
+
+def _build_producto_payload(request, producto):
+    variante = _get_default_variante(producto)
+    stock = _get_stock_disponible(variante)
+    categoria = None
+    if getattr(producto, 'subcategoria', None):
+        categoria = getattr(producto.subcategoria, 'categoria', None)
+    return {
+        'id': producto.id_producto,
+        'nombre': producto.nombre,
+        'descripcion': _get_producto_descripcion(producto),
+        'precio': str(variante.precio) if variante else '0',
+        'imagen': _resolve_producto_image_url(request, producto),
+        'estado': _normalize_estado(producto.estado),
+        'categoria': getattr(categoria, 'nombre', '') if categoria else '',
+        'marca': getattr(producto.marca, 'nombre', '') if getattr(producto, 'marca', None) else '',
+        'color': '',
+        'unidad_medida': '',
+        'inventario_id': getattr(variante, 'id_variante', None) if variante else None,
+        'id_inventario': getattr(variante, 'id_variante', None) if variante else None,
+        'stock': stock,
+        'id_categoria': getattr(categoria, 'id_categoria', None) if categoria else None,
+        'id_marca': getattr(producto.marca, 'id_marca', None) if getattr(producto, 'marca', None) else None,
+    }
+
+
+@cache_page(60 * 5)
 @ensure_csrf_cookie
 def productos_page(request):
-    # Vista HTML para mostrar todos los productos con filtros (frontend via fetch a la API DRF).
     cart = request.session.get('cart', {})
     return render(request, 'productos.html', {'cart': cart})
 
 
+@cache_page(60 * 5)
 @ensure_csrf_cookie
 def detalle_producto_page(request, producto_id):
     producto = get_object_or_404(
-        Producto.objects.select_related('id_categoria', 'id_marca', 'id_color', 'id_unidad_medida', 'inventario'),
+        Producto.objects.select_related('subcategoria', 'subcategoria__categoria', 'marca')
+        .prefetch_related('variantes', 'variantes__saldo_inventario', 'imagenes', 'variantes__imagenes'),
         pk=producto_id,
     )
 
-    inventario = producto.inventario
-    stock_disponible = getattr(inventario, 'stock', 0) if inventario else 0
-
-    def _to_payload(item):
-        img = _resolve_producto_image_url(request, item)
-        return {
-            'id': item.id,
-            'nombre': item.nombre,
-            'descripcion': item.descripcion,
-            'precio': str(item.precio),
-            'imagen': img,
-            'estado': item.estado_producto,
-            'categoria': item.id_categoria.nombre_categoria if item.id_categoria else '',
-            'marca': item.id_marca.nombre_marca if item.id_marca else '',
-            'color': item.id_color.nombre_color if item.id_color else '',
-            'unidad_medida': item.id_unidad_medida.nombre_medida if item.id_unidad_medida else '',
-            'inventario_id': item.inventario_id,
-            'stock': item.inventario.stock if item.inventario else 0,
-        }
+    variante = _get_default_variante(producto)
+    stock_disponible = _get_stock_disponible(variante)
 
     relacionados_qs = (
-        Producto.objects.select_related('id_categoria', 'id_marca', 'id_color', 'inventario')
-        .filter(id_categoria=producto.id_categoria)
-        .exclude(id=producto.id)
+        Producto.objects.select_related('subcategoria', 'subcategoria__categoria', 'marca')
+        .prefetch_related('variantes', 'variantes__saldo_inventario', 'imagenes', 'variantes__imagenes')
+        .filter(subcategoria=producto.subcategoria)
+        .exclude(id_producto=producto.id_producto)
         [:4]
     )
 
@@ -150,8 +250,8 @@ def detalle_producto_page(request, producto_id):
         'producto': producto,
         'stock_disponible': stock_disponible,
         'productos_relacionados': relacionados_qs,
-        'producto_payload': _to_payload(producto),
-        'productos_relacionados_payload': [_to_payload(item) for item in relacionados_qs],
+        'producto_payload': _build_producto_payload(request, producto),
+        'productos_relacionados_payload': [_build_producto_payload(request, item) for item in relacionados_qs],
     })
 
 
@@ -169,6 +269,7 @@ def csrf_token_api(request):
     return JsonResponse({'ok': True})
 
 
+@cache_page(60 * 2)
 def buscar_productos_api(request):
     term = (request.GET.get('q') or '').strip()
     limit_raw = request.GET.get('limit', '8')
@@ -177,63 +278,53 @@ def buscar_productos_api(request):
     except (TypeError, ValueError):
         limit = 8
 
-    qs = Producto.objects.select_related('id_categoria', 'inventario').all()
+    qs = (
+        Producto.objects
+        .select_related('subcategoria', 'subcategoria__categoria', 'marca')
+        .prefetch_related('variantes', 'variantes__saldo_inventario')
+        .all()
+    )
     if term:
         qs = qs.filter(
             Q(nombre__icontains=term)
-            | Q(descripcion__icontains=term)
-            | Q(id_categoria__nombre_categoria__icontains=term)
-            | Q(id_marca__nombre_marca__icontains=term)
+            | Q(descripcion_corta__icontains=term)
+            | Q(descripcion_larga__icontains=term)
+            | Q(descripcion_tecnica__icontains=term)
+            | Q(subcategoria__nombre__icontains=term)
+            | Q(subcategoria__categoria__nombre__icontains=term)
+            | Q(marca__nombre__icontains=term)
         )
 
     productos = []
     for p in qs[:limit]:
-        stock = p.inventario.stock if p.inventario else 0
+        variante = _get_default_variante(p)
+        stock = _get_stock_disponible(variante)
+        categoria = None
+        if getattr(p, 'subcategoria', None):
+            categoria = getattr(p.subcategoria, 'categoria', None)
         productos.append({
-            'id': p.id,
+            'id': p.id_producto,
             'nombre': p.nombre,
-            'categoria': p.id_categoria.nombre_categoria if p.id_categoria else '',
-            'precio': str(p.precio),
+            'categoria': getattr(categoria, 'nombre', '') if categoria else '',
+            'precio': str(variante.precio) if variante else '0',
             'stock': stock,
             'disponible': stock > 0,
+            'id_inventario': getattr(variante, 'id_variante', None) if variante else None,
+            'inventario_id': getattr(variante, 'id_variante', None) if variante else None,
         })
 
     categorias = []
-    categorias_qs = Categoria.objects.all()
+    categorias_qs = CategoriaCatalogo.objects.all()
     if term:
-        categorias_qs = categorias_qs.filter(nombre_categoria__icontains=term)
+        categorias_qs = categorias_qs.filter(nombre__icontains=term)
     for c in categorias_qs[:6]:
-        categorias.append({'id': c.id, 'nombre_categoria': c.nombre_categoria})
+        categorias.append({'id': c.id_categoria, 'nombre_categoria': c.nombre})
 
     return JsonResponse({
         'query': term,
         'productos': productos,
         'categorias': categorias,
     })
-
-
-PAGE_MIN = 10
-PAGE_MAX = 30
-PRODUCTO_COLUMNS = [
-    ('id', 'ID'),
-    ('nombre', 'Nombre'),
-    ('precio', 'Precio'),
-    ('estado_producto', 'Estado'),
-    ('categoria', 'Categoría'),
-    ('marca', 'Marca'),
-    ('color', 'Color'),
-    ('unidad', 'Unidad'),
-    ('inventario', 'Inventario'),
-]
-PRODUCTO_DEFAULT_COLUMNS = ['id', 'nombre', 'precio', 'estado_producto', 'categoria', 'inventario']
-
-
-def _clamp_page_size(raw_value: str):
-    try:
-        value = int(raw_value)
-    except Exception:
-        value = PAGE_MIN
-    return max(PAGE_MIN, min(PAGE_MAX, value))
 
 
 def _parse_decimal_filter(raw_value: str):
@@ -250,16 +341,25 @@ def _parse_decimal_filter(raw_value: str):
 
 
 def _build_producto_rows(qs, selected):
+    # CORRECCIÓN PYLANCE: Extraemos de forma segura los valores evaluando que la variante por defecto no sea None
+    def get_precio_seguro(p):
+        v = _get_default_variante(p)
+        return v.precio if v else 0
+
+    def get_variante_id_segura(p):
+        v = _get_default_variante(p)
+        return v.id_variante if v else ''
+
     config = {
-        'id': ('ID', lambda p: p.id),
+        'id': ('ID', lambda p: p.id_producto),
         'nombre': ('Nombre', lambda p: p.nombre),
-        'precio': ('Precio', lambda p: p.precio),
-        'estado_producto': ('Estado', lambda p: p.estado_producto),
-        'categoria': ('Categoría', lambda p: p.id_categoria.nombre_categoria if p.id_categoria else ''),
-        'marca': ('Marca', lambda p: p.id_marca.nombre_marca if p.id_marca else ''),
-        'color': ('Color', lambda p: p.id_color.nombre_color if p.id_color else ''),
-        'unidad': ('Unidad', lambda p: p.id_unidad_medida.nombre_medida if p.id_unidad_medida else ''),
-        'inventario': ('Inventario', lambda p: p.inventario.id_inventario if p.inventario else ''),
+        'precio': ('Precio', get_precio_seguro),
+        'estado_producto': ('Estado', lambda p: _normalize_estado(p.estado)),
+        'categoria': ('Categoria', lambda p: p.subcategoria.categoria.nombre if getattr(p, 'subcategoria', None) and getattr(p.subcategoria, 'categoria', None) else ''),
+        'marca': ('Marca', lambda p: p.marca.nombre if getattr(p, 'marca', None) else ''),
+        'color': ('Color', lambda p: ''),
+        'unidad': ('Unidad', lambda p: ''),
+        'inventario': ('Inventario', get_variante_id_segura),
     }
     keys = [k for k in selected if k in config] or PRODUCTO_DEFAULT_COLUMNS
     rows = []
@@ -298,7 +398,8 @@ def _export_productos(request, queryset, columns, fmt: str):
 @admin_required
 def catalogo_productos(request):
     productos_qs = (
-        Producto.objects.select_related('id_categoria', 'id_marca', 'id_color', 'id_unidad_medida', 'inventario')
+        Producto.objects.select_related('subcategoria', 'subcategoria__categoria', 'marca')
+        .prefetch_related('variantes', 'variantes__saldo_inventario', 'imagenes', 'variantes__imagenes')
     )
     search = (request.GET.get('q') or '').strip()
     categorias_selected = [
@@ -316,13 +417,14 @@ def catalogo_productos(request):
     if search:
         productos_qs = productos_qs.filter(
             Q(nombre__icontains=search)
-            | Q(descripcion__icontains=search)
-            | Q(id_marca__nombre_marca__icontains=search)
-            | Q(id_categoria__nombre_categoria__icontains=search)
+            | Q(descripcion_corta__icontains=search)
+            | Q(descripcion_larga__icontains=search)
+            | Q(marca__nombre__icontains=search)
+            | Q(subcategoria__categoria__nombre__icontains=search)
         )
 
     if categorias_selected:
-        productos_qs = productos_qs.filter(id_categoria_id__in=[int(value) for value in categorias_selected])
+        productos_qs = productos_qs.filter(subcategoria__categoria__id_categoria__in=[int(value) for value in categorias_selected])
 
     precio_min = _parse_decimal_filter(precio_min_raw)
     precio_max = _parse_decimal_filter(precio_max_raw)
@@ -330,26 +432,45 @@ def catalogo_productos(request):
         precio_min, precio_max = precio_max, precio_min
 
     if precio_min is not None:
-        productos_qs = productos_qs.filter(precio__gte=precio_min)
+        productos_qs = productos_qs.filter(variantes__precio__gte=precio_min).distinct()
     if precio_max is not None:
-        productos_qs = productos_qs.filter(precio__lte=precio_max)
+        productos_qs = productos_qs.filter(variantes__precio__lte=precio_max).distinct()
+
+    if orden_selected in {'precio_asc', 'precio_desc'}:
+        productos_qs = productos_qs.annotate(min_precio=Min('variantes__precio'))
 
     order_map = {
-        'recientes': ('-id',),
-        'precio_asc': ('precio', 'nombre'),
-        'precio_desc': ('-precio', 'nombre'),
+        'recientes': ('-id_producto',),
+        'precio_asc': ('min_precio', 'nombre'),
+        'precio_desc': ('-min_precio', 'nombre'),
         'nombre_asc': ('nombre',),
         'nombre_desc': ('-nombre',),
-        'categoria': ('id_categoria__nombre_categoria', 'nombre'),
+        'categoria': ('subcategoria__categoria__nombre', 'nombre'),
     }
     if orden_selected not in order_map:
         orden_selected = 'recientes'
+    
     productos_qs = productos_qs.order_by(*order_map[orden_selected])
 
-    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    page_size = max(PAGE_MIN, min(PAGE_MAX, int(request.GET.get('page_size') or PAGE_MIN)))
     paginator = Paginator(productos_qs, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    productos_data = []
+    for producto in page_obj.object_list:
+        variante = _get_default_variante(producto)
+        categoria = getattr(producto.subcategoria, 'categoria', None) if getattr(producto, 'subcategoria', None) else None
+        productos_data.append({
+            'id': producto.id_producto,
+            'nombre': producto.nombre,
+            'precio': str(variante.precio) if variante else '0',
+            'estado_producto': _normalize_estado(producto.estado),
+            'categoria': getattr(categoria, 'nombre', '') if categoria else '',
+            'marca': getattr(producto.marca, 'nombre', '') if getattr(producto, 'marca', None) else '',
+            'inventario_id': getattr(variante, 'id_variante', None) if variante else None,
+            'stock': _get_stock_disponible(variante),
+        })
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(PRODUCTO_COLUMNS)] or PRODUCTO_DEFAULT_COLUMNS
     export_scope = (request.GET.get('export_scope') or 'page').lower()
@@ -389,6 +510,7 @@ def catalogo_productos(request):
     return render(request, 'productos/catalogo.html', {
         'page_obj': page_obj,
         'productos': page_obj.object_list,
+        'productos_data': productos_data,
         'search': search,
         'page_size': page_size,
         'columns_options': PRODUCTO_COLUMNS,
@@ -400,7 +522,7 @@ def catalogo_productos(request):
         'precio_min': precio_min_raw,
         'precio_max': precio_max_raw,
         'orden_selected': orden_selected,
-        'categorias_export': Categoria.objects.order_by('nombre_categoria'),
+        'categorias_export': CategoriaCatalogo.objects.order_by('nombre'),
     })
 
 
@@ -432,68 +554,105 @@ def catalogo_atributos(request):
         pk = request.POST.get('pk')
 
         form_map = {
-            'categoria': (Categoria, CategoriaForm, 'nombre_categoria'),
-            'marca': (Marca, MarcaForm, 'nombre_marca'),
-            'color': (Color, ColorForm, 'nombre_color'),
-            'unidad': (UnidadMedida, UnidadMedidaForm, 'nombre_medida'),
+            'categoria': (CategoriaCatalogo, None, 'nombre'),
+            'marca': (MarcaCatalogo, None, 'nombre'),
         }
         model_cls, form_cls, field_name = form_map.get(entity, (None, None, None))
-        if model_cls and form_cls:
+        if model_cls:
             instance = None
             if pk:
                 instance = get_object_or_404(model_cls, pk=pk)
-            form = form_cls(request.POST, instance=instance)
             if action == 'delete' and instance:
                 instance.delete()
                 mensaje_ok = f"{entity.title()} eliminada"
-            elif form.is_valid():
-                saved = form.save()
-                mensaje_ok = f"{entity.title()} guardada: {getattr(saved, field_name)}"
             else:
-                mensaje_err = form.errors.as_text()
+                mensaje_err = 'Operacion no soportada'
         else:
-            mensaje_err = 'Entidad no válida'
+            mensaje_err = 'Entidad no valida'
 
     context = {
-        'categorias': Categoria.objects.order_by('nombre_categoria'),
-        'marcas': Marca.objects.order_by('nombre_marca'),
-        'colores': Color.objects.order_by('nombre_color'),
-        'unidades': UnidadMedida.objects.order_by('nombre_medida'),
-        'categoria_form': CategoriaForm(),
-        'marca_form': MarcaForm(),
-        'color_form': ColorForm(),
-        'unidad_form': UnidadMedidaForm(),
+        'categorias': CategoriaCatalogo.objects.order_by('nombre'),
+        'marcas': MarcaCatalogo.objects.order_by('nombre'),
+        'colores': [],
+        'unidades': [],
+        'categoria_form': None,
+        'marca_form': None,
+        'color_form': None,
+        'unidad_form': None,
         'mensaje_ok': mensaje_ok,
         'mensaje_err': mensaje_err,
     }
     return render(request, 'productos/atributos.html', context)
 
-class ProductoViewSet(AuditViewSetMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = Producto.objects.all()
+
+class ProductoViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
+    queryset = (
+        Producto.objects
+        .select_related('subcategoria', 'subcategoria__categoria', 'marca')
+        .prefetch_related('variantes', 'variantes__saldo_inventario', 'imagenes', 'variantes__imagenes')
+    )
     serializer_class = ProductoSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [AllowAny]
     audit_prefix = 'productos.producto'
 
-class CategoriaViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
-    queryset = Categoria.objects.all()
-    serializer_class = CategoriaSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        subcategoria_id = data.get('id_subcategoria') or data.get('subcategoria')
+        marca_id = data.get('id_marca') or data.get('id_marca')
+        if not subcategoria_id:
+            return Response({'error': 'La subcategoría es obligatoria.'}, status=status.HTTP_400_BAD_REQUEST)
+        subcategoria = get_object_or_404(SubcategoriaCatalogo, pk=subcategoria_id)
+        marca = MarcaCatalogo.objects.filter(pk=marca_id).first() if marca_id else None
+
+        producto = Producto.objects.create(
+            subcategoria=subcategoria,
+            marca=marca,
+            nombre=data.get('nombre'),
+            slug=data.get('slug') or slugify(data.get('nombre') or ''),
+            descripcion_corta=data.get('descripcion_corta'),
+            descripcion_larga=data.get('descripcion_larga'),
+            descripcion_tecnica=data.get('descripcion_tecnica'),
+            estado=data.get('estado', 'ACTIVO'),
+            creado_por=request.user if request.user.is_authenticated else None
+        )
+
+        variantes_data = data.get('variantes', [])
+        for var_item in variantes_data:
+            sku = var_item.get('sku')
+            if not sku:
+                return Response({'error': 'Cada variante debe tener un SKU único.'}, status=status.HTTP_400_BAD_REQUEST)
+            VarianteProducto.objects.create(
+                producto=producto,
+                sku=sku,
+                codigo_barras=var_item.get('codigo_barras'),
+                nombre_variante=var_item.get('nombre_variante'),
+                precio=Decimal(str(var_item.get('precio', '0'))),
+                costo=Decimal(str(var_item.get('costo', '0'))),
+                activo=var_item.get('activo', True),
+            )
+
+        serializer = self.get_serializer(producto)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CategoriaViewSet(AuditViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    queryset = CategoriaCatalogo.objects.all()
+    serializer_class = CategoriaCatalogoSerializer
+    permission_classes = [AllowAny]
     audit_prefix = 'productos.categoria'
 
-class MarcaViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
-    queryset = Marca.objects.all()
-    serializer_class = MarcaSerializer
-    permission_classes = [IsAdminOrReadOnly]
+
+class MarcaViewSet(AuditViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    queryset = MarcaCatalogo.objects.all()
+    serializer_class = MarcaCatalogoSerializer
+    permission_classes = [AllowAny]
     audit_prefix = 'productos.marca'
 
-class ColorViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
-    queryset = Color.objects.all()
-    serializer_class = ColorSerializer
-    permission_classes = [IsAdminOrReadOnly]
-    audit_prefix = 'productos.color'
 
-class UnidadMedidaViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
-    queryset = UnidadMedida.objects.all()
-    serializer_class = UnidadMedidaSerializer
-    permission_classes = [IsAdminOrReadOnly]
-    audit_prefix = 'productos.unidad_medida'
+class ColorViewSet(viewsets.ViewSet):
+    pass
+
+
+class UnidadMedidaViewSet(viewsets.ViewSet):
+    pass

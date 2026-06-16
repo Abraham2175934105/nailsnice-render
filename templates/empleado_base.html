@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}NailsNice Empleado{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
   <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260401">
   {% block extra_head %}{% endblock %}
 </head>
@@ -68,10 +69,10 @@
         </div>
         <div class="header-actions">
           <div class="user-chip">
-            <div class="avatar-circle">{{ request.user.nombre1|default:request.user.email|first|upper }}</div>
+            <div class="avatar-circle">{{ request.user.nombre|default:request.user.correo|first|upper }}</div>
             <div class="user-meta">
-              <span class="user-name">{{ request.user.nombre1|default:request.user.email }}</span>
-              <span class="user-role">{{ request.user.id_rol.nombre|default:'Empleado' }}</span>
+              <span class="user-name">{{ request.user.nombre|default:request.user.correo }}</span>
+              <span class="user-role">{{ request.user.rol_asignado.rol.nombre|default:'Empleado' }}</span>
             </div>
           </div>
           <a class="btn-icon danger" href="{% url 'logout' %}" aria-label="Cerrar sesión"><svg><use href="#icon-logout"></use></svg></a>
@@ -86,6 +87,17 @@
     </div>
   </div>
 
+  <script>
+    document.addEventListener('submit', function(event) {
+      const form = event.target;
+      if (!form || form.nodeName !== 'FORM') return;
+      const submit = form.querySelector('button[type="submit"]');
+      if (!submit) return;
+      submit.classList.add('is-loading');
+      submit.setAttribute('aria-busy', 'true');
+      submit.disabled = true;
+    });
+  </script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

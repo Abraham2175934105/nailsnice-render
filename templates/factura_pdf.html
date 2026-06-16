@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Factura #{{ pedido.id }} - NailsNice</title>
+    <title>Factura #{{ pedido.numero_pedido|default:pedido.id_pedido }} - NailsNice</title>
     <style>
         @page {
             size: A4;
@@ -112,23 +112,23 @@
             <p>Bogota, Colombia</p>
         </div>
         <div class="meta">
-            <p><strong>Factura:</strong> #{{ pedido.id }}</p>
+            <p><strong>Factura:</strong> #{{ pedido.numero_pedido|default:pedido.id_pedido }}</p>
             <p><strong>Fecha:</strong> {{ pedido.creado_en|date:"d/m/Y H:i" }}</p>
             <p><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
-            <p><strong>Pago:</strong> {{ pedido.get_metodo_pago_display }}</p>
+            <p><strong>Pago:</strong> {% if pedido.transacciones.first %}{{ pedido.transacciones.first.metodo_pago|default:'No registrado' }}{% else %}No registrado{% endif %}</p>
         </div>
     </header>
 
     <section class="grid">
         <div class="client">
             <p class="section-title">Cliente</p>
-            <p><strong>{{ pedido.usuario.nombre1|default:'' }} {{ pedido.usuario.apellido1|default:'' }}</strong></p>
-            <p>{{ pedido.usuario.email }}</p>
-            <p>{{ pedido.usuario.telefono|default:'Sin telefono' }}</p>
+            <p><strong>{{ pedido.cliente.usuario.nombre|default:'' }} {{ pedido.cliente.usuario.apellido|default:'' }}</strong></p>
+            <p>{{ pedido.cliente.usuario.correo }}</p>
+            <p>{{ pedido.cliente.usuario.telefono|default:'Sin telefono' }}</p>
         </div>
         <div>
             <p class="section-title">Direccion de envio</p>
-            <p>{{ pedido.direccion_envio }}</p>
+            <p>{{ pedido.direccion_envio.linea1|default:pedido.direccion_envio }}</p>
         </div>
     </section>
 
@@ -146,7 +146,7 @@
             <tbody>
                 {% for detalle in pedido.detalles.all %}
                 <tr>
-                    <td>{{ detalle.producto.nombre }}</td>
+                    <td>{{ detalle.nombre_producto_snapshot|default:detalle.variante.producto.nombre }}</td>
                     <td class="text-right">{{ detalle.cantidad }}</td>
                     <td class="text-right">${{ detalle.precio_unitario|floatformat:0 }}</td>
                     <td class="text-right">${{ detalle.subtotal|floatformat:0 }}</td>
@@ -160,7 +160,7 @@
         <p>Total a pagar</p>
         <div class="total-row">
             <span>Total</span>
-            <span>${{ pedido.total|floatformat:0 }}</span>
+            <span>${{ pedido.monto_total|floatformat:0 }}</span>
         </div>
     </section>
 

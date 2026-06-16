@@ -26,6 +26,7 @@ from pedidos.views import (
     crear_pedido,
     editar_pedido,
     eliminar_pedido,
+    detalle_pedido,
     empleado_lista_pedidos,
     empleado_crear_pedido,
     empleado_editar_pedido,
@@ -53,11 +54,11 @@ urlpatterns = [
     path('password/verify/', views.verify_reset_code_view, name='verify_reset_code'),
     path('password/new/', views.new_password_view, name='new_password'),
     path('api/', views.home_api, name='api-home'),
+    path('api/', include('clientes.api_urls')),
     path('', include('usuarios.urls')),
     path('', include('productos.urls')),
     path('', include('inventario.urls')),
-    # path('', include('pedidos.urls')), # Removido porque la nueva app pedidos usa vistas directas
-    path('', include('clientes.urls')),
+    path('gestion/clientes/', include('clientes.urls')),
     path('', include('servicios.urls')),
 
     # CRUD Clientes (admin)
@@ -66,20 +67,21 @@ urlpatterns = [
     path('clientes/editar/<int:id>/', web_views.editar_clientes, name='editar_cliente'),
     path('clientes/eliminar/<int:id>/', web_views.eliminar_clientes, name='eliminar_cliente'),
     path('clientes/carga-masiva/', web_views.carga_masiva_clientes, name='clientes_carga_masiva'),
-    
+
     # CRUD Clientes (app web)
     path('clientes_web/', web_views.lista_clientes, name='web_lista_clientes'),
     path('clientes_web/crear/', web_views.crear_clientes, name='web_crear_clientes'),
     path('clientes_web/editar/<int:id>/', web_views.editar_clientes, name='web_editar_clientes'),
     path('clientes_web/eliminar/<int:id>/', web_views.eliminar_clientes, name='web_eliminar_clientes'),
-    
-    # CRUD Pedidos (nueva app)
+
+    # CRUD Pedidos (admin)
     path('pedidos/', lista_pedidos, name='lista_pedidos'),
     path('pedidos/crear/', crear_pedido, name='crear_pedido'),
     path('pedidos/editar/<int:id>/', editar_pedido, name='editar_pedido'),
     path('pedidos/eliminar/<int:id>/', eliminar_pedido, name='eliminar_pedido'),
+    path('pedidos/<int:id>/detalle/', detalle_pedido, name='detalle_pedido'),
 
-    # CRUD Empleado (solo mis registros)
+    # CRUD Empleado
     path('empleado/agendamientos/', servicios_views.empleado_lista_agendamientos, name='empleado_agendamientos'),
     path('empleado/agendamientos/crear/', servicios_views.empleado_crear_agendamiento, name='empleado_crear_agendamiento'),
     path('empleado/agendamientos/editar/<int:id>/', servicios_views.empleado_editar_agendamiento, name='empleado_editar_agendamiento'),
@@ -104,6 +106,8 @@ urlpatterns = [
     path('inventario/editar/<int:id>/', inventario_views.editar_producto, name='editar_producto'),
     path('inventario/eliminar/<int:id>/', inventario_views.eliminar_producto, name='eliminar_producto'),
     path('inventario/carga-masiva/', inventario_views.cargar_inventario_masivo, name='inventario_carga_masiva'),
+    path('inventario/movimientos/', inventario_views.lista_movimientos, name='lista_movimientos'),
+    path('inventario/movimientos/crear/', inventario_views.crear_movimiento, name='crear_movimiento'),
 ]
 
 if settings.DEBUG:

@@ -1,5 +1,4 @@
 import io
-
 import pandas as pd
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -9,176 +8,73 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from core.auth import admin_required
 from core.pdf_reports import build_crud_pdf_response
-from clientes.models import Cliente as ClienteRelacional
-from usuarios.models import Rol, Usuario
-from .models import Clientes
-from .forms import ClientesForm
+from clientes.models import Cliente
+from usuarios.models import RolAcceso, Usuario, UsuarioRol
+from .forms import ClienteForm
 
 CLIENT_COLUMNS = [
-    ('id', 'ID'),
+    ('id_usuario', 'ID'),
     ('nombre', 'Nombre'),
     ('apellido', 'Apellido'),
-    ('nombre1', 'Primer nombre'),
-    ('nombre2', 'Segundo nombre'),
-    ('apellido1', 'Primer apellido'),
-    ('apellido2', 'Segundo apellido'),
-    ('direccion', 'Dirección'),
-    ('telefono', 'Teléfono'),
     ('correo', 'Correo'),
+    ('telefono', 'Telefono'),
+    ('estado', 'Estado'),
     ('rol', 'Rol'),
+    ('fecha_nacimiento', 'Fecha nacimiento'),
+    ('acepta_fidelizacion', 'Fidelizacion'),
 ]
-CLIENT_DEFAULT_COLUMNS = ['id', 'nombre', 'apellido', 'correo', 'telefono', 'rol', 'nombre1', 'apellido1']
+CLIENT_DEFAULT_COLUMNS = ['id_usuario', 'nombre', 'apellido', 'correo', 'telefono', 'estado', 'rol']
 PAGE_MIN = 10
 PAGE_MAX = 30
 
 
 def _get_default_role_cliente():
-    role_cliente, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE, defaults={'descripcion': 'Cliente'})
+    role_cliente, _ = RolAcceso.objects.get_or_create(
+        nombre='Cliente',
+        defaults={'descripcion': 'Cliente', 'codigo': 'CLIENTE'},
+    )
     return role_cliente
 
 
-def _is_admin_role(role):
-    role_name = str(getattr(role, 'nombre', '') or '').strip().lower()
-    return role_name in {'admin', 'administrador'}
-
-
-def _resolve_role_from_value(raw_value):
-    raw_text = str(raw_value or '').strip()
-    if raw_text.lower() in {'nan', 'none', 'null', '-'}:
-        raw_text = ''
-    if not raw_text:
+def _resolve_role_from_value(role_value):
+    """Auxiliar para resolver el rol en la carga masiva"""
+    val = str(role_value or '').strip()
+    if not val:
         return _get_default_role_cliente(), None
-
-    role_id = None
+    
+    # Intentar buscar por ID, código o nombre
     try:
-        role_id = int(raw_text)
-    except Exception:
-        try:
-            maybe_float = float(raw_text)
-            if maybe_float.is_integer():
-                role_id = int(maybe_float)
-        except Exception:
-            role_id = None
-
-    if role_id is not None:
-        role = Rol.objects.filter(pk=role_id).first()
+        if val.isdigit():
+            return RolAcceso.objects.get(pk=int(val)), None
+        role = RolAcceso.objects.filter(Q(codigo__iexact=val) | Q(nombre__iexact=val)).first()
         if role:
             return role, None
-
-    role = Rol.objects.filter(nombre__iexact=raw_text).first()
-    if role:
-        return role, None
-
-    aliases = {
-        'admin': [Rol.ADMIN, 'Administrador', 'Admin'],
-        'administrador': [Rol.ADMIN, 'Administrador', 'Admin'],
-        'cliente': [Rol.CLIENTE, 'Cliente'],
-        'empleado': [Rol.EMPLEADO, 'Empleado'],
-    }
-
-    for candidate in aliases.get(raw_text.lower(), []):
-        role = Rol.objects.filter(nombre__iexact=candidate).first()
-        if role:
-            return role, None
-
-    return None, f"Rol no válido '{raw_text}'. Usa Admin/Administrador, Cliente o Empleado."
+        return None, f"El rol '{val}' no existe en el sistema."
+    except Exception as e:
+        return None, f"Error al resolver el rol: {str(e)}"
 
 
-def _build_user_lookup(clientes_iterable):
-    emails = {
-        str(getattr(c, 'correo', '') or '').strip().lower()
-        for c in clientes_iterable
-        if getattr(c, 'correo', None)
-    }
-    emails = {email for email in emails if email}
-    if not emails:
-        return {}
-
-    users = Usuario.objects.filter(email__in=emails).select_related('id_rol')
-    return {
-        (u.email or '').strip().lower(): {
-            'rol': u.id_rol.nombre if u.id_rol_id else '-',
-            'nombre1': u.nombre1 or '',
-            'nombre2': u.nombre2 or '',
-            'apellido1': u.apellido1 or '',
-            'apellido2': u.apellido2 or '',
-        }
-        for u in users
-    }
-
-
-def _sync_relational_cliente(cliente_web: Clientes, role=None, user_payload=None):
-    role_cliente = role or _get_default_role_cliente()
-    payload = user_payload or {}
-
-    nombre1 = str(payload.get('nombre1') or '').strip() or cliente_web.nombre
-    nombre2 = str(payload.get('nombre2') or '').strip() or None
-    apellido1 = str(payload.get('apellido1') or '').strip() or cliente_web.apellido
-    apellido2 = str(payload.get('apellido2') or '').strip() or None
-    raw_password = str(payload.get('password') or '').strip()
-
-    is_admin = _is_admin_role(role_cliente)
-
-    user, created = Usuario.objects.get_or_create(
-        email=cliente_web.correo,
-        defaults={
-            'nombre1': nombre1,
-            'nombre2': nombre2,
-            'apellido1': apellido1,
-            'apellido2': apellido2,
-            'telefono': cliente_web.telefono,
-            'estado_usuario': 'Activo',
-            'id_rol': role_cliente,
-            'is_staff': is_admin,
-            'is_superuser': is_admin,
-            'is_active': True,
-        },
-    )
-
-    if created and not raw_password:
-        user.set_unusable_password()
-
-    user.nombre1 = nombre1
-    user.nombre2 = nombre2
-    user.apellido1 = apellido1
-    user.apellido2 = apellido2
-    user.telefono = cliente_web.telefono
-    user.id_rol = role_cliente
-    user.estado_usuario = 'Activo' if cliente_web.is_active else 'Inactivo'
-    user.is_active = bool(cliente_web.is_active)
-    user.is_staff = is_admin
-    user.is_superuser = is_admin
-
-    if raw_password:
-        user.set_password(raw_password)
-
-    user.save()
-
-    defaults = {'direccion': cliente_web.direccion}
-    rel = ClienteRelacional.objects.filter(usuario=user).first()
-    if rel:
-        defaults['puntos_fidelidad'] = rel.puntos_fidelidad
-    else:
-        defaults['puntos_fidelidad'] = 0
-    ClienteRelacional.objects.update_or_create(usuario=user, defaults=defaults)
+def _get_role_name(usuario):
+    # Buscamos el rol a través de la tabla intermedia UsuarioRol
+    user_role = UsuarioRol.objects.filter(usuario=usuario).select_related('rol').first()
+    if user_role and user_role.rol:
+        return user_role.rol.nombre
+    return '-'
 
 
 def _build_client_rows(queryset, selected):
-    user_lookup = _build_user_lookup(queryset)
     config = {
-        'id': ('ID', lambda c: c.id),
-        'nombre': ('Nombre', lambda c: c.nombre),
-        'apellido': ('Apellido', lambda c: c.apellido),
-        'nombre1': ('Primer nombre', lambda c: user_lookup.get(str(c.correo or '').strip().lower(), {}).get('nombre1', '-')),
-        'nombre2': ('Segundo nombre', lambda c: user_lookup.get(str(c.correo or '').strip().lower(), {}).get('nombre2', '-')),
-        'apellido1': ('Primer apellido', lambda c: user_lookup.get(str(c.correo or '').strip().lower(), {}).get('apellido1', '-')),
-        'apellido2': ('Segundo apellido', lambda c: user_lookup.get(str(c.correo or '').strip().lower(), {}).get('apellido2', '-')),
-        'direccion': ('Dirección', lambda c: c.direccion),
-        'telefono': ('Teléfono', lambda c: c.telefono),
-        'correo': ('Correo', lambda c: c.correo),
-        'rol': ('Rol', lambda c: user_lookup.get(str(c.correo or '').strip().lower(), {}).get('rol', '-')),
+        'id_usuario': ('ID', lambda c: c.usuario_id),
+        'nombre': ('Nombre', lambda c: c.usuario.nombre or ''),
+        'apellido': ('Apellido', lambda c: c.usuario.apellido or ''),
+        'correo': ('Correo', lambda c: c.usuario.correo),
+        'telefono': ('Telefono', lambda c: c.usuario.telefono or ''),
+        'estado': ('Estado', lambda c: c.usuario.estado),
+        'rol': ('Rol', lambda c: _get_role_name(c.usuario)),
+        'fecha_nacimiento': ('Fecha nacimiento', lambda c: c.fecha_nacimiento),
+        'acepta_fidelizacion': ('Fidelizacion', lambda c: 'Si' if c.acepta_fidelizacion else 'No'),
     }
-    keys = [k for k in selected if k in config] or ['id', 'nombre', 'apellido', 'correo', 'telefono', 'rol', 'nombre1', 'apellido1']
+    keys = [k for k in selected if k in config] or CLIENT_DEFAULT_COLUMNS
     rows = []
     for c in queryset:
         row = {}
@@ -221,23 +117,24 @@ def _clamp_page_size(raw_value: str):
 
 @admin_required
 def lista_clientes(request):
-    clientes_qs = Clientes.activos.all()
+    # CORRECCIÓN: Quitamos la relación inexistente del select_related
+    clientes_qs = Cliente.objects.select_related('usuario').all()
     search = (request.GET.get('q') or '').strip()
     if search:
         clientes_qs = clientes_qs.filter(
-            Q(nombre__icontains=search) |
-            Q(apellido__icontains=search) |
-            Q(correo__icontains=search)
+            Q(usuario__nombre__icontains=search)
+            | Q(usuario__apellido__icontains=search)
+            | Q(usuario__correo__icontains=search)
+            | Q(usuario__telefono__icontains=search)
         )
 
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
     paginator = Paginator(clientes_qs, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    users_by_email = _build_user_lookup(page_obj.object_list)
+    
     for cliente in page_obj.object_list:
-        email_key = str(cliente.correo or '').strip().lower()
-        cliente.rol_usuario = users_by_email.get(email_key, {}).get('rol', '-')
+        cliente.rol_usuario = _get_role_name(cliente.usuario)
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(CLIENT_COLUMNS)] or CLIENT_DEFAULT_COLUMNS
     export_scope = (request.GET.get('export_scope') or 'page').lower()
@@ -284,45 +181,39 @@ def lista_clientes(request):
         'export_scope': export_scope,
         'export_page': export_page,
         'export_pages': export_pages,
-        'legacy_count': Clientes.activos.count(),
-        'rel_count': ClienteRelacional.objects.count(),
+        'total_count': Cliente.objects.count(),
     })
 
 @admin_required
 def crear_clientes(request):
     if request.method == 'POST':
-        form = ClientesForm(request.POST)
+        form = ClienteForm(request.POST)
         if form.is_valid():
-            cliente = form.save()
-            _sync_relational_cliente(cliente, role=form.cleaned_data.get('rol'), user_payload=form.cleaned_data)
+            form.save()
             return redirect('lista_clientes')
     else:
-        form = ClientesForm()
+        form = ClienteForm()
     return render(request, 'web/formulario.html', {'form': form})
 
 @admin_required
 def editar_clientes(request, id):
-    cliente = get_object_or_404(Clientes, id=id)
+    cliente = get_object_or_404(Cliente, pk=id)
+    usuario = cliente.usuario
     if request.method == 'POST':
-        form = ClientesForm(request.POST, instance=cliente)
+        form = ClienteForm(request.POST, usuario=usuario, perfil=cliente)
         if form.is_valid():
-            cliente = form.save()
-            _sync_relational_cliente(cliente, role=form.cleaned_data.get('rol'), user_payload=form.cleaned_data)
+            form.save()
             return redirect('lista_clientes')
     else:
-        form = ClientesForm(instance=cliente)
+        form = ClienteForm(usuario=usuario, perfil=cliente)
     return render(request, 'web/formulario.html', {'form': form})
 
 @admin_required
 def eliminar_clientes(request, id):
-    cliente = get_object_or_404(Clientes, id=id)
-    if cliente.is_active:
-        cliente.is_active = False
-        cliente.save(update_fields=['is_active'])
-        user = Usuario.objects.filter(email=cliente.correo).first()
-        if user:
-            user.estado_usuario = 'Inactivo'
-            user.save(update_fields=['estado_usuario'])
+    cliente = get_object_or_404(Cliente, pk=id)
+    usuario = cliente.usuario
+    usuario.estado = 'INACTIVO'
+    usuario.save(update_fields=['estado'])
     return redirect('lista_clientes')
 
 
@@ -366,7 +257,7 @@ def carga_masiva_clientes(request):
 
         df.columns = [str(c).strip().lower() for c in df.columns]
         columns = set(df.columns)
-        required_base = {'direccion', 'telefono', 'correo'}
+        required_base = {'telefono', 'correo'}
         missing_base = required_base - columns
         if missing_base:
             missing_text = ", ".join(sorted(missing_base))
@@ -382,12 +273,11 @@ def carga_masiva_clientes(request):
                 'errors_truncated': False,
             })
 
-        has_legacy_names = {'nombre', 'apellido'}.issubset(columns)
-        has_relational_names = {'nombre1', 'apellido1'}.issubset(columns)
-        if not (has_legacy_names or has_relational_names):
+        has_names = {'nombre', 'apellido'}.issubset(columns) or {'nombre1', 'apellido1'}.issubset(columns)
+        if not has_names:
             return _render_upload_page({
                 'status': 'error',
-                'summary': 'El archivo debe incluir nombre y apellido, o nombre1 y apellido1.',
+                'summary': 'El archivo debe incluir nombre y apellido (o nombre1 y apellido1).',
                 'creados': 0,
                 'duplicados': 0,
                 'errores_total': 1,
@@ -421,21 +311,11 @@ def carga_masiva_clientes(request):
         if email_candidates:
             existing_emails.update(
                 _normalize_email(v)
-                for v in Clientes.objects.filter(correo__in=list(email_candidates)).values_list('correo', flat=True)
-                if _normalize_email(v)
-            )
-            existing_emails.update(
-                _normalize_email(v)
-                for v in Usuario.objects.filter(email__in=list(email_candidates)).values_list('email', flat=True)
+                for v in Usuario.objects.filter(correo__in=list(email_candidates)).values_list('correo', flat=True)
                 if _normalize_email(v)
             )
 
         if phone_candidates:
-            existing_phones.update(
-                _normalize_phone(v)
-                for v in Clientes.objects.filter(telefono__in=list(phone_candidates)).values_list('telefono', flat=True)
-                if _normalize_phone(v)
-            )
             existing_phones.update(
                 _normalize_phone(v)
                 for v in Usuario.objects.filter(telefono__in=list(phone_candidates)).values_list('telefono', flat=True)
@@ -463,7 +343,6 @@ def carga_masiva_clientes(request):
             data = {
                 'nombre': nombre,
                 'apellido': apellido,
-                'direccion': _as_text(row.get('direccion', '')),
                 'telefono': _as_text(row.get('telefono', '')),
                 'correo': _as_text(row.get('correo', '')),
             }
@@ -500,19 +379,26 @@ def carga_masiva_clientes(request):
                 errores.append(f'Fila {idx + 1}: {role_error}')
                 continue
 
-            data.update({
-                'nombre1': nombre1_csv or nombre,
-                'nombre2': _as_text(row.get('nombre2', '')),
-                'apellido1': apellido1_csv or apellido,
-                'apellido2': _as_text(row.get('apellido2', '')),
+            fecha_nacimiento = _as_text(row.get('fecha_nacimiento', ''))
+            acepta_fid = _as_text(row.get('acepta_fidelizacion', '1'))
+            estado = _as_text(row.get('estado', 'ACTIVO')).upper() or 'ACTIVO'
+
+            form = ClienteForm({
+                'correo': data['correo'],
+                'nombre': data['nombre'],
+                'apellido': data['apellido'],
+                'telefono': data['telefono'],
+                'fecha_nacimiento': fecha_nacimiento,
+                'acepta_fidelizacion': acepta_fid not in {'0', 'false', 'no'},
+                'estado': estado,
+                'rol': role_obj.pk if role_obj else None,
                 'password': _as_text(row.get('password', row.get('contrasena', row.get('contraseña', '')))),
-                'rol': str(role_obj.pk),
+                'es_staff': _as_text(row.get('es_staff', '0')) in {'1', 'true', 'si', 'yes'},
+                'es_superusuario': _as_text(row.get('es_superusuario', '0')) in {'1', 'true', 'si', 'yes'},
             })
 
-            form = ClientesForm(data)
             if form.is_valid():
-                cliente = form.save()
-                _sync_relational_cliente(cliente, role=role_obj, user_payload=form.cleaned_data)
+                form.save()
                 creados += 1
             else:
                 errores.append(f'Fila {idx + 1}: {form.errors.as_text()}')

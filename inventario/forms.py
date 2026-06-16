@@ -1,91 +1,179 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 
-from .models import ProductoMaquillaje
- 
+from productos.models import VarianteProducto, Producto
+from .models import Bodega, SaldoInventario, TipoMovimientoInventario, MovimientoInventario
 
-class ProductoMaquillajeForm(forms.ModelForm):
+
+class VarianteProductoForm(forms.ModelForm):
     class Meta:
-        model = ProductoMaquillaje
-        fields = ['nombre', 'cantidad', 'estado', 'fecha_ingreso', 'stock', 'precio', 'descripcion', 'marca', 'proveedor', 'imagen']
+        model = VarianteProducto
+        fields = [
+            'producto',
+            'sku',
+            'codigo_barras',
+            'nombre_variante',
+            'precio',
+            'costo',
+            'peso_gramos',
+            'activo',
+        ]
         widgets = {
-            'fecha_ingreso': forms.DateInput(attrs={'type': 'date'}),
-            'cantidad': forms.NumberInput(attrs={'min': '0'}),
-            'stock': forms.NumberInput(attrs={'min': '0'}),
             'precio': forms.NumberInput(attrs={'min': '0', 'step': '0.01'}),
+            'costo': forms.NumberInput(attrs={'min': '0', 'step': '0.01'}),
+            'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': '0.01'}),
         }
         labels = {
-            'nombre': 'Nombre del Producto',
-            'cantidad': 'Cantidad',
-            'estado': 'Estado',
-            'fecha_ingreso': 'Fecha de Ingreso',
-            'stock': 'Stock Disponible',
+            'producto': 'Producto',
+            'sku': 'SKU',
+            'codigo_barras': 'Código de barras',
+            'nombre_variante': 'Nombre de variante',
             'precio': 'Precio',
-            'descripcion': 'Descripción',
-            'marca': 'Marca',
-            'proveedor': 'Proveedor',
-            'imagen': 'Imagen',
+            'costo': 'Costo',
+            'peso_gramos': 'Peso (g)',
+            'activo': 'Activo',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['producto'].queryset = Producto.objects.select_related('subcategoria').order_by('nombre')
+
+
+class SaldoInventarioForm(forms.ModelForm):
+    class Meta:
+        model = SaldoInventario
+        fields = ['bodega', 'cantidad_existencia', 'cantidad_reservada', 'nivel_reorden']
+        widgets = {
+            'cantidad_existencia': forms.NumberInput(attrs={'min': '0'}),
+            'cantidad_reservada': forms.NumberInput(attrs={'min': '0'}),
+            'nivel_reorden': forms.NumberInput(attrs={'min': '0'}),
+        }
+        labels = {
+            'bodega': 'Bodega',
+            'cantidad_existencia': 'Stock',
+            'cantidad_reservada': 'Reservado',
+            'nivel_reorden': 'Nivel reorden',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['bodega'].queryset = Bodega.objects.filter(activo=True).order_by('nombre')
+
+    def clean(self):
+        cleaned = super().clean()
+        existencia = cleaned.get('cantidad_existencia')
+        reservada = cleaned.get('cantidad_reservada')
+        if existencia is not None and reservada is not None and reservada > existencia:
+            raise ValidationError('La cantidad reservada no puede superar la existencia.')
+        return cleaned
+
+
+class MovimientoInventarioForm(forms.ModelForm):
+    """Formulario para registrar entradas y salidas de inventario."""
+    class Meta:
+        model = MovimientoInventario
+        fields = ['tipo_movimiento', 'bodega', 'notas']
+        labels = {
+            'tipo_movimiento': 'Tipo de movimiento',
+            'bodega': 'Bodega',
+            'notas': 'Notas',
+        }
+        widgets = {
+            'notas': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tipo_movimiento'].queryset = TipoMovimientoInventario.objects.all().order_by('descripcion')
+        self.fields['bodega'].queryset = Bodega.objects.filter(activo=True).order_by('nombre')
+
+
+class ItemMovimientoForm(forms.Form):
+    """Formulario para cada item (variante + cantidad) dentro de un movimiento."""
+    variante = forms.ModelChoiceField(
+        queryset=VarianteProducto.objects.filter(activo=True).select_related('producto').order_by('producto__nombre'),
+        label='Variante',
+    )
+    cantidad = forms.IntegerField(min_value=1, label='Cantidad')
+    costo_unitario = forms.DecimalField(
+        min_value=0,
+        required=False,
+        label='Costo unitario',
+        widget=forms.NumberInput(attrs={'step': '0.01'}),
+    )
+
+
+# Form de compatibilidad usado por tests antiguos que esperaban
+# `ProductoMaquillajeForm` en el módulo `inventario.forms`.
+from .models import ProductoMaquillaje
+
+
+class ProductoMaquillajeForm(forms.ModelForm):
+    imagen = forms.FileField(required=False)
+
+    class Meta:
+        model = ProductoMaquillaje
+        fields = [
+            'nombre',
+            'cantidad',
+            'estado',
+            'fecha_ingreso',
+            'stock',
+            'precio',
+            'descripcion',
+            'marca',
+            'proveedor',
+            'imagen',
+            'is_active',
+        ]
+
+    def clean_fecha_ingreso(self):
+        fecha = self.cleaned_data.get('fecha_ingreso')
+        if fecha:
+            from django.utils import timezone
+            if fecha > timezone.now().date():
+                raise ValidationError('La fecha de ingreso no puede ser futura.')
+        return fecha
 
     def clean_nombre(self):
         nombre = (self.cleaned_data.get('nombre') or '').strip()
         if not nombre:
-            raise ValidationError('El nombre es obligatorio.')
-        if len(nombre) < 3:
-            raise ValidationError('El nombre debe tener al menos 3 caracteres.')
+            raise ValidationError('El nombre es requerido.')
         return nombre
-
-    def clean_descripcion(self):
-        descripcion = (self.cleaned_data.get('descripcion') or '').strip()
-        if len(descripcion) < 5:
-            raise ValidationError('Incluye una descripción de al menos 5 caracteres.')
-        return descripcion
-
-    def clean_marca(self):
-        marca = (self.cleaned_data.get('marca') or '').strip()
-        if not marca:
-            raise ValidationError('La marca es obligatoria.')
-        return marca[:100]
-
-    def clean_fecha_ingreso(self):
-        fecha = self.cleaned_data.get('fecha_ingreso')
-        if not fecha:
-            raise ValidationError('La fecha de ingreso es obligatoria.')
-        today = timezone.now().date()
-        if fecha > today:
-            raise ValidationError('La fecha de ingreso no puede ser futura.')
-        return fecha
-
-    def clean_proveedor(self):
-        proveedor = (self.cleaned_data.get('proveedor') or '').strip()
-        return proveedor or 'Sin proveedor'
 
     def clean_precio(self):
         precio = self.cleaned_data.get('precio')
-        if precio is None or precio <= 0:
-            raise ValidationError('El precio debe ser mayor a 0.')
+        if precio in (None, ''):
+            raise ValidationError('El precio es requerido.')
+        try:
+            from decimal import Decimal
+            Decimal(str(precio))
+        except Exception:
+            raise ValidationError('Precio inválido.')
         return precio
 
-    def clean(self):
-        cleaned = super().clean()
-        cantidad = cleaned.get('cantidad') or 0
-        stock = cleaned.get('stock') or 0
-        if cantidad < 0:
-            self.add_error('cantidad', 'La cantidad no puede ser negativa.')
-        if stock < 0:
-            self.add_error('stock', 'El stock no puede ser negativo.')
-        if cantidad and stock and stock > cantidad:
-            self.add_error('stock', 'El stock no puede superar la cantidad ingresada.')
-        return cleaned
+    def clean_stock(self):
+        stock = self.cleaned_data.get('stock')
+        if stock is None:
+            return stock
+        try:
+            if int(stock) < 0:
+                raise ValidationError('Stock no puede ser negativo.')
+        except (TypeError, ValueError):
+            raise ValidationError('Stock inválido.')
+        return stock
 
-    def clean_imagen(self):
+    def clean_descripcion(self):
+        desc = (self.cleaned_data.get('descripcion') or '').strip()
+        if not desc:
+            raise ValidationError('La descripción es requerida.')
+        return desc
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
         imagen = self.cleaned_data.get('imagen')
-        if not imagen:
-            return imagen
-        content_type = getattr(imagen, 'content_type', '')
-        if content_type and not content_type.startswith('image/'):
-            raise ValidationError('Solo se permiten archivos de imagen.')
-        if imagen.size > 5 * 1024 * 1024:
-            raise ValidationError('La imagen no debe superar 5 MB.')
-        return imagen
+        if imagen:
+            instance.imagen = getattr(imagen, 'name', str(imagen))
+        if commit:
+            instance.save()
+        return instance

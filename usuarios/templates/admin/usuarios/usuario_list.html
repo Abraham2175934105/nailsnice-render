@@ -1,0 +1,146 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-5 px-4" style="font-family: 'Poppins', sans-serif; color: #4A4A4A;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1" style="font-family: 'Playfair Display', serif; color: #8A2B59; font-weight: 700;">Gestión de Usuarios</h2>
+            <p class="text-muted small">Panel de Control de Identidad y Seguridad (RBAC)</p>
+        </div>
+        <a href="{% url 'usuarios:usuario_create' %}" class="btn btn-registrar-nn px-4 py-2 text-white shadow-sm">
+            <i class="fas fa-user-plus me-2"></i> Registrar Usuario
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-dismissible fade show border-0 shadow-sm nn-alert-{% if message.tags == 'error' %}error{% else %}success{% endif %}" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm mb-5" style="border-radius: 20px; overflow: hidden;">
+        <div class="card-header bg-white py-3 border-0 mt-2 px-4">
+            <h5 class="m-0" style="font-family: 'Playfair Display', serif; color: #5A2440; font-weight: 600;">Estructura de Usuarios Activos</h5>
+        </div>
+        <div class="card-body px-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" style="border-color: #F8EDF1;">
+                    <thead style="background-color: #FAF4F6; color: #8A2B59;">
+                        <tr>
+                            <th class="py-3 px-3" style="border-radius: 10px 0 0 10px; font-weight: 600;">Nombre Completo</th>
+                            <th class="py-3" style="font-weight: 600;">Correo Electrónico</th>
+                            <th class="py-3" style="font-weight: 600;">Teléfono</th>
+                            <th class="py-3" style="font-weight: 600;">Rol Asignado</th>
+                            <th class="py-3" style="font-weight: 600;">Estado</th>
+                            <th class="py-3 px-3 text-end" style="border-radius: 0 10px 10px 0; font-weight: 600;">Acciones UI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in usuarios %}
+                        <tr style="transition: all 0.2s;">
+                            <td class="py-3 px-3"><strong>{{ u.nombre }} {{ u.apellido }}</strong></td>
+                            <td>{{ u.correo }}</td>
+                            <td>{{ u.telefono|default:"—" }}</td>
+                            <td>
+                                <span class="badge px-3 py-2 text-dark" style="background-color: #E8F4F8; border-radius: 30px; font-weight: 500;">
+                                    {{ u.roles_asignados.first.id_rol.nombre|default:"Sin Rol" }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if u.estado == 'ACTIVO' %}
+                                    <span class="badge px-3 py-2 text-white bg-nn-activo">Activo</span>
+                                {% else %}
+                                    <span class="badge px-3 py-2 text-white bg-nn-bloqueado">Bloqueado</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-3 text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <a href="{% url 'usuarios:usuario_edit' u.id_usuario %}" class="btn btn-sm btn-edit-nn px-3">
+                                        <i class="fas fa-edit me-1"></i> Editar
+                                    </a>
+                                    
+                                    {% if u.estado == 'ACTIVO' %}
+                                        <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn btn-sm btn-status-bloquear px-3 text-white">
+                                            <i class="fas fa-user-slash me-1"></i> Bloquear
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn btn-sm btn-status-activar px-3 text-white">
+                                            <i class="fas fa-user-check me-1"></i> Activar
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">No se encontraron usuarios registrados en la base de datos local.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-registrar-nn {
+        background-color: #C05C82; 
+        border-radius: 50px; 
+        font-weight: 500; 
+        transition: all 0.3s; 
+        border: none;
+    }
+    .btn-registrar-nn:hover {
+        background-color: #A64B6E;
+        color: white;
+    }
+    .btn-edit-nn {
+        background-color: #FAF4F6; 
+        color: #8A2B59; 
+        border-radius: 30px; 
+        font-weight: 500; 
+        border: 1px solid #EAD9E0;
+    }
+    .btn-edit-nn:hover {
+        background-color: #EAD9E0;
+        color: #5A2440;
+    }
+    .bg-nn-activo {
+        background-color: #61B15A; 
+        border-radius: 30px; 
+        font-weight: 500;
+    }
+    .bg-nn-bloqueado {
+        background-color: #E76F51; 
+        border-radius: 30px; 
+        font-weight: 500;
+    }
+    .btn-status-bloquear {
+        background-color: #D9534F; 
+        border-radius: 30px; 
+        font-weight: 500; 
+        border: none;
+    }
+    .btn-status-activar {
+        background-color: #4BB543; 
+        border-radius: 30px; 
+        font-weight: 500; 
+        border: none;
+    }
+    .nn-alert-error {
+        border-radius: 15px; 
+        background-color: #FDF0F2; 
+        color: #C0392B;
+    }
+    .nn-alert-success {
+        border-radius: 15px; 
+        background-color: #F0FDF4; 
+        color: #1E7E34;
+    }
+</style>
+{% endblock %}

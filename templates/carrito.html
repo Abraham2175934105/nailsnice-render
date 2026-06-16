@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NailsNice - Carrito</title>
+    <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
@@ -39,11 +40,11 @@
                         <li class="nav-user-chip">
                             <div class="nav-user-text">
                                 <span class="nav-user-eyebrow">Hola</span>
-                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                                <span class="nav-user-name">{{ request.user.nombre|default:request.user.correo }}</span>
                             </div>
                             <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
                         </li>
-                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                        {% if request.user.is_superuser or request.user.rol_asignado.rol.nombre == 'Administrador' %}
                             <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
                         {% endif %}
                         <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
@@ -87,8 +88,8 @@
                     {% for item in items %}
                         <article class="cart-card">
                             <div class="cart-card__media">
-                                {% if item.producto.imagen %}
-                                    <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}" loading="lazy" onerror="this.style.display='none'; this.parentElement.querySelector('.placeholder-image').style.display='flex';">
+                                {% if item.imagen_url %}
+                                    <img src="{{ item.imagen_url }}" alt="{{ item.producto.nombre }}" loading="lazy" onerror="this.style.display='none'; this.parentElement.querySelector('.placeholder-image').style.display='flex';">
                                     <div class="placeholder-image" style="display:none;">💅</div>
                                 {% else %}
                                     <div class="placeholder-image">💅</div>
@@ -97,25 +98,25 @@
                             <div class="cart-card__body">
                                 <div class="cart-card__header">
                                     <div>
-                                        <p class="cart-chip">ID {{ item.producto.id_inventario }}</p>
+                                        <p class="cart-chip">ID {{ item.inventario_id }}</p>
                                         <h3>{{ item.producto.nombre }}</h3>
-                                        <p class="cart-muted">Stock disponible: {{ item.producto.stock }}</p>
+                                        <p class="cart-muted">Stock disponible: {{ item.stock_disponible }}</p>
                                     </div>
                                     <div class="cart-price">${{ item.subtotal|floatformat:0 }}</div>
                                 </div>
 
                                 <div class="cart-actions">
-                                    <form class="cart-qty" method="post" action="{% url 'carrito_actualizar' product_id=item.producto.id_inventario %}">
+                                    <form class="cart-qty" method="post" action="{% url 'carrito_actualizar' product_id=item.inventario_id %}">
                                         {% csrf_token %}
-                                        <label for="qty-{{ item.producto.id_inventario }}">Cantidad</label>
+                                        <label for="qty-{{ item.inventario_id }}">Cantidad</label>
                                         <div class="cart-qty__controls">
-                                            <input id="qty-{{ item.producto.id_inventario }}" name="cantidad" type="number" min="1" max="10" value="{{ item.cantidad }}" aria-label="Cantidad" />
+                                            <input id="qty-{{ item.inventario_id }}" name="cantidad" type="number" min="1" max="10" value="{{ item.cantidad }}" aria-label="Cantidad" />
                                             <button type="submit" class="btn-primary btn-compact">Actualizar</button>
                                         </div>
                                         <p class="cart-hint">Máximo 10 unidades. Respetando stock disponible.</p>
                                     </form>
 
-                                    <form method="post" action="{% url 'carrito_eliminar' product_id=item.producto.id_inventario %}">
+                                    <form method="post" action="{% url 'carrito_eliminar' product_id=item.inventario_id %}">
                                         {% csrf_token %}
                                         <button type="submit" class="btn-ghost">Eliminar</button>
                                     </form>

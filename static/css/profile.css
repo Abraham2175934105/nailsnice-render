@@ -16,7 +16,7 @@
 
 body.profile-page {
     margin: 0;
-    font-family: 'Manrope', 'Poppins', sans-serif;
+    font-family: var(--nn-font-sans, 'Manrope', 'Poppins', sans-serif);
     color: var(--pf-text);
     background:
         radial-gradient(900px 520px at 8% 0%, rgba(216, 108, 159, 0.22), transparent 54%),
@@ -120,6 +120,33 @@ h3 {
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+    .btn-primary:active,
+    .btn-secondary:active,
+    .btn-ghost:active {
+        transform: translateY(0) scale(0.98);
+    }
+    .btn-primary.is-loading,
+    .btn-secondary.is-loading,
+    .btn-ghost.is-loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.85;
+    }
+    .btn-primary.is-loading::after,
+    .btn-secondary.is-loading::after,
+    .btn-ghost.is-loading::after {
+        content: '';
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        width: 14px;
+        height: 14px;
+        margin-top: -7px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        border-top-color: var(--pf-primary-strong);
+        animation: spin 0.7s linear infinite;
+    }
 
 .btn-primary {
     background: linear-gradient(130deg, var(--pf-primary), var(--pf-primary-strong));
@@ -518,6 +545,7 @@ h3 {
     border-radius: 12px;
     border: 1px solid rgba(22, 101, 52, 0.12);
     box-shadow: 0 14px 30px rgba(25, 25, 25, 0.14);
+        animation: panelIn 0.25s ease;
 }
 
 .screen-loader {

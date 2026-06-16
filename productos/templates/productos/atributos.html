@@ -1,163 +1,219 @@
 {% extends 'admin_base.html' %}
 {% load static %}
 
-{% block title %}Catálogos{% endblock %}
-{% block page_title %}Catálogos de producto{% endblock %}
+{% block title %}Gestión de Atributos{% endblock %}
+{% block page_title %}Atributos del Catálogo{% endblock %}
 
 {% block page_actions %}
 <div class="page-actions">
-  <a href="{% url 'catalogo_productos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-box"></use></svg>Catálogo</a>
-  <a href="{% url 'catalogos_admin' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Refrescar</a>
+  <a href="{% url 'catalogo_productos' %}" class="btn-pill">
+    <svg aria-hidden="true"><use href="#icon-arrow-left"></use></svg>Volver al Catálogo
+  </a>
 </div>
 {% endblock %}
 
 {% block content %}
-{% if mensaje_ok %}<div class="glass-panel" style="padding:12px; color: var(--success);">{{ mensaje_ok }}</div>{% endif %}
-{% if mensaje_err %}<div class="glass-panel" style="padding:12px; color: var(--danger);">{{ mensaje_err }}</div>{% endif %}
+{% if mensaje_ok %}
+  <div class="glass-panel u-p-12 u-mb-14 u-text-success" style="border-left: 4px solid var(--clr-success, #28a745); background: rgba(40, 167, 69, 0.1);">
+    <strong>¡Éxito!</strong> {{ mensaje_ok }}
+  </div>
+{% endif %}
 
-<div class="glass-panel" style="padding:18px;">
-  <div class="form-grid" style="display:flex; flex-direction:column; gap:18px;">
+{% if mensaje_err %}
+  <div class="glass-panel u-p-12 u-mb-14 u-text-danger" style="border-left: 4px solid var(--clr-danger, #dc3545); background: rgba(220, 53, 69, 0.1);">
+    <strong>Error:</strong> {{ mensaje_err }}
+  </div>
+{% endif %}
 
-    <section class="card-block">
-      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <h3 style="margin:0;">Categorías</h3>
-        <span class="pill">{{ categorias|length }} registradas</span>
-      </header>
-      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
-        {% csrf_token %}
-        <input type="hidden" name="entity" value="categoria">
-        <input type="hidden" name="action" value="create">
-        <label>Nombre</label>
-        {{ categoria_form.nombre_categoria }}
-        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
-      </form>
-      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
-        <tbody>
-          {% for item in categorias %}
-          <tr>
-            <td style="width:100%;">
-              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="hidden" name="entity" value="categoria">
-                <input type="hidden" name="pk" value="{{ item.id }}">
-                <input type="text" name="nombre_categoria" value="{{ item.nombre_categoria }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
-                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar categoría?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin categorías</strong><span>Agrega la primera categoría para organizar productos.</span></div></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
+<div class="glass-panel u-p-16 u-mb-14" style="background: rgba(255, 255, 255, 0.03);">
+  <p class="section-subtitle" style="margin: 0; color: var(--clr-muted, #b3b3b3);">
+    <svg aria-hidden="true" style="width:16px; height:16px; fill:currentColor; vertical-align:middle; margin-right:6px;"><use href="#icon-layers"></use></svg>
+    <strong>Nota de Arquitectura:</strong> De acuerdo con las reglas de negocio de Nails Nice, las categorías y marcas se crean y editan centralizadamente desde el módulo de <strong>Inventario</strong>. Desde este panel puedes visualizar las existentes y retirar de catálogo aquellas que no tengan dependencias activas.
+  </p>
+</div>
 
-    <section class="card-block">
-      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <h3 style="margin:0;">Marcas</h3>
-        <span class="pill">{{ marcas|length }} registradas</span>
-      </header>
-      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
-        {% csrf_token %}
-        <input type="hidden" name="entity" value="marca">
-        <input type="hidden" name="action" value="create">
-        <label>Nombre</label>
-        {{ marca_form.nombre_marca }}
-        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
-      </form>
-      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
-        <tbody>
-          {% for item in marcas %}
-          <tr>
-            <td style="width:100%;">
-              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="hidden" name="entity" value="marca">
-                <input type="hidden" name="pk" value="{{ item.id }}">
-                <input type="text" name="nombre_marca" value="{{ item.nombre_marca }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
-                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar marca?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin marcas</strong><span>Registra marcas para completar la clasificación comercial.</span></div></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
+<div class="u-mb-14" style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+  <button type="button" class="btn-pill active" data-tab-target="tab-categorias">
+    Categorías ({{ categorias|length }})
+  </button>
+  <button type="button" class="btn-pill" data-tab-target="tab-marcas">
+    Marcas ({{ marcas|length }})
+  </button>
+</div>
 
-    <section class="card-block">
-      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <h3 style="margin:0;">Colores</h3>
-        <span class="pill">{{ colores|length }} registrados</span>
-      </header>
-      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
-        {% csrf_token %}
-        <input type="hidden" name="entity" value="color">
-        <input type="hidden" name="action" value="create">
-        <label>Nombre</label>
-        {{ color_form.nombre_color }}
-        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
-      </form>
-      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
-        <tbody>
-          {% for item in colores %}
-          <tr>
-            <td style="width:100%;">
-              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="hidden" name="entity" value="color">
-                <input type="hidden" name="pk" value="{{ item.id }}">
-                <input type="text" name="nombre_color" value="{{ item.nombre_color }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
-                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar color?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin colores</strong><span>Define colores para mejorar filtros y catálogo.</span></div></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-
-    <section class="card-block">
-      <header class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <h3 style="margin:0;">Unidades de medida</h3>
-        <span class="pill">{{ unidades|length }} registradas</span>
-      </header>
-      <form method="post" class="glass-form" style="margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
-        {% csrf_token %}
-        <input type="hidden" name="entity" value="unidad">
-        <input type="hidden" name="action" value="create">
-        <label>Nombre</label>
-        {{ unidad_form.nombre_medida }}
-        <button type="submit" class="btn-pill btn-primary" style="margin-top:8px;"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Agregar</button>
-      </form>
-      <table class="glass-table" style="border-radius:12px; overflow:hidden; border-collapse:separate; border-spacing:0 10px;">
-        <tbody>
-          {% for item in unidades %}
-          <tr>
-            <td style="width:100%;">
-              <form method="post" style="display:flex; gap:10px; align-items:center; width:100%; flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="hidden" name="entity" value="unidad">
-                <input type="hidden" name="pk" value="{{ item.id }}">
-                <input type="text" name="nombre_medida" value="{{ item.nombre_medida }}" class="input" style="flex:1; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                <button type="submit" name="action" value="update" class="btn-pill btn-xs"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Guardar</button>
-                <button type="submit" name="action" value="delete" class="btn-pill btn-danger-soft btn-xs" onclick="return confirm('¿Eliminar unidad?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td class="empty-row-cell"><div class="empty-state-inline"><strong>Sin unidades</strong><span>Agrega unidades para mantener medidas consistentes.</span></div></td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
-
+<div id="tab-categorias" class="tab-content active-content">
+  <div class="glass-panel glass-table skeleton-onload">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 100px;">ID</th>
+          <th>Nombre de la Categoría</th>
+          <th style="width: 150px; text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat in categorias %}
+        <tr>
+          <td>{{ cat.id_categoria }}</td>
+          <td><strong>{{ cat.nombre }}</strong></td>
+          <td style="text-align: right;">
+            <button type="button" class="btn-ghost btn-xs u-text-danger" 
+                    data-delete-btn 
+                    data-entity="categoria" 
+                    data-pk="{{ cat.id_categoria }}" 
+                    data-name="{{ cat.nombre }}">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="empty-row-cell">
+            <div class="empty-state-inline">
+              <strong>No hay categorías registradas</strong>
+              <span>Sincroniza o registra nuevas categorías desde el módulo de Inventario.</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
+
+<div id="tab-marcas" class="tab-content" style="display: none;">
+  <div class="glass-panel glass-table skeleton-onload">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 100px;">ID</th>
+          <th>Nombre de la Marca</th>
+          <th style="width: 150px; text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for marca in marcas %}
+        <tr>
+          <td>{{ marca.id_marca }}</td>
+          <td><strong>{{ marca.nombre }}</strong></td>
+          <td style="text-align: right;">
+            <button type="button" class="btn-ghost btn-xs u-text-danger" 
+                    data-delete-btn 
+                    data-entity="marca" 
+                    data-pk="{{ marca.id_marca }}" 
+                    data-name="{{ marca.nombre }}">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="empty-row-cell">
+            <div class="empty-state-inline">
+              <strong>No hay marcas registradas</strong>
+              <span>Sincroniza o registra nuevas marcas desde el módulo de Inventario.</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirm-delete-modal">
+  <div class="glass-modal" style="max-width: 450px;">
+    <div class="modal-header">
+      <div>
+        <h3 class="u-text-danger">¿Confirmar eliminación?</h3>
+        <p class="section-subtitle">Esta acción removerá la entidad seleccionada si no tiene productos asociados.</p>
+      </div>
+    </div>
+    
+    <form method="post" id="delete-form" class="u-p-16">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="entity" id="delete-entity-input" value="">
+      <input type="hidden" name="pk" id="delete-pk-input" value="">
+      
+      <div class="u-mb-14" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: var(--radius-sm, 4px);">
+        <span class="section-subtitle">Elemento a remover:</span>
+        <div id="delete-target-name" style="font-weight: bold; font-size: 1.1rem; margin-top: 4px;">-</div>
+      </div>
+
+      <div class="form-actions form-actions-end">
+        <button type="button" class="btn-ghost" data-close-delete>Cancelar</button>
+        <button type="submit" class="btn-pill btn-primary" style="background-color: var(--clr-danger, #dc3545);">
+          Confirmar y Eliminar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. LÓGICA DE INTERCAMBIO DE PESTAÑAS (TABS)
+    const tabButtons = document.querySelectorAll('[data-tab-target]');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // Quitar clase activa a todos los botones
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        // Ocultar todos los contenidos
+        tabContents.forEach(content => content.style.display = 'none');
+
+        // Activar botón actual
+        this.classList.add('active');
+        // Mostrar contenido seleccionado
+        const targetId = this.getAttribute('data-tab-target');
+        const targetContent = document.getElementById(targetId);
+        if (targetContent) {
+          targetContent.style.display = 'block';
+        }
+      });
+    });
+
+    // 2. LÓGICA DEL MODAL DE ELIMINACIÓN AUTOMATIZADO
+    const deleteModal = document.getElementById('confirm-delete-modal');
+    const deleteForm = document.getElementById('delete-form');
+    const entityInput = document.getElementById('delete-entity-input');
+    const pkInput = document.getElementById('delete-pk-input');
+    const targetNameDisplay = document.getElementById('delete-target-name');
+    
+    const deleteButtons = document.querySelectorAll('[data-delete-btn]');
+    const closers = document.querySelectorAll('[data-close-delete]');
+
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const entity = this.getAttribute('data-entity');
+        const pk = this.getAttribute('data-pk');
+        const name = this.getAttribute('data-name');
+
+        // Cargar los inputs ocultos del formulario con la info de la fila
+        if (entityInput) entityInput.value = entity;
+        if (pkInput) pkInput.value = pk;
+        if (targetNameDisplay) targetNameDisplay.textContent = `[${entity.toUpperCase()}] ${name}`;
+
+        // Mostrar el modal agregando la clase utilitaria del proyecto
+        if (deleteModal) deleteModal.classList.add('show');
+      });
+    });
+
+    // Cerrar modal
+    closers.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (deleteModal) deleteModal.classList.remove('show');
+      });
+    });
+
+    // Remover esqueletos de carga glass
+    document.querySelectorAll('.skeleton-onload').forEach(function(el) { 
+      setTimeout(() => el.classList.remove('skeleton-onload'), 350); 
+    });
+  });
+</script>
 {% endblock %}

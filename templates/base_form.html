@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Formulario{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
   <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260401">
   {% block extra_head %}{% endblock %}
 </head>
@@ -13,13 +14,24 @@
   {% if messages %}
     <div class="toast-stack">
       {% for message in messages %}
-        <div class="toast toast-info">{{ message }}</div>
+        <div class="toast {% if 'error' in message.tags %}toast-error{% elif 'success' in message.tags %}toast-success{% elif 'warning' in message.tags %}toast-warning{% else %}toast-info{% endif %}">{{ message }}</div>
       {% endfor %}
     </div>
   {% endif %}
   <div class="form-shell-centered">
     {% block content %}{% endblock %}
   </div>
+  <script>
+    document.addEventListener('submit', function(event) {
+      const form = event.target;
+      if (!form || form.nodeName !== 'FORM') return;
+      const submit = form.querySelector('button[type="submit"]');
+      if (!submit) return;
+      submit.classList.add('is-loading');
+      submit.setAttribute('aria-busy', 'true');
+      submit.disabled = true;
+    });
+  </script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>

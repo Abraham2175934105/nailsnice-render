@@ -1,0 +1,104 @@
+{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="container mt-5 px-4 mb-5" style="max-width: 750px; font-family: 'Poppins', sans-serif; color: #4A4A4A;">
+    
+    <div class="card border-0 shadow-sm" style="border-radius: 24px; overflow: hidden;">
+        <div class="card-header py-4 border-0 text-center" style="background-color: #FAF4F6; border-bottom: 1px solid #F3E5EB !important;">
+            <h4 class="m-0" style="font-family: 'Playfair Display', serif; color: #8A2B59; font-weight: 700;">
+                {% if form.instance.pk %}📝 Modificar Cuenta de Usuario{% else %}✨ Alta de Nuevo Usuario{% endif %}
+            </h4>
+            <p class="text-muted small mb-0 mt-1">Registra y vincula accesos directos de inmediato</p>
+        </div>
+        
+        <div class="card-body p-4 px-5">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                    <div class="alert alert-danger border-0 p-3 mb-4" style="border-radius: 12px; background-color: #FDF0F2; color: #C0392B; font-size: 0.9rem;">
+                        <i class="fas fa-exclamation-circle me-2"></i> Verifique los campos obligatorios o formatos incorrectos.
+                    </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px;">NOMBRE</label>
+                        {{ form.nombre }}
+                        <div class="text-danger small mt-1">{{ form.nombre.errors }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px;">APELLIDO</label>
+                        {{ form.apellido }}
+                        <div class="text-danger small mt-1">{{ form.apellido.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px;">CORREO ELECTRÓNICO</label>
+                    {{ form.correo }}
+                    <div class="text-danger small mt-1">{{ form.correo.errors }}</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px;">
+                        {% if form.instance.pk %}CAMBIAR CONTRASEÑA (OPCIONAL){% else %}CONTRASEÑA INICIAL{% endif %}
+                    </label>
+                    {{ form.password }}
+                    {% if form.instance.pk %}
+                        <small class="form-text text-muted d-block mt-1" style="font-size: 0.8rem;">Dejar en blanco para mantener la contraseña actual segura.</small>
+                    {% endif %}
+                    <div class="text-danger small mt-1">{{ form.password.errors }}</div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px;">TELÉFONO MÓVIL</label>
+                        {{ form.telefono }}
+                        <div class="text-danger small mt-1">{{ form.telefono.errors }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px;">ESTADO DE ACCESO</label>
+                        {{ form.estado }}
+                        <div class="text-danger small mt-1">{{ form.estado.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="mb-4 mt-4 p-4" style="background-color: #FAF4F6; border-radius: 16px; border: 1px dashed #EAD9E0;">
+                    <label class="form-label font-weight-bold text-dark mb-2" style="font-size: 0.95rem;">
+                        <i class="fas fa-shield-alt text-secondary me-2"></i> Asignación del Rol de Sistema
+                    </label>
+                    {{ form.rol }}
+                    <div class="text-danger small mt-1">{{ form.rol.errors }}</div>
+                    <span class="text-muted d-block mt-2" style="font-size: 0.8rem; line-height: 1.4;">
+                        Al guardar, se escribirá automáticamente en la tabla intermedia `usuario_rol` garantizando la consistencia del control de accesos en base al requerimiento.
+                    </span>
+                </div>
+
+                <div class="d-flex justify-content-end gap-3 mt-4">
+                    <a href="{% url 'usuarios:usuario_list' %}" class="btn px-4 py-2" 
+                       style="border-radius: 50px; background-color: #F3E5EB; color: #8A2B59; font-weight: 500; border: none;">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="btn px-5 py-2 text-white shadow-sm" 
+                       style="border-radius: 50px; background-color: #C05C82; font-weight: 500; border: none; transition: all 0.3s;">
+                        <i class="fas fa-save me-2"></i> Guardar Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        border-radius: 12px !important;
+        border: 1px solid #E2D1D8 !important;
+        padding: 10px 15px !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #C05C82 !important;
+        box-shadow: 0 0 0 0.25rem rgba(192, 92, 130, 0.15) !important;
+    }
+</style>
+{% endblock %}

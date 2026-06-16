@@ -47,7 +47,7 @@
   <div class="modal-header" style="justify-content: center; align-items:center;">
     <div>
       <h3>Carga masiva</h3>
-      <p class="section-subtitle">Sube CSV o Excel con columnas obligatorias: direccion, telefono, correo y nombres por legacy (nombre, apellido) o relacional (nombre1, apellido1). Opcionales: nombre2, apellido2, rol o id_rol, password o contrasena.</p>
+      <p class="section-subtitle">Sube CSV o Excel con columnas obligatorias: correo, telefono y nombres (nombre/apellido o nombre1/apellido1). Opcionales: fecha_nacimiento, acepta_fidelizacion, estado, rol o id_rol, password o contrasena, es_staff, es_superusuario.</p>
     </div>
   </div>
 
@@ -103,7 +103,7 @@
       <label>Archivo CSV o Excel</label>
       <input type="file" name="file" accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
     </div>
-    <div class="pill-tag">Tip: teléfono con 10 dígitos, correo con @. Si no envías rol, se asigna Cliente; para admin puedes usar Admin o Administrador.</div>
+    <div class="pill-tag">Tip: correo con @. Si no envías rol, se asigna Cliente; para admin puedes usar Admin o Administrador.</div>
     <div class="pill-tag">Si envías password, debe incluir mayúscula, minúscula, número y carácter especial.</div>
     <div class="pill-tag">No se permiten duplicados de correo o teléfono (ni en el archivo ni contra los datos existentes).</div>
     <div class="form-actions" style="justify-content:flex-end; gap:10px;">

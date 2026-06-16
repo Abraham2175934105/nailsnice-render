@@ -1,19 +1,13 @@
 from rest_framework import serializers
-from .models import ProductoMaquillaje
+from .models import Bodega, SaldoInventario
 
-
-class ProductoMaquillajeSerializer(serializers.ModelSerializer):
+class BodegaSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ProductoMaquillaje
-        fields = [
-            'id_inventario',
-            'nombre',
-            'descripcion',
-            'marca',
-            'precio',
-            'stock',
-            'imagen',
-            'estado',
-            'fecha_ingreso',
-            'cantidad',
-        ]
+        model = Bodega
+        fields = '__all__'
+
+
+class SaldoInventarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaldoInventario
+        fields = '__all__'

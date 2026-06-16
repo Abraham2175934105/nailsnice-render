@@ -6,20 +6,20 @@
 }
 
 :root {
-    --text: #2b2b2b;
-    --muted: #6b6b6b;
-    --accent: #d67aa7; /* rosa pastel */
-    --accent-2: #b85b82; /* rosa vino suave */
-    --accent-3: #a24f72;
-    --bg-1: #fff5f8;
-    --bg-2: #ffe4f0;
+    --text: var(--nn-color-text, #2b2b2b);
+    --muted: var(--nn-color-muted, #6b6b6b);
+    --accent: var(--nn-color-accent, #d67aa7); /* rosa pastel */
+    --accent-2: var(--nn-color-accent-strong, #b85b82); /* rosa vino suave */
+    --accent-3: var(--nn-color-accent-strong, #a24f72);
+    --bg-1: var(--nn-color-bg-1, #fff5f8);
+    --bg-2: var(--nn-color-bg-2, #ffe4f0);
     --bg-3: #eef3ff;
     --panel-border: rgba(214, 122, 167, 0.22);
-    --shadow-soft: 0 12px 35px rgba(25, 25, 25, 0.10);
+    --shadow-soft: var(--nn-shadow-soft, 0 12px 35px rgba(25, 25, 25, 0.10));
 }
 
 body {
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--nn-font-sans, 'Poppins', sans-serif);
     line-height: 1.6;
     color: var(--text);
     background: radial-gradient(1100px 700px at 10% 0%, rgba(214, 122, 167, 0.15), transparent 55%),
@@ -399,6 +399,36 @@ body {
 .btn-secondary:hover {
     background: rgba(184, 91, 130, 0.95);
     color: white;
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+.btn-ghost:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.btn-primary.is-loading,
+.btn-secondary.is-loading,
+.btn-ghost.is-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+}
+
+.btn-primary.is-loading::after,
+.btn-secondary.is-loading::after,
+.btn-ghost.is-loading::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-top-color: var(--accent-2);
+    animation: spin 0.7s linear infinite;
 }
 
 .hero-image {
@@ -833,6 +863,7 @@ body {
     transform: translateY(0) scale(1);
     filter: blur(0);
     transition: opacity 0.75s ease, transform 0.75s ease;
+    animation: fadeInUp 0.35s ease;
 }
 
 .reveal--visible {
@@ -1529,6 +1560,7 @@ body {
     border-radius: 14px;
     box-shadow: 0 12px 30px rgba(25,25,25,0.18);
     font-size: 0.95rem;
+    animation: fadeInUp 0.35s ease;
 }
 .toast.toast--error { background: #fee2e2; color: #b91c1c; }
 .toast.toast--info { background: #e0f2fe; color: #075985; }
@@ -1580,6 +1612,7 @@ body {
 .loader-sub { margin: 0; color: var(--muted); font-size: 0.95rem; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes panelIn {
     from { opacity: 0; transform: translateY(14px) scale(0.992); }
     to { opacity: 1; transform: translateY(0) scale(1); }

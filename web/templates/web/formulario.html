@@ -1,83 +1,88 @@
-{% extends 'base_form.html' %}
+﻿{% extends 'base_form.html' %}
 {% load static %}
 
-{% block title %}Cliente{% endblock %}
-{% block page_title %}Cliente{% endblock %}
+{% block title %}Usuario | Crear / Editar{% endblock %}
+{% block page_title %}Perfil de Usuario{% endblock %}
 
 {% block content %}
 <div class="glass-panel fade-in-up crud-form-panel">
-    <div class="modal-header" style="justify-content: center; align-items:center;">
-        <div style="text-align:center; width:100%;">
-            <h3>Cliente</h3>
-            <p class="section-subtitle">Datos de contacto y validaciones.</p>
+    <div class="modal-header modal-header-centered">
+        <div class="u-text-center u-w-full">
+            <h3>Usuario</h3>
+            <p class="section-subtitle">Datos de contacto, acceso y permisos.</p>
         </div>
     </div>
 
     <form method="POST" class="form-grid">
         {% csrf_token %}
         {% if form.non_field_errors %}
-        <div class="badge-chip" style="grid-column:1/-1;">{{ form.non_field_errors }}</div>
+        <div class="badge-chip u-grid-full">{{ form.non_field_errors }}</div>
         {% endif %}
+        
         <div class="field">
-            <label>Nombre</label>
-            {{ form.nombre }}
-            {% if form.nombre.errors %}<span class="badge-chip">{{ form.nombre.errors }}</span>{% endif %}
-        </div>
-        <div class="field">
-            <label>Apellido</label>
-            {{ form.apellido }}
-            {% if form.apellido.errors %}<span class="badge-chip">{{ form.apellido.errors }}</span>{% endif %}
-        </div>
-        <div class="field">
-            <label>Dirección</label>
-            {{ form.direccion }}
-            {% if form.direccion.errors %}<span class="badge-chip">{{ form.direccion.errors }}</span>{% endif %}
-        </div>
-        <div class="field">
-            <label>Teléfono</label>
-            {{ form.telefono }}
-            {% if form.telefono.errors %}<span class="badge-chip">{{ form.telefono.errors }}</span>{% endif %}
-        </div>
-        <div class="field">
-            <label>Correo</label>
+            <label for="id_correo">Correo Electrónico</label>
             {{ form.correo }}
             {% if form.correo.errors %}<span class="badge-chip">{{ form.correo.errors }}</span>{% endif %}
         </div>
         <div class="field">
-            <label>Rol de usuario</label>
+            <label for="id_nombre">Nombre(s)</label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}<span class="badge-chip">{{ form.nombre.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label for="id_apellido">Apellido(s)</label>
+            {{ form.apellido }}
+            {% if form.apellido.errors %}<span class="badge-chip">{{ form.apellido.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label for="id_telefono">Teléfono / Celular</label>
+            {{ form.telefono }}
+            {% if form.telefono.errors %}<span class="badge-chip">{{ form.telefono.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label for="id_estado">Estado</label>
+            {{ form.estado }}
+            {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
+        </div>
+
+        <div class="field">
+            <label for="id_fecha_nacimiento">Fecha de nacimiento</label>
+            {{ form.fecha_nacimiento }}
+            {% if form.fecha_nacimiento.errors %}<span class="badge-chip">{{ form.fecha_nacimiento.errors }}</span>{% endif %}
+        </div>
+        <div class="field">
+            <label for="id_acepta_fidelizacion">Acepta fidelización</label>
+            {{ form.acepta_fidelizacion }}
+            {% if form.acepta_fidelizacion.errors %}<span class="badge-chip">{{ form.acepta_fidelizacion.errors }}</span>{% endif %}
+        </div>
+        
+        <div class="field">
+            <label for="id_rol">Rol</label>
             {{ form.rol }}
             {% if form.rol.errors %}<span class="badge-chip">{{ form.rol.errors }}</span>{% endif %}
         </div>
+
         <div class="field">
-            <label>Primer nombre (usuario)</label>
-            {{ form.nombre1 }}
-            {% if form.nombre1.errors %}<span class="badge-chip">{{ form.nombre1.errors }}</span>{% endif %}
+            <label for="id_es_staff">Es Staff</label>
+            {{ form.es_staff }}
+            {% if form.es_staff.errors %}<span class="badge-chip">{{ form.es_staff.errors }}</span>{% endif %}
         </div>
         <div class="field">
-            <label>Segundo nombre (usuario)</label>
-            {{ form.nombre2 }}
-            {% if form.nombre2.errors %}<span class="badge-chip">{{ form.nombre2.errors }}</span>{% endif %}
+            <label for="id_es_superusuario">Es Superusuario</label>
+            {{ form.es_superusuario }}
+            {% if form.es_superusuario.errors %}<span class="badge-chip">{{ form.es_superusuario.errors }}</span>{% endif %}
         </div>
-        <div class="field">
-            <label>Primer apellido (usuario)</label>
-            {{ form.apellido1 }}
-            {% if form.apellido1.errors %}<span class="badge-chip">{{ form.apellido1.errors }}</span>{% endif %}
-        </div>
-        <div class="field">
-            <label>Segundo apellido (usuario)</label>
-            {{ form.apellido2 }}
-            {% if form.apellido2.errors %}<span class="badge-chip">{{ form.apellido2.errors }}</span>{% endif %}
-        </div>
-        <div class="field" style="grid-column:1/-1;">
-            <label>Contraseña (opcional)</label>
+
+        <div class="field u-grid-full">
+            <label for="id_password">Contraseña (Opcional si es edición)</label>
             {{ form.password }}
             {% if form.password.help_text %}<small class="section-subtitle">{{ form.password.help_text }}</small>{% endif %}
             {% if form.password.errors %}<span class="badge-chip">{{ form.password.errors }}</span>{% endif %}
         </div>
 
-        <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
-            <a class="btn-ghost" href="{% url 'lista_clientes' %}">Cancelar</a>
-            <button class="btn-pill btn-primary" type="submit">Guardar</button>
+        <div class="form-actions form-actions-center u-grid-full">
+            <a class="btn-ghost" href="javascript:history.back()">Cancelar</a>
+            <button class="btn-pill btn-primary" type="submit">Guardar Usuario</button>
         </div>
     </form>
 </div>

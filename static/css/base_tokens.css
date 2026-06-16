@@ -1,0 +1,70 @@
+/* Shared design tokens for all Nails Nice UI surfaces. */
+:root {
+    --nn-font-sans: "Inter", "Poppins", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --nn-font-display: "Playfair Display", "Cormorant Garamond", serif;
+
+    --nn-color-text: #241c26;
+    --nn-color-muted: #6a5765;
+
+    --nn-color-bg-1: #fff8fd;
+    --nn-color-bg-2: #ffeaf4;
+    --nn-color-bg-3: #fbd7ec;
+
+    --nn-color-surface: #fff9fd;
+    --nn-color-surface-strong: #fff3f9;
+    --nn-color-border: #f0bfd6;
+
+    --nn-color-accent: #d86c9f;
+    --nn-color-accent-strong: #b94d7f;
+    --nn-color-accent-soft: #ffe1ec;
+
+    --nn-color-danger: #d9487a;
+    --nn-color-warning: #e59b2f;
+    --nn-color-success: #2f9c77;
+
+    --nn-shadow-soft: 0 12px 32px rgba(44, 9, 29, 0.12);
+    --nn-shadow-card: 0 18px 40px rgba(44, 9, 29, 0.14);
+
+    --nn-radius-sm: 10px;
+    --nn-radius-md: 14px;
+    --nn-radius-lg: 18px;
+    --nn-radius-pill: 999px;
+
+    --nn-transition-fast: 0.2s ease;
+
+    /* Compatibility aliases for existing style bundles. */
+    --bg-start: var(--nn-color-bg-1);
+    --bg-end: var(--nn-color-bg-3);
+    --panel: var(--nn-color-surface);
+    --panel-strong: var(--nn-color-surface-strong);
+    --border: var(--nn-color-border);
+    --text: var(--nn-color-text);
+    --muted: var(--nn-color-muted);
+    --accent: var(--nn-color-accent);
+    --accent-2: var(--nn-color-accent-strong);
+    --accent-3: var(--nn-color-accent-soft);
+    --danger: var(--nn-color-danger);
+    --warning: var(--nn-color-warning);
+    --success: var(--nn-color-success);
+
+    --bg-1: var(--nn-color-bg-1);
+    --bg-2: var(--nn-color-bg-2);
+    --bg-3: #eef3ff;
+    --panel-border: rgba(216, 108, 159, 0.22);
+    --shadow-soft: var(--nn-shadow-soft);
+}
+
+body {
+    font-family: var(--nn-font-sans);
+    color: var(--nn-color-text);
+}
+
+.btn-pill,
+.btn-primary,
+.btn-secondary,
+.btn-submit,
+.btn-ghost {
+    border-radius: var(--nn-radius-pill);
+    font-weight: 700;
+    transition: transform var(--nn-transition-fast), box-shadow var(--nn-transition-fast), border-color var(--nn-transition-fast), background var(--nn-transition-fast);
+}

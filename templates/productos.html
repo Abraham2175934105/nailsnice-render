@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>NailsNice - Todos los Productos</title>
+    <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260401g">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
@@ -32,11 +33,11 @@
                         <li class="nav-user-chip">
                             <div class="nav-user-text">
                                 <span class="nav-user-eyebrow">Hola</span>
-                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                                <span class="nav-user-name">{{ request.user.nombre|default:request.user.correo }}</span>
                             </div>
                             <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
                         </li>
-                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                        {% if request.user.is_superuser or request.user.rol_asignado.rol.nombre == 'Administrador' %}
                             <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
                         {% endif %}
                         <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>

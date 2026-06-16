@@ -1,13 +1,21 @@
 from rest_framework import viewsets
-
 from core.audit import AuditViewSetMixin
 from core.permissions import IsAdminOrReadOnly
-from .models import ProductoMaquillaje
-from .serializers import ProductoMaquillajeSerializer
+from .models import Bodega, SaldoInventario, MovimientoInventario
+# Importamos los nuevos serializadores (asegúrate de que existan en serializers.py)
+from .serializers import BodegaSerializer, SaldoInventarioSerializer
 
-
-class ProductoMaquillajeViewSet(AuditViewSetMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = ProductoMaquillaje.activos.all()
-    serializer_class = ProductoMaquillajeSerializer
+class BodegaViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
+    queryset = Bodega.objects.filter(activo=True)
+    serializer_class = BodegaSerializer
     permission_classes = [IsAdminOrReadOnly]
-    audit_prefix = 'inventario.api'
+    audit_prefix = 'inventario.bodega'
+
+class SaldoInventarioViewSet(AuditViewSetMixin, viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para ver las existencias actuales de productos (Variantes).
+    """
+    queryset = SaldoInventario.objects.all()
+    serializer_class = SaldoInventarioSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    audit_prefix = 'inventario.saldo'

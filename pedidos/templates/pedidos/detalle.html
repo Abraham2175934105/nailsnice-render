@@ -1,0 +1,164 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Detalle Pedido {{ pedido.numero_pedido|default:pedido.id_pedido }}{% endblock %}
+{% block page_title %}Detalle del Pedido{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+    <a href="{% url 'lista_pedidos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Volver</a>
+    <a href="{% url 'editar_pedido' id=pedido.id_pedido %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# Resumen del pedido #}
+<div class="glass-panel u-p-16 u-mb-14">
+    <h3 class="section-title">Pedido {{ pedido.numero_pedido|default:pedido.id_pedido }}</h3>
+    <div class="detail-grid">
+        <div>
+            <span class="detail-label">Cliente</span>
+            <span class="detail-value">{{ pedido.cliente.usuario.correo }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Estado</span>
+            <span class="pill-tag">{{ pedido.estado }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Subtotal</span>
+            <span class="detail-value">${{ pedido.subtotal }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Envío</span>
+            <span class="detail-value">${{ pedido.monto_envio }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Impuesto</span>
+            <span class="detail-value">${{ pedido.monto_impuesto }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Descuento</span>
+            <span class="detail-value">${{ pedido.monto_descuento }}</span>
+        </div>
+        <div>
+            <span class="detail-label">Total</span>
+            <span class="detail-value"><strong>${{ pedido.monto_total }}</strong></span>
+        </div>
+        <div>
+            <span class="detail-label">Fecha</span>
+            <span class="detail-value">{{ pedido.realizado_en|date:"d M Y H:i" }}</span>
+        </div>
+        {% if pedido.direccion_envio %}
+        <div>
+            <span class="detail-label">Dirección envío</span>
+            <span class="detail-value">{{ pedido.direccion_envio.linea1 }}, {{ pedido.direccion_envio.ciudad }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Productos del pedido #}
+<div class="glass-panel glass-table u-mb-14">
+    <h3 class="section-title u-p-16">Productos</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>SKU</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio unitario</th>
+                <th>Total línea</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in pedido.detalles.all %}
+            <tr>
+                <td>{{ detalle.sku_snapshot }}</td>
+                <td>{{ detalle.nombre_producto_snapshot }}</td>
+                <td>{{ detalle.cantidad }}</td>
+                <td>${{ detalle.precio_unitario }}</td>
+                <td>${{ detalle.subtotal }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="empty-row-cell">
+                    <div class="empty-state-inline">
+                        <strong>Sin productos</strong>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Historial de estados #}
+<div class="glass-panel glass-table u-mb-14">
+    <h3 class="section-title u-p-16">Historial de estados</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Estado</th>
+                <th>Cambiado por</th>
+                <th>Nota</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in pedido.historial_estados.all %}
+            <tr>
+                <td><span class="pill-tag">{{ h.estado }}</span></td>
+                <td>{{ h.cambiado_por.correo|default:"Sistema" }}</td>
+                <td>{{ h.nota|default:"-" }}</td>
+                <td>{{ h.cambiado_en|date:"d M Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="empty-row-cell">
+                    <div class="empty-state-inline">
+                        <strong>Sin historial</strong>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Transacciones de pago #}
+<div class="glass-panel glass-table u-mb-14">
+    <h3 class="section-title u-p-16">Transacciones de pago</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th>Estado</th>
+                <th>Monto</th>
+                <th>Moneda</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in pedido.transacciones.all %}
+            <tr>
+                <td>{{ tx.proveedor.nombre|default:"Contraentrega" }}</td>
+                <td><span class="pill-tag">{{ tx.estado }}</span></td>
+                <td>${{ tx.monto }}</td>
+                <td>{{ tx.codigo_moneda }}</td>
+                <td>{{ tx.creado_en|date:"d M Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="empty-row-cell">
+                    <div class="empty-state-inline">
+                        <strong>Sin transacciones</strong>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

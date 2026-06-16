@@ -1,0 +1,82 @@
+{% extends 'base_form.html' %}
+
+{% block titulo %}{{ titulo }}{% endblock %}
+
+{% block contenido %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="mb-4">{{ titulo }}</h2>
+            
+            <form method="post" class="needs-validation">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="id_tipo_servicio" class="form-label">Tipo de Servicio *</label>
+                    {{ form.tipo_servicio }}
+                    {% if form.tipo_servicio.errors %}
+                    <div class="alert alert-danger mt-2">{{ form.tipo_servicio.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_categoria_servicio" class="form-label">Categoría *</label>
+                    {{ form.categoria_servicio }}
+                    {% if form.categoria_servicio.errors %}
+                    <div class="alert alert-danger mt-2">{{ form.categoria_servicio.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_nombre" class="form-label">Nombre del Servicio *</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}
+                    <div class="alert alert-danger mt-2">{{ form.nombre.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_descripcion" class="form-label">Descripción</label>
+                    {{ form.descripcion }}
+                    {% if form.descripcion.errors %}
+                    <div class="alert alert-danger mt-2">{{ form.descripcion.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_duracion_minutos" class="form-label">Duración (minutos) *</label>
+                            {{ form.duracion_minutos }}
+                            {% if form.duracion_minutos.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.duracion_minutos.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="id_precio_base" class="form-label">Precio Base ($) *</label>
+                            {{ form.precio_base }}
+                            {% if form.precio_base.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.precio_base.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    {{ form.activo }}
+                    <label class="form-check-label" for="id_activo">
+                        Servicio Activo
+                    </label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">{% if es_crear %}Crear{% else %}Guardar Cambios{% endif %}</button>
+                    <a href="{% url 'lista_servicios' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

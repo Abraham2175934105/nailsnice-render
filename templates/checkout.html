@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NailsNice - Checkout</title>
+    <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260407d">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
@@ -39,11 +40,11 @@
                         <li class="nav-user-chip">
                             <div class="nav-user-text">
                                 <span class="nav-user-eyebrow">Hola</span>
-                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                                <span class="nav-user-name">{{ request.user.nombre|default:request.user.correo }}</span>
                             </div>
                             <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
                         </li>
-                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                        {% if request.user.is_superuser or request.user.rol_asignado.rol.nombre == 'Administrador' %}
                             <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
                         {% endif %}
                         <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
@@ -94,14 +95,14 @@
                     <div class="checkout-user-preview" aria-label="Datos de la cuenta activa">
                         <div class="checkout-user-preview__head">
                             <div class="checkout-user-preview__identity">
-                                <div class="checkout-user-preview__avatar" aria-hidden="true">{{ request.user.nombre1|default:request.user.email|first|upper }}</div>
+                                <div class="checkout-user-preview__avatar" aria-hidden="true">{{ request.user.nombre|default:request.user.correo|first|upper }}</div>
                                 <div>
                                     <p class="checkout-user-preview__eyebrow">Cuenta en sesión</p>
                                     <p class="checkout-user-preview__name">
-                                        {% if request.user.nombre1 or request.user.apellido1 %}
-                                            {{ request.user.nombre1|default:'' }} {{ request.user.apellido1|default:'' }}
+                                        {% if request.user.nombre or request.user.apellido %}
+                                            {{ request.user.nombre|default:'' }} {{ request.user.apellido|default:'' }}
                                         {% else %}
-                                            {{ request.user.email }}
+                                            {{ request.user.correo }}
                                         {% endif %}
                                     </p>
                                 </div>
@@ -112,7 +113,7 @@
                         <div class="checkout-user-preview__grid">
                             <article class="checkout-user-preview__item">
                                 <p class="checkout-user-preview__label">Correo</p>
-                                <p class="checkout-user-preview__value">{{ request.user.email }}</p>
+                                <p class="checkout-user-preview__value">{{ request.user.correo }}</p>
                             </article>
                             <article class="checkout-user-preview__item">
                                 <p class="checkout-user-preview__label">Teléfono</p>
@@ -202,7 +203,7 @@
                             <div class="summary-row">
                                 <div>
                                     <p class="tile-title">{{ item.producto.nombre }}</p>
-                                    <p class="cart-muted">x{{ item.cantidad }} · ${{ item.producto.precio|floatformat:0 }} c/u</p>
+                                    <p class="cart-muted">x{{ item.cantidad }} · ${{ item.precio_unitario|floatformat:0 }} c/u</p>
                                 </div>
                                 <div class="summary-price">${{ item.subtotal|floatformat:0 }}</div>
                             </div>

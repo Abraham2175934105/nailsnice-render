@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NailsNice - Factura</title>
+    <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -78,11 +79,11 @@
                         <li class="nav-user-chip">
                             <div class="nav-user-text">
                                 <span class="nav-user-eyebrow">Hola</span>
-                                <span class="nav-user-name">{{ request.user.nombre1|default:request.user.email }}</span>
+                                <span class="nav-user-name">{{ request.user.nombre|default:request.user.correo }}</span>
                             </div>
                             <a class="btn-profile" href="{% url 'perfil' %}">Perfil</a>
                         </li>
-                        {% if request.user.is_superuser or request.user.id_rol.nombre == 'Administrador' %}
+                        {% if request.user.is_superuser or request.user.rol_asignado.rol.nombre == 'Administrador' %}
                             <li><a href="/dashboard/" class="btn-admin">Dashboard</a></li>
                         {% endif %}
                         <li><a href="{% url 'logout' %}" class="nav-logout">Cerrar sesión</a></li>
@@ -109,7 +110,7 @@
                 <p class="page-eyebrow">Factura</p>
                 <div class="page-hero__header">
                     <div>
-                        <h1>Pedido #{{ pedido.id }}</h1>
+                        <h1>Pedido #{{ pedido.numero_pedido|default:pedido.id_pedido }}</h1>
                         <p>Descarga o imprime tu comprobante. Revisa estado y detalle de cada producto.</p>
                     </div>
                     <div class="status-pill status-{{ pedido.estado }}">{{ pedido.get_estado_display }}</div>
@@ -120,14 +121,14 @@
         <section class="container invoice-grid">
             <div class="invoice-card">
                 <div class="invoice-print-heading">
-                    <h2>Factura #{{ pedido.id }}</h2>
+                    <h2>Factura #{{ pedido.numero_pedido|default:pedido.id_pedido }}</h2>
                     <p>Fecha: {{ pedido.creado_en|date:"d M Y, H:i" }}</p>
                 </div>
                 <div class="invoice-meta">
                     <div>
                         <p class="page-eyebrow">Cliente</p>
-                        <p class="tile-title">{{ pedido.usuario.email }}</p>
-                        <p class="cart-muted">{{ pedido.usuario.nombre1|default:'' }} {{ pedido.usuario.apellido1|default:'' }}</p>
+                        <p class="tile-title">{{ pedido.cliente.usuario.correo }}</p>
+                        <p class="cart-muted">{{ pedido.cliente.usuario.nombre|default:'' }} {{ pedido.cliente.usuario.apellido|default:'' }}</p>
                     </div>
                     <div>
                         <p class="page-eyebrow">Fecha</p>
@@ -136,12 +137,14 @@
                     </div>
                     <div>
                         <p class="page-eyebrow">Método de pago</p>
-                        <p class="tile-title">{{ pedido.get_metodo_pago_display }}</p>
-                        <p class="cart-muted">Estado: {{ pedido.get_estado_display }}</p>
+                        {% with trans=pedido.transacciones.first %}
+                        <p class="tile-title">{% if trans %}{{ trans.metodo_pago|default:'No registrado' }}{% else %}No registrado{% endif %}</p>
+                        <p class="cart-muted">Estado: {% if trans %}{{ trans.estado }}{% else %}{{ pedido.get_estado_display }}{% endif %}</p>
+                        {% endwith %}
                     </div>
                     <div>
                         <p class="page-eyebrow">Dirección</p>
-                        <p class="tile-title">{{ pedido.direccion_envio }}</p>
+                        <p class="tile-title">{{ pedido.direccion_envio.linea1|default:pedido.direccion_envio }}</p>
                         <p class="cart-muted">Verifica antes de despachar.</p>
                     </div>
                     <div>
@@ -160,7 +163,7 @@
                     </div>
                     {% for detalle in pedido.detalles.all %}
                         <div class="invoice-line">
-                            <span>{{ detalle.producto.nombre }}</span>
+                            <span>{{ detalle.nombre_producto_snapshot|default:detalle.variante.producto.nombre }}</span>
                             <span>x{{ detalle.cantidad }}</span>
                             <span>${{ detalle.precio_unitario|floatformat:0 }}</span>
                             <span class="invoice-subtotal">${{ detalle.subtotal|floatformat:0 }}</span>
@@ -176,7 +179,7 @@
                     <div class="invoice-total-head">Resumen de pago</div>
                     <div class="invoice-total-row">
                         <span>Total</span>
-                        <span class="invoice-grand-total">${{ pedido.total|floatformat:0 }}</span>
+                        <span class="invoice-grand-total">${{ pedido.monto_total|floatformat:0 }}</span>
                     </div>
                     <p class="invoice-note">Entrega estimada 1 - 3 días. Te avisaremos cualquier cambio.</p>
                 </div>
@@ -188,7 +191,7 @@
                         <p class="page-eyebrow">Acciones</p>
                         <h3>Tu comprobante</h3>
                     </div>
-                    <a class="btn-primary" href="{% url 'factura_pdf' pedido_id=pedido.id %}">Descargar PDF</a>
+                    <a class="btn-primary" href="{% url 'factura_pdf' pedido_id=pedido.id_pedido %}">Descargar PDF</a>
                     <button id="invoice-print" class="btn-primary" type="button">Imprimir o guardar PDF</button>
                     <a class="btn-ghost" href="/productos/">Seguir comprando</a>
                     <a class="btn-ghost" href="{% url 'carrito' %}">Volver al carrito</a>

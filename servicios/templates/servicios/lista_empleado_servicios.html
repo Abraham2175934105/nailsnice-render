@@ -1,0 +1,96 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}Asignar Servicios | NailsNice{% endblock %}
+{% block page_title %}Asignación de Servicios a Empleados{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  <a href="{% url 'crear_empleado_servicio' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Asignar Servicio</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Búsqueda -->
+<form method="get" class="glass-panel u-p-16 u-mb-14">
+  <div class="search-bar">
+    <input type="search" name="q" placeholder="Buscar por empleado o servicio..." value="{{ search|default:'' }}">
+    <button class="btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-search"></use></svg>Buscar</button>
+  </div>
+</form>
+
+<!-- Tabla de Asignaciones -->
+<div class="glass-panel glass-table skeleton-onload">
+  <table>
+    <thead>
+      <tr>
+        <th>Empleado</th>
+        <th>Servicio</th>
+        <th>Duración Personalizada</th>
+        <th>Precio Personalizado</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for asig in asignaciones %}
+      <tr>
+        <td><strong>{{ asig.empleado.usuario.correo }}</strong></td>
+        <td>{{ asig.servicio.nombre }}</td>
+        <td>
+          {% if asig.duracion_personalizada_minutos %}
+            {{ asig.duracion_personalizada_minutos }} min
+          {% else %}
+            <span class="badge badge-soft badge-inactive">Por defecto</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if asig.precio_personalizado %}
+            ${{ asig.precio_personalizado }}
+          {% else %}
+            <span class="badge badge-soft badge-inactive">Por defecto</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if asig.activo %}
+          <span class="badge badge-soft badge-active">Activo</span>
+          {% else %}
+          <span class="badge badge-soft badge-inactive">Inactivo</span>
+          {% endif %}
+        </td>
+        <td class="table-actions">
+          <a href="{% url 'editar_empleado_servicio' asig.pk %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
+          <a href="{% url 'eliminar_empleado_servicio' asig.pk %}" class="btn-danger-soft" onclick="return confirm('¿Eliminar esta asignación?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="empty-row-cell">
+          <div class="empty-state-inline">
+            <strong>No hay asignaciones registradas</strong>
+            <span>Asigna un servicio a un empleado para comenzar.</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Paginación -->
+<div class="pagination u-mt-14">
+  {% if page_obj %}
+    {% for num in page_obj.paginator.page_range %}
+      <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&q={{ search|urlencode }}">{{ num }}</a>
+    {% endfor %}
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.skeleton-onload').forEach(function(el) { 
+      setTimeout(() => el.classList.remove('skeleton-onload'), 350); 
+    });
+  });
+</script>
+{% endblock %}

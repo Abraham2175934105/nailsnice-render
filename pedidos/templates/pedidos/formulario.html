@@ -6,8 +6,8 @@
 
 {% block content %}
 <div class="glass-panel fade-in-up crud-form-panel">
-  <div class="modal-header" style="justify-content: center; align-items:center;">
-    <div style="text-align:center; width:100%;">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
       <h3>Pedido</h3>
       <p class="section-subtitle">Registrar o editar pedidos con reglas de negocio.</p>
     </div>
@@ -16,28 +16,14 @@
   <form method="POST" class="form-grid">
     {% csrf_token %}
     <div class="field">
-      <label>Usuario</label>
-      {{ form.usuario }}
+      <label>Cliente</label>
+      {{ form.cliente }}
+      {% if form.cliente.errors %}<span class="badge-chip">{{ form.cliente.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Teléfono</label>
-      {{ form.telefono }}
-      {% if form.telefono.errors %}<span class="badge-chip">{{ form.telefono.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label>Precio</label>
-      {{ form.precio }}
-      {% if form.precio.errors %}<span class="badge-chip">{{ form.precio.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label>Producto</label>
-      {{ form.producto }}
-      {% if form.producto.errors %}<span class="badge-chip">{{ form.producto.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label>Dirección</label>
-      {{ form.direccion }}
-      {% if form.direccion.errors %}<span class="badge-chip">{{ form.direccion.errors }}</span>{% endif %}
+      <label>Variante</label>
+      {{ form.variante }}
+      {% if form.variante.errors %}<span class="badge-chip">{{ form.variante.errors }}</span>{% endif %}
     </div>
     <div class="field">
       <label>Cantidad</label>
@@ -45,12 +31,37 @@
       {% if form.cantidad.errors %}<span class="badge-chip">{{ form.cantidad.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Fecha</label>
-      {{ form.fecha }}
-      {% if form.fecha.errors %}<span class="badge-chip">{{ form.fecha.errors }}</span>{% endif %}
+      <label>Dirección</label>
+      {{ form.direccion_linea1 }}
+      {% if form.direccion_linea1.errors %}<span class="badge-chip">{{ form.direccion_linea1.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Ciudad</label>
+      {{ form.ciudad }}
+      {% if form.ciudad.errors %}<span class="badge-chip">{{ form.ciudad.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Departamento</label>
+      {{ form.departamento }}
+      {% if form.departamento.errors %}<span class="badge-chip">{{ form.departamento.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Código postal</label>
+      {{ form.codigo_postal }}
+      {% if form.codigo_postal.errors %}<span class="badge-chip">{{ form.codigo_postal.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Destinatario</label>
+      {{ form.nombre_destinatario }}
+      {% if form.nombre_destinatario.errors %}<span class="badge-chip">{{ form.nombre_destinatario.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      {{ form.estado }}
+      {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
     </div>
 
-    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+    <div class="form-actions form-actions-center u-grid-full">
       <a class="btn-ghost" href="{% url 'lista_pedidos' %}">Cancelar</a>
       <button class="btn-pill btn-primary" type="submit">Guardar</button>
     </div>

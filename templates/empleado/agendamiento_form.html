@@ -12,9 +12,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="glass-panel fade-in-up crud-form-panel" style="max-width:980px; margin:0 auto;">
-  <div class="modal-header" style="justify-content: center; align-items:center;">
-    <div style="text-align:center; width:100%;">
+<div class="glass-panel fade-in-up crud-form-panel panel-max-980">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
       <h3>{% if is_edit %}Editar agendamiento{% else %}Nuevo agendamiento{% endif %}</h3>
       <p class="section-subtitle">Gestiona tu agenda diaria con un formulario claro y ordenado.</p>
     </div>
@@ -24,7 +24,7 @@
     {% csrf_token %}
 
     {% if form.errors %}
-    <div class="form-alert form-alert--error" style="grid-column:1 / -1;">
+    <div class="form-alert form-alert--error u-grid-full">
       <strong>Revisa los campos antes de guardar:</strong>
       <ul class="form-alert-list">
         {% for field in form %}
@@ -40,7 +40,7 @@
     {% endif %}
 
     {% if form.non_field_errors %}
-    <div class="badge-chip" style="grid-column:1 / -1;">
+    <div class="badge-chip u-grid-full">
       {{ form.non_field_errors }}
     </div>
     {% endif %}
@@ -58,30 +58,30 @@
     </div>
 
     <div class="field">
-      <label for="{{ form.fecha_agendamiento.id_for_label }}">Fecha</label>
-      {{ form.fecha_agendamiento }}
-      {% if form.fecha_agendamiento.errors %}<span class="badge-chip">{{ form.fecha_agendamiento.errors }}</span>{% endif %}
+      <label for="{{ form.inicia_en.id_for_label }}">Inicio</label>
+      {{ form.inicia_en }}
+      {% if form.inicia_en.errors %}<span class="badge-chip">{{ form.inicia_en.errors }}</span>{% endif %}
     </div>
 
     <div class="field">
-      <label for="{{ form.hora_agendamiento.id_for_label }}">Hora</label>
-      {{ form.hora_agendamiento }}
-      {% if form.hora_agendamiento.errors %}<span class="badge-chip">{{ form.hora_agendamiento.errors }}</span>{% endif %}
+      <label for="{{ form.termina_en.id_for_label }}">Fin</label>
+      {{ form.termina_en }}
+      {% if form.termina_en.errors %}<span class="badge-chip">{{ form.termina_en.errors }}</span>{% endif %}
     </div>
 
     <div class="field">
-      <label for="{{ form.estado_agendamiento.id_for_label }}">Estado</label>
-      {{ form.estado_agendamiento }}
-      {% if form.estado_agendamiento.errors %}<span class="badge-chip">{{ form.estado_agendamiento.errors }}</span>{% endif %}
+      <label for="{{ form.estado.id_for_label }}">Estado</label>
+      {{ form.estado }}
+      {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
     </div>
 
-    <div class="field" style="grid-column:1 / -1;">
+    <div class="field u-grid-full">
       <label for="{{ form.notas.id_for_label }}">Notas</label>
       {{ form.notas }}
       {% if form.notas.errors %}<span class="badge-chip">{{ form.notas.errors }}</span>{% endif %}
     </div>
 
-    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+    <div class="form-actions form-actions-center u-grid-full">
       <a class="btn-ghost" href="{% url 'empleado_agendamientos' %}">Cancelar</a>
       <button class="btn-pill btn-primary" type="submit">{% if is_edit %}Guardar cambios{% else %}Registrar agendamiento{% endif %}</button>
     </div>

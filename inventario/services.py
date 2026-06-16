@@ -1,9 +1,17 @@
-from django.db import transaction
 from django.conf import settings
+from django.core.exceptions import FieldError
+from django.db import transaction
 
 from core.audit import record_audit
 from productos.models import Producto
-from .models import ProductoMaquillaje
+from .models import (
+    ProductoMaquillaje,
+    MovimientoInventario,
+    ItemMovimientoInventario,
+    SaldoInventario,
+    TipoMovimientoInventario,
+    Bodega,
+)
 
 
 def _sync_catalogo(producto_inv: ProductoMaquillaje, user=None):
@@ -23,7 +31,10 @@ def _sync_catalogo(producto_inv: ProductoMaquillaje, user=None):
         'estado_producto': estado,
         'imagen': imagen_value,
     }
-    producto, created = Producto.objects.get_or_create(inventario=producto_inv, defaults=defaults)
+    try:
+        producto, created = Producto.objects.get_or_create(inventario=producto_inv, defaults=defaults)
+    except FieldError:
+        return None
     changed = {}
     for field, value in defaults.items():
         if getattr(producto, field) != value:
@@ -68,3 +79,80 @@ def soft_delete_producto(producto: ProductoMaquillaje, user=None):
     except Exception:
         pass
     return producto
+
+
+def registrar_movimiento(tipo_movimiento_id, bodega_id, items, notas=None, user=None):
+    """
+    Crea un MovimientoInventario con sus items y actualiza SaldoInventario.
+    items = [{'variante_id': X, 'cantidad': N, 'costo_unitario': C}]
+    """
+    with transaction.atomic():
+        tipo = TipoMovimientoInventario.objects.get(pk=tipo_movimiento_id)
+        bodega = Bodega.objects.get(pk=bodega_id)
+
+        movimiento = MovimientoInventario.objects.create(
+            tipo_movimiento=tipo,
+            bodega=bodega,
+            notas=notas,
+            creado_por=user,
+        )
+
+        for item in items:
+            variante_id = item['variante_id']
+            cantidad = item['cantidad']
+            costo_unitario = item.get('costo_unitario')
+
+            ItemMovimientoInventario.objects.create(
+                movimiento=movimiento,
+                variante_id=variante_id,
+                cantidad=cantidad,
+                costo_unitario=costo_unitario,
+            )
+
+            saldo, _ = SaldoInventario.objects.get_or_create(
+                variante_id=variante_id,
+                defaults={'bodega': bodega, 'cantidad_existencia': 0},
+            )
+
+            if tipo.direccion == 1:
+                saldo.cantidad_existencia += cantidad
+            elif tipo.direccion == -1:
+                saldo.cantidad_existencia = max(0, saldo.cantidad_existencia - cantidad)
+
+            saldo.save(update_fields=['cantidad_existencia', 'actualizado_en'])
+
+        record_audit('inventario.movimiento.create', user, 'MovimientoInventario', movimiento.pk, {
+            'tipo': tipo.codigo,
+            'bodega': bodega.nombre,
+            'items': items,
+        })
+
+        return movimiento
+
+
+def obtener_salud_inventario(bodega_id=None):
+    """
+    Devuelve saldos con flag alerta_reorden=True/False.
+    Replica la vista SQL vw_salud_inventario.
+    """
+    qs = SaldoInventario.objects.select_related('variante', 'bodega')
+
+    if bodega_id:
+        qs = qs.filter(bodega_id=bodega_id)
+
+    resultado = []
+    for saldo in qs:
+        disponible = saldo.cantidad_existencia - saldo.cantidad_reservada
+        alerta_reorden = disponible <= saldo.nivel_reorden
+        resultado.append({
+            'variante_id': saldo.variante_id,
+            'variante': str(saldo.variante),
+            'bodega': str(saldo.bodega),
+            'cantidad_existencia': saldo.cantidad_existencia,
+            'cantidad_reservada': saldo.cantidad_reservada,
+            'disponible': disponible,
+            'nivel_reorden': saldo.nivel_reorden,
+            'alerta_reorden': alerta_reorden,
+        })
+
+    return resultado

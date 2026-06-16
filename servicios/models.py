@@ -1,109 +1,176 @@
+from django.conf import settings
 from django.db import models
-from django.core.validators import MinValueValidator
+
+from clientes.models import Cliente
+from usuarios.models import Empleado
+
 
 class TipoServicio(models.Model):
-    TIPOS = [
-        ('Manicura', 'Manicura'),
-        ('Pedicura', 'Pedicura'),
-        ('Maquillaje', 'Maquillaje'),
-        ('Tratamiento Facial', 'Tratamiento Facial'),
-        ('Depilación', 'Depilación'),
-    ]
-    
-    nombre_tipo = models.CharField(max_length=255, choices=TIPOS, unique=True)
-    
+    id_tipo_servicio = models.BigAutoField(primary_key=True, db_column='id_tipo_servicio')
+    codigo = models.CharField(max_length=50, unique=True)
+    nombre = models.CharField(max_length=100, unique=True)
+    activo = models.BooleanField(default=True)
+
     class Meta:
-        verbose_name = 'Tipo de Servicio'
-        verbose_name_plural = 'Tipos de Servicio'
-        ordering = ['nombre_tipo']
-    
+        db_table = 'tipo_servicio'
+        managed = True
+        ordering = ['nombre']
+
     def __str__(self):
-        return self.nombre_tipo
+        return self.nombre
+
+
+class CategoriaServicio(models.Model):
+    id_categoria_servicio = models.BigAutoField(primary_key=True, db_column='id_categoria_servicio')
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.CharField(max_length=255, null=True, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'categoria_servicio'
+        managed = True
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
 
 
 class Servicio(models.Model):
-    ESTADO_CHOICES = [
-        ('Activo', 'Activo'),
-        ('Inactivo', 'Inactivo'),
-        ('Descontinuado', 'Descontinuado'),
-    ]
-    
-    nombre_servicio = models.CharField(max_length=255)
-    descripcion = models.TextField(blank=True, null=True)
-    precio_servicio = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        validators=[MinValueValidator(0.01)]
+    id_servicio = models.BigAutoField(primary_key=True, db_column='id_servicio')
+    tipo_servicio = models.ForeignKey(
+        TipoServicio,
+        db_column='id_tipo_servicio',
+        on_delete=models.RESTRICT,
+        related_name='servicios',
     )
-    duracion_servicio = models.CharField(
-        max_length=255,
-        help_text='Ej: 30m, 1h, 1.5h'
+    categoria_servicio = models.ForeignKey(
+        CategoriaServicio,
+        db_column='id_categoria_servicio',
+        on_delete=models.RESTRICT,
+        related_name='servicios',
     )
-    duracion_estimada = models.IntegerField(blank=True, null=True, help_text='Duración en minutos')
-    categoria_servicio = models.CharField(max_length=255)
-    estado_servicio = models.CharField(
-        max_length=255,
-        choices=ESTADO_CHOICES,
-        default='Activo'
-    )
-    
-    tipo_servicio = models.ForeignKey(TipoServicio, on_delete=models.PROTECT)
-    
+    nombre = models.CharField(max_length=140)
+    descripcion = models.TextField(null=True, blank=True)
+    duracion_minutos = models.PositiveIntegerField()
+    precio_base = models.DecimalField(max_digits=12, decimal_places=2)
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
     class Meta:
-        verbose_name = 'Servicio'
-        verbose_name_plural = 'Servicios'
-        ordering = ['nombre_servicio']
-    
-    def clean(self):
-        super().clean()
-        self.nombre_servicio = (self.nombre_servicio or '').strip()
-        self.categoria_servicio = (self.categoria_servicio or '').strip()
-        if self.descripcion:
-            self.descripcion = self.descripcion.strip()
-        if self.duracion_estimada is not None and self.duracion_estimada < 0:
-            from django.core.exceptions import ValidationError
-            raise ValidationError({'duracion_estimada': 'La duracion estimada no puede ser negativa.'})
+        db_table = 'servicio'
+        managed = True
+        ordering = ['nombre']
 
     def __str__(self):
-        return self.nombre_servicio
+        return self.nombre
+
+
+class EmpleadoServicio(models.Model):
+    empleado = models.ForeignKey(
+        Empleado,
+        db_column='id_usuario_empleado',
+        on_delete=models.CASCADE,
+        related_name='servicios_asignados',
+    )
+    servicio = models.ForeignKey(
+        Servicio,
+        db_column='id_servicio',
+        on_delete=models.CASCADE,
+        related_name='empleados_asignados',
+    )
+    duracion_personalizada_minutos = models.PositiveIntegerField(null=True, blank=True)
+    precio_personalizado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'empleado_servicio'
+        managed = True
+        ordering = ['servicio']  # CORRECCIÓN: Uso del campo relacional explícito para el linter
 
 
 class Agendamiento(models.Model):
     ESTADO_CHOICES = [
-        ('Pendiente', 'Pendiente'),
-        ('Confirmado', 'Confirmado'),
-        ('Completado', 'Completado'),
-        ('Cancelado', 'Cancelado'),
-        ('No presentado', 'No presentado'),
+        ('PENDIENTE', 'Pendiente'),
+        ('CONFIRMADO', 'Confirmado'),
+        ('EN_PROCESO', 'En proceso'),
+        ('COMPLETADO', 'Completado'),
+        ('CANCELADO', 'Cancelado'),
+        ('NO_ASISTIO', 'No asistio'),
     ]
-    
-    fecha_agendamiento = models.DateField()
-    hora_agendamiento = models.TimeField()
-    estado_agendamiento = models.CharField(
-        max_length=20,
-        choices=ESTADO_CHOICES,
-        default='Pendiente'
+
+    CANAL_CHOICES = [
+        ('WEB', 'Web'),
+        ('APP', 'App'),
+        ('TELEFONO', 'Telefono'),
+        ('LOCAL', 'Local'),
+    ]
+
+    id_agendamiento = models.BigAutoField(primary_key=True, db_column='id_agendamiento')
+    cliente = models.ForeignKey(
+        Cliente,
+        db_column='id_usuario_cliente',
+        on_delete=models.RESTRICT,
+        related_name='agendamientos',
     )
-    notas = models.TextField(blank=True, null=True)
-    
-    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.CASCADE, related_name='agendamientos')
-    servicio = models.ForeignKey(Servicio, on_delete=models.PROTECT, related_name='agendamientos')
     empleado = models.ForeignKey(
-        'usuarios.Empleado',
-        on_delete=models.SET_NULL,
+        Empleado,
+        db_column='id_usuario_empleado',
+        on_delete=models.RESTRICT,
+        related_name='agendamientos',
+    )
+    servicio = models.ForeignKey(
+        Servicio,
+        db_column='id_servicio',
+        on_delete=models.RESTRICT,
+        related_name='agendamientos',
+    )
+    estado = models.CharField(max_length=20, default='PENDIENTE')
+    inicia_en = models.DateTimeField()
+    termina_en = models.DateTimeField()
+    canal = models.CharField(max_length=20, default='WEB')
+    notas = models.TextField(null=True, blank=True)
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        db_column='creado_por',
         null=True,
         blank=True,
-        related_name='agendamientos'
+        on_delete=models.SET_NULL,
+        related_name='agendamientos_creados',
     )
-    
     creado_en = models.DateTimeField(auto_now_add=True)
-    actualizado_en = models.DateTimeField(auto_now=True)
-    
+    actualizado_en = models.DateTimeField(auto_now=True, db_column='actualizado_en')
+
     class Meta:
-        verbose_name = 'Agendamiento'
-        verbose_name_plural = 'Agendamientos'
-        ordering = ['-fecha_agendamiento', 'hora_agendamiento']
-        unique_together = ('fecha_agendamiento', 'hora_agendamiento', 'empleado')
-    
+        db_table = 'agendamiento'
+        managed = True
+        ordering = ['-inicia_en']
+
     def __str__(self):
-        return f"{self.cliente.usuario.email} - {self.servicio.nombre_servicio} ({self.fecha_agendamiento})"
+        # CORRECCIÓN: Acceso seguro mediante la pk del objeto relacionado para sanear Pylance
+        return f"{self.cliente.pk} - {self.servicio.nombre}"
+
+
+class HistorialEstadoAgendamiento(models.Model):
+    id_historial_estado_agendamiento = models.BigAutoField(primary_key=True, db_column='id_historial_estado_agendamiento')
+    agendamiento = models.ForeignKey(
+        Agendamiento,
+        db_column='id_agendamiento',
+        on_delete=models.CASCADE,
+        related_name='historial_estados',
+    )
+    estado = models.CharField(max_length=20)
+    cambiado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        db_column='cambiado_por',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='cambios_estado_agendamiento',
+    )
+    nota = models.CharField(max_length=255, null=True, blank=True)
+    cambiado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'historial_estado_agendamiento'
+        managed = True
+        ordering = ['-cambiado_en']

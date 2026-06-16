@@ -1,6 +1,6 @@
 import io
 
-import pandas as pd
+import pandas as pd  # type: ignore
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -14,9 +14,18 @@ from core.permissions import IsAdminOrReadOnly
 from core.pdf_reports import build_crud_pdf_response
 from clientes.models import Cliente
 from usuarios.models import Empleado
-from .forms import AgendamientoForm, EmpleadoAgendamientoForm
-from .models import Agendamiento, Servicio, TipoServicio
-from .serializers import AgendamientoSerializer, ServicioSerializer, TipoServicioSerializer
+from .forms import (
+    AgendamientoForm, EmpleadoAgendamientoForm, 
+    ServicioForm, CategoriaServicioForm, TipoServicioForm, EmpleadoServicioForm
+)
+from .models import (
+    Agendamiento, Servicio, TipoServicio, 
+    CategoriaServicio, EmpleadoServicio, HistorialEstadoAgendamiento
+)
+from .serializers import (
+    AgendamientoSerializer, ServicioSerializer, TipoServicioSerializer,
+    CategoriaServicioSerializer, EmpleadoServicioSerializer, HistorialEstadoAgendamientoSerializer
+)
 
 AGENDAMIENTO_COLUMNS = [
     ('id', 'ID'),
@@ -38,11 +47,23 @@ class TipoServicioViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     audit_prefix = 'servicios.tipo_servicio'
 
+class CategoriaServicioViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
+    queryset = CategoriaServicio.objects.all()
+    serializer_class = CategoriaServicioSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    audit_prefix = 'servicios.categoria_servicio'
+
 class ServicioViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     queryset = Servicio.objects.all()
     serializer_class = ServicioSerializer
     permission_classes = [IsAdminOrReadOnly]
     audit_prefix = 'servicios.servicio'
+
+class EmpleadoServicioViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
+    queryset = EmpleadoServicio.objects.all()
+    serializer_class = EmpleadoServicioSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    audit_prefix = 'servicios.empleado_servicio'
 
 class AgendamientoViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     queryset = Agendamiento.objects.all()
@@ -50,16 +71,22 @@ class AgendamientoViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     audit_prefix = 'servicios.agendamiento'
 
+class HistorialEstadoAgendamientoViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
+    queryset = HistorialEstadoAgendamiento.objects.all()
+    serializer_class = HistorialEstadoAgendamientoSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    audit_prefix = 'servicios.historial_estado_agendamiento'
+
 
 def _build_agendamiento_rows(queryset, selected):
     config = {
-        'id': ('ID', lambda a: a.id),
-        'cliente': ('Cliente', lambda a: getattr(a.cliente.usuario, 'email', None) or str(a.cliente)),
-        'servicio': ('Servicio', lambda a: a.servicio.nombre_servicio),
-        'empleado': ('Empleado', lambda a: getattr(getattr(a.empleado, 'usuario', None), 'email', None) or 'Sin asignar'),
-        'fecha': ('Fecha', lambda a: a.fecha_agendamiento),
-        'hora': ('Hora', lambda a: a.hora_agendamiento),
-        'estado': ('Estado', lambda a: a.estado_agendamiento),
+        'id': ('ID', lambda a: a.id_agendamiento),
+        'cliente': ('Cliente', lambda a: getattr(a.cliente.usuario, 'correo', None) or str(a.cliente)),
+        'servicio': ('Servicio', lambda a: a.servicio.nombre),
+        'empleado': ('Empleado', lambda a: getattr(getattr(a.empleado, 'usuario', None), 'correo', None) or 'Sin asignar'),
+        'fecha': ('Fecha', lambda a: a.inicia_en.date() if a.inicia_en else None),
+        'hora': ('Hora', lambda a: a.inicia_en.time() if a.inicia_en else None),
+        'estado': ('Estado', lambda a: a.estado),
         'notas': ('Notas', lambda a: a.notas or ''),
     }
     keys = [k for k in selected if k in config] or AGENDAMIENTO_DEFAULT_COLUMNS
@@ -110,11 +137,12 @@ def lista_agendamientos(request):
     search = (request.GET.get('q') or '').strip()
     if search:
         ag_qs = ag_qs.filter(
-            Q(cliente__usuario__nombre1__icontains=search)
-            | Q(cliente__usuario__apellido1__icontains=search)
-            | Q(cliente__usuario__email__icontains=search)
-            | Q(servicio__nombre_servicio__icontains=search)
-            | Q(empleado__usuario__email__icontains=search)
+            Q(cliente__usuario__nombre__icontains=search)
+            | Q(cliente__usuario__apellido__icontains=search)
+            | Q(cliente__usuario__correo__icontains=search)
+            | Q(servicio__nombre__icontains=search)
+            | Q(empleado__usuario__correo__icontains=search)
+            | Q(estado__icontains=search)
         )
 
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
@@ -184,7 +212,7 @@ def crear_agendamiento(request):
 
 @admin_required
 def editar_agendamiento(request, id):
-    agendamiento = get_object_or_404(Agendamiento, id=id)
+    agendamiento = get_object_or_404(Agendamiento, pk=id)
     if request.method == 'POST':
         form = AgendamientoForm(request.POST, instance=agendamiento)
         if form.is_valid():
@@ -197,7 +225,7 @@ def editar_agendamiento(request, id):
 
 @admin_required
 def eliminar_agendamiento(request, id):
-    agendamiento = get_object_or_404(Agendamiento, id=id)
+    agendamiento = get_object_or_404(Agendamiento, pk=id)
     agendamiento.delete()
     return redirect('lista_agendamientos')
 
@@ -219,11 +247,11 @@ def empleado_lista_agendamientos(request):
     search = (request.GET.get('q') or '').strip()
     if search:
         ag_qs = ag_qs.filter(
-            Q(cliente__usuario__nombre1__icontains=search)
-            | Q(cliente__usuario__apellido1__icontains=search)
-            | Q(cliente__usuario__email__icontains=search)
-            | Q(servicio__nombre_servicio__icontains=search)
-            | Q(estado_agendamiento__icontains=search)
+            Q(cliente__usuario__nombre__icontains=search)
+            | Q(cliente__usuario__apellido__icontains=search)
+            | Q(cliente__usuario__correo__icontains=search)
+            | Q(servicio__nombre__icontains=search)
+            | Q(estado__icontains=search)
         )
 
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
@@ -262,7 +290,7 @@ def empleado_crear_agendamiento(request):
 @employee_required
 def empleado_editar_agendamiento(request, id):
     empleado = _get_or_create_employee_for_user(request.user)
-    agendamiento = get_object_or_404(Agendamiento, id=id, empleado=empleado)
+    agendamiento = get_object_or_404(Agendamiento, pk=id, empleado=empleado)
     if request.method == 'POST':
         form = EmpleadoAgendamientoForm(request.POST, instance=agendamiento)
         form.instance.empleado = empleado
@@ -284,10 +312,162 @@ def empleado_editar_agendamiento(request, id):
 @employee_required
 def empleado_eliminar_agendamiento(request, id):
     empleado = _get_or_create_employee_for_user(request.user)
-    agendamiento = get_object_or_404(Agendamiento, id=id, empleado=empleado)
+    agendamiento = get_object_or_404(Agendamiento, pk=id, empleado=empleado)
     agendamiento.delete()
     messages.info(request, 'Agendamiento eliminado.')
     return redirect('empleado_agendamientos')
+
+
+# ========== SERVICIOS CRUD ==========
+
+@admin_required
+def lista_servicios(request):
+    servicios_qs = Servicio.objects.select_related('tipo_servicio', 'categoria_servicio')
+    
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        servicios_qs = servicios_qs.filter(
+            Q(nombre__icontains=search) |
+            Q(descripcion__icontains=search) |
+            Q(tipo_servicio__nombre__icontains=search) |
+            Q(categoria_servicio__nombre__icontains=search)
+        )
+    
+    filtro_tipo = request.GET.get('tipo')
+    if filtro_tipo:
+        servicios_qs = servicios_qs.filter(tipo_servicio_id=filtro_tipo)
+    
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(servicios_qs, page_size)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
+    tipos = TipoServicio.objects.all()
+    
+    return render(request, 'servicios/lista_servicios.html', {
+        'page_obj': page_obj,
+        'servicios': page_obj.object_list,
+        'search': search,
+        'tipos': tipos,
+        'filtro_tipo': filtro_tipo,
+    })
+
+
+@admin_required
+def crear_servicio(request):
+    if request.method == 'POST':
+        form = ServicioForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Servicio creado correctamente.')
+            return redirect('lista_servicios')
+        messages.error(request, 'Error al crear el servicio. Revisa los datos.')
+    else:
+        form = ServicioForm()
+    
+    return render(request, 'servicios/servicio_form.html', {
+        'form': form,
+        'titulo': 'Crear Servicio',
+        'es_crear': True,
+    })
+
+
+@admin_required
+def editar_servicio(request, id):
+    servicio = get_object_or_404(Servicio, pk=id)
+    if request.method == 'POST':
+        form = ServicioForm(request.POST, instance=servicio)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Servicio actualizado correctamente.')
+            return redirect('lista_servicios')
+        messages.error(request, 'Error al actualizar. Revisa los datos.')
+    else:
+        form = ServicioForm(instance=servicio)
+    
+    return render(request, 'servicios/servicio_form.html', {
+        'form': form,
+        'titulo': f'Editar: {servicio.nombre}',
+        'es_crear': False,
+        'servicio': servicio,
+    })
+
+
+@admin_required
+def eliminar_servicio(request, id):
+    servicio = get_object_or_404(Servicio, pk=id)
+    nombre = servicio.nombre
+    servicio.delete()
+    messages.info(request, f'Servicio "{nombre}" eliminado.')
+    return redirect('lista_servicios')
+
+
+# ========== EMPLEADO-SERVICIO ASIGNACIÓN ==========
+
+@admin_required
+def lista_empleado_servicios(request):
+    asignaciones_qs = EmpleadoServicio.objects.select_related('empleado__usuario', 'servicio')
+    
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        asignaciones_qs = asignaciones_qs.filter(
+            Q(empleado__usuario__correo__icontains=search) |
+            Q(empleado__usuario__nombre__icontains=search) |
+            Q(servicio__nombre__icontains=search)
+        )
+    
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(asignaciones_qs, page_size)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    
+    return render(request, 'servicios/lista_empleado_servicios.html', {
+        'page_obj': page_obj,
+        'asignaciones': page_obj.object_list,
+        'search': search,
+    })
+
+
+@admin_required
+def crear_empleado_servicio(request):
+    if request.method == 'POST':
+        form = EmpleadoServicioForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Servicio asignado al empleado.')
+            return redirect('lista_empleado_servicios')
+        messages.error(request, 'Error en la asignación.')
+    else:
+        form = EmpleadoServicioForm()
+    
+    return render(request, 'servicios/formulario_empleado_servicio.html', {
+        'form': form,
+        'titulo': 'Asignar Servicio a Empleado',
+    })
+
+
+@admin_required
+def editar_empleado_servicio(request, id):
+    asignacion = get_object_or_404(EmpleadoServicio, pk=id)
+    if request.method == 'POST':
+        form = EmpleadoServicioForm(request.POST, instance=asignacion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Asignación actualizada.')
+            return redirect('lista_empleado_servicios')
+    else:
+        form = EmpleadoServicioForm(instance=asignacion)
+    
+    return render(request, 'servicios/formulario_empleado_servicio.html', {
+        'form': form,
+        'titulo': 'Editar Asignación',
+    })
+
+
+@admin_required
+def eliminar_empleado_servicio(request, id):
+    asignacion = get_object_or_404(EmpleadoServicio, pk=id)
+    asignacion.delete()
+    messages.info(request, 'Asignación eliminada.')
+    return redirect('lista_empleado_servicios')
 
 
 @admin_required
@@ -308,10 +488,10 @@ def carga_masiva_agendamientos(request):
             return redirect('agendamientos_carga_masiva')
 
         df.columns = [str(c).strip().lower() for c in df.columns]
-        required = {'cliente_email', 'servicio', 'fecha', 'hora'}
+        required = {'cliente_correo', 'servicio', 'fecha', 'hora'}
         alt_required = {'cliente_email', 'servicio', 'fecha_agendamiento', 'hora_agendamiento'}
         if not required.issubset(df.columns) and not alt_required.issubset(df.columns):
-            messages.error(request, 'Faltan columnas requeridas: cliente_email, servicio, fecha, hora.')
+            messages.error(request, 'Faltan columnas requeridas: cliente_correo/cliente_email, servicio, fecha, hora.')
             return redirect('agendamientos_carga_masiva')
 
         creados = 0
@@ -320,16 +500,16 @@ def carga_masiva_agendamientos(request):
 
         for idx, row in df.iterrows():
             try:
-                cliente_email = str(row.get('cliente_email') or '').strip()
+                cliente_correo = str(row.get('cliente_correo') or row.get('cliente_email') or '').strip()
                 servicio_nombre = str(row.get('servicio') or row.get('servicio_nombre') or '').strip()
                 fecha_raw = row.get('fecha') if 'fecha' in df.columns else row.get('fecha_agendamiento')
                 hora_raw = row.get('hora') if 'hora' in df.columns else row.get('hora_agendamiento')
-                empleado_email = str(row.get('empleado_email') or '').strip()
-                estado_val = str(row.get('estado') or row.get('estado_agendamiento') or 'Pendiente').strip()
+                empleado_correo = str(row.get('empleado_correo') or row.get('empleado_email') or '').strip()
+                estado_val = str(row.get('estado') or row.get('estado_agendamiento') or 'PENDIENTE').strip()
                 notas_val = str(row.get('notas') or '').strip()
 
-                if not cliente_email or not servicio_nombre or pd.isna(fecha_raw) or pd.isna(hora_raw):
-                    raise ValueError('Datos faltantes: cliente_email, servicio, fecha u hora.')
+                if not cliente_correo or not servicio_nombre or pd.isna(fecha_raw) or pd.isna(hora_raw):
+                    raise ValueError('Datos faltantes: cliente_correo/cliente_email, servicio, fecha u hora.')
 
                 try:
                     fecha_val = pd.to_datetime(fecha_raw).date()
@@ -342,36 +522,41 @@ def carga_masiva_agendamientos(request):
                     raise ValueError('Hora inválida')
 
                 try:
-                    cliente_obj = Cliente.objects.select_related('usuario').get(usuario__email__iexact=cliente_email)
+                    cliente_obj = Cliente.objects.select_related('usuario').get(usuario__correo__iexact=cliente_correo)
                 except Cliente.DoesNotExist:
                     raise ValueError('Cliente no encontrado')
 
-                servicio_obj = Servicio.objects.filter(nombre_servicio__iexact=servicio_nombre).first()
+                servicio_obj = Servicio.objects.filter(nombre__iexact=servicio_nombre).first()
                 if not servicio_obj:
                     raise ValueError('Servicio no encontrado')
 
                 empleado_obj = None
-                if empleado_email:
-                    empleado_obj = Empleado.objects.filter(usuario__email__iexact=empleado_email).first()
+                if empleado_correo:
+                    empleado_obj = Empleado.objects.filter(usuario__correo__iexact=empleado_correo).first()
                     if not empleado_obj:
                         raise ValueError('Empleado no encontrado')
 
-                estado_clean = next((choice for choice in valid_estados if choice.lower() == estado_val.lower()), 'Pendiente')
+                estado_clean = next((choice for choice in valid_estados if choice.lower() == estado_val.lower()), 'PENDIENTE')
+
+                inicia_en = pd.to_datetime(f"{fecha_val} {hora_val}")
+                termina_en = inicia_en + pd.to_timedelta(int(servicio_obj.duracion_minutos or 30), unit='minute')
 
                 nuevo = Agendamiento(
                     cliente=cliente_obj,
                     servicio=servicio_obj,
                     empleado=empleado_obj,
-                    fecha_agendamiento=fecha_val,
-                    hora_agendamiento=hora_val,
-                    estado_agendamiento=estado_clean,
+                    inicia_en=inicia_en,
+                    termina_en=termina_en,
+                    estado=estado_clean,
                     notas=notas_val,
                 )
                 nuevo.full_clean()
                 nuevo.save()
                 creados += 1
             except Exception as exc:
-                errores.append(f'Fila {idx + 1}: {exc}')
+                # CORRECCIÓN PYLANCE: Casteo explícito del índice para evitar problemas de tipos con Hashable
+                fila_num = int(idx) + 1 if isinstance(idx, (int, float)) else str(idx)
+                errores.append(f'Fila {fila_num}: {exc}')
 
         if errores:
             messages.warning(request, f'Creados {creados}. Errores en {len(errores)} filas.')

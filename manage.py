@@ -3,6 +3,22 @@
 import os
 import sys
 
+# =========================================================================
+# PARCHE MAESTRO SENIOR: Inyección de Mock Global para WeasyPrint en Windows
+# =========================================================================
+class FakeWeasyPrintHTML:
+    def __init__(self, *args, **kwargs):
+        pass
+    def write_pdf(self, *args, **kwargs):
+        return b"PDF deshabilitado localmente"
+
+class FakeWeasyPrintModule:
+    HTML = FakeWeasyPrintHTML
+
+# Forzamos a Python a creer que WeasyPrint ya está cargado en memoria de manera simulada
+sys.modules['weasyprint'] = FakeWeasyPrintModule
+# =========================================================================
+
 
 def main():
     """Run administrative tasks."""

@@ -1,12 +1,12 @@
-{% extends 'base_form.html' %}
+﻿{% extends 'base_form.html' %}
 {% load static %}
 
 {% block title %}Producto | Crear / Editar{% endblock %}
 
 {% block content %}
 <div class="glass-panel fade-in-up crud-form-panel">
-  <div class="modal-header" style="justify-content: center; align-items:center;">
-    <div style="text-align:center; width:100%;">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
       <h3>Producto</h3>
       <p class="section-subtitle">Datos básicos, stock y multimedia.</p>
     </div>
@@ -15,57 +15,67 @@
   <form method="POST" enctype="multipart/form-data" class="form-grid">
     {% csrf_token %}
     <div class="field">
-      <label for="id_nombre">Nombre</label>
-      {{ form.nombre }}
-      {% if form.nombre.errors %}<span class="badge-chip">{{ form.nombre.errors }}</span>{% endif %}
+      <label for="{{ form_variante.producto.id_for_label }}">Producto</label>
+      {{ form_variante.producto }}
+      {% if form_variante.producto.errors %}<span class="badge-chip">{{ form_variante.producto.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_marca">Marca</label>
-      {{ form.marca }}
-      {% if form.marca.errors %}<span class="badge-chip">{{ form.marca.errors }}</span>{% endif %}
+      <label for="{{ form_variante.sku.id_for_label }}">SKU</label>
+      {{ form_variante.sku }}
+      {% if form_variante.sku.errors %}<span class="badge-chip">{{ form_variante.sku.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_proveedor">Proveedor</label>
-      {{ form.proveedor }}
-      {% if form.proveedor.errors %}<span class="badge-chip">{{ form.proveedor.errors }}</span>{% endif %}
+      <label for="{{ form_variante.codigo_barras.id_for_label }}">Código de barras</label>
+      {{ form_variante.codigo_barras }}
+      {% if form_variante.codigo_barras.errors %}<span class="badge-chip">{{ form_variante.codigo_barras.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_precio">Precio</label>
-      {{ form.precio }}
-      {% if form.precio.errors %}<span class="badge-chip">{{ form.precio.errors }}</span>{% endif %}
+      <label for="{{ form_variante.nombre_variante.id_for_label }}">Nombre de variante</label>
+      {{ form_variante.nombre_variante }}
+      {% if form_variante.nombre_variante.errors %}<span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_estado">Estado</label>
-      {{ form.estado }}
-      {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
+      <label for="{{ form_variante.precio.id_for_label }}">Precio</label>
+      {{ form_variante.precio }}
+      {% if form_variante.precio.errors %}<span class="badge-chip">{{ form_variante.precio.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_cantidad">Cantidad</label>
-      {{ form.cantidad }}
-      {% if form.cantidad.errors %}<span class="badge-chip">{{ form.cantidad.errors }}</span>{% endif %}
+      <label for="{{ form_variante.costo.id_for_label }}">Costo</label>
+      {{ form_variante.costo }}
+      {% if form_variante.costo.errors %}<span class="badge-chip">{{ form_variante.costo.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_stock">Stock disponible</label>
-      {{ form.stock }}
-      {% if form.stock.errors %}<span class="badge-chip">{{ form.stock.errors }}</span>{% endif %}
+      <label for="{{ form_variante.peso_gramos.id_for_label }}">Peso (g)</label>
+      {{ form_variante.peso_gramos }}
+      {% if form_variante.peso_gramos.errors %}<span class="badge-chip">{{ form_variante.peso_gramos.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_fecha_ingreso">Fecha de ingreso</label>
-      {{ form.fecha_ingreso }}
-      {% if form.fecha_ingreso.errors %}<span class="badge-chip">{{ form.fecha_ingreso.errors }}</span>{% endif %}
+      <label for="{{ form_variante.activo.id_for_label }}">Activo</label>
+      {{ form_variante.activo }}
+      {% if form_variante.activo.errors %}<span class="badge-chip">{{ form_variante.activo.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label for="id_imagen">Imagen</label>
-      {{ form.imagen }}
-      {% if form.imagen.errors %}<span class="badge-chip">{{ form.imagen.errors }}</span>{% endif %}
+      <label for="{{ form_saldo.bodega.id_for_label }}">Bodega</label>
+      {{ form_saldo.bodega }}
+      {% if form_saldo.bodega.errors %}<span class="badge-chip">{{ form_saldo.bodega.errors }}</span>{% endif %}
     </div>
-    <div class="field" style="grid-column:1/-1;">
-      <label for="id_descripcion">Descripción</label>
-      {{ form.descripcion }}
-      {% if form.descripcion.errors %}<span class="badge-chip">{{ form.descripcion.errors }}</span>{% endif %}
+    <div class="field">
+      <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">Stock</label>
+      {{ form_saldo.cantidad_existencia }}
+      {% if form_saldo.cantidad_existencia.errors %}<span class="badge-chip">{{ form_saldo.cantidad_existencia.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">Reservado</label>
+      {{ form_saldo.cantidad_reservada }}
+      {% if form_saldo.cantidad_reservada.errors %}<span class="badge-chip">{{ form_saldo.cantidad_reservada.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="{{ form_saldo.nivel_reorden.id_for_label }}">Nivel reorden</label>
+      {{ form_saldo.nivel_reorden }}
+      {% if form_saldo.nivel_reorden.errors %}<span class="badge-chip">{{ form_saldo.nivel_reorden.errors }}</span>{% endif %}
     </div>
 
-    <div class="form-actions" style="grid-column:1/-1; justify-content:center; gap:14px; margin-top:18px;">
+    <div class="form-actions form-actions-center u-grid-full">
       <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>
       <button type="submit" class="btn-pill btn-primary">Guardar</button>
     </div>

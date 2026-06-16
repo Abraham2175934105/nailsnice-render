@@ -1,0 +1,59 @@
+{% extends 'base_form.html' %}
+{% load static %}
+
+{% block title %}Servicio | Crear / Editar{% endblock %}
+
+{% block content %}
+<div class="glass-panel fade-in-up crud-form-panel">
+  <div class="modal-header modal-header-centered">
+    <div class="u-text-center u-w-full">
+      <h3>Servicio</h3>
+      <p class="section-subtitle">Configuración de tipo, categoría, precio y duración.</p>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="form-grid">
+    {% csrf_token %}
+    <div class="field">
+      <label for="id_nombre">Nombre</label>
+      {{ form.nombre }}
+      {% if form.nombre.errors %}<span class="badge-chip">{{ form.nombre.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_tipo_servicio">Tipo de Servicio</label>
+      {{ form.tipo_servicio }}
+      {% if form.tipo_servicio.errors %}<span class="badge-chip">{{ form.tipo_servicio.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_categoria_servicio">Categoría</label>
+      {{ form.categoria_servicio }}
+      {% if form.categoria_servicio.errors %}<span class="badge-chip">{{ form.categoria_servicio.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_duracion_minutos">Duración (Minutos)</label>
+      {{ form.duracion_minutos }}
+      {% if form.duracion_minutos.errors %}<span class="badge-chip">{{ form.duracion_minutos.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_precio_base">Precio Base</label>
+      {{ form.precio_base }}
+      {% if form.precio_base.errors %}<span class="badge-chip">{{ form.precio_base.errors }}</span>{% endif %}
+    </div>
+    <div class="field">
+      <label for="id_activo">Activo</label>
+      {{ form.activo }}
+      {% if form.activo.errors %}<span class="badge-chip">{{ form.activo.errors }}</span>{% endif %}
+    </div>
+    <div class="field u-grid-full">
+      <label for="id_descripcion">Descripción</label>
+      {{ form.descripcion }}
+      {% if form.descripcion.errors %}<span class="badge-chip">{{ form.descripcion.errors }}</span>{% endif %}
+    </div>
+
+    <div class="form-actions form-actions-center u-grid-full">
+      <a class="btn-ghost" href="{% url 'lista_servicios' %}">Cancelar</a>
+      <button type="submit" class="btn-pill btn-primary">Guardar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

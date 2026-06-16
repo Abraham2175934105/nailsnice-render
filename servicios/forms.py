@@ -1,8 +1,11 @@
-from datetime import date, time, timedelta
+from datetime import timedelta
 
 from django import forms
+from django.utils import timezone
 
-from .models import Agendamiento
+from clientes.models import Cliente
+from usuarios.models import Empleado
+from .models import Agendamiento, Servicio, CategoriaServicio, TipoServicio, EmpleadoServicio
 
 
 class AgendamientoForm(forms.ModelForm):
@@ -10,101 +13,125 @@ class AgendamientoForm(forms.ModelForm):
         model = Agendamiento
         fields = [
             'cliente',
-            'servicio',
             'empleado',
-            'fecha_agendamiento',
-            'hora_agendamiento',
-            'estado_agendamiento',
+            'servicio',
+            'inicia_en',
+            'termina_en',
+            'estado',
+            'canal',
             'notas',
         ]
         widgets = {
-            'fecha_agendamiento': forms.DateInput(attrs={'type': 'date'}),
-            'hora_agendamiento': forms.TimeInput(attrs={'type': 'time'}),
+            'inicia_en': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'termina_en': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notas': forms.Textarea(attrs={'rows': 3}),
         }
 
-
-class EmpleadoAgendamientoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['cliente'].widget.attrs.update({'autocomplete': 'off'})
-        self.fields['servicio'].widget.attrs.update({'autocomplete': 'off'})
-        self.fields['fecha_agendamiento'].widget.attrs.update({'min': date.today().isoformat()})
-        self.fields['hora_agendamiento'].widget.attrs.update({'step': '300'})
-        self.fields['notas'].widget.attrs.update({'maxlength': '300', 'placeholder': 'Observaciones adicionales (opcional)'})
-
-    class Meta:
-        model = Agendamiento
-        fields = [
-            'cliente',
-            'servicio',
-            'fecha_agendamiento',
-            'hora_agendamiento',
-            'estado_agendamiento',
-            'notas',
-        ]
-        widgets = {
-            'fecha_agendamiento': forms.DateInput(attrs={'type': 'date'}),
-            'hora_agendamiento': forms.TimeInput(attrs={'type': 'time'}),
-            'notas': forms.Textarea(attrs={'rows': 3}),
-        }
-
-    def clean_fecha_agendamiento(self):
-        fecha = self.cleaned_data.get('fecha_agendamiento')
-        if not fecha:
-            return fecha
-
-        hoy = date.today()
-        maximo = hoy + timedelta(days=60)
-        if fecha < hoy:
-            raise forms.ValidationError('La fecha no puede ser anterior a hoy.')
-        if fecha > maximo:
-            raise forms.ValidationError('La fecha no puede ser mayor a 60 días desde hoy.')
-        return fecha
-
-    def clean_hora_agendamiento(self):
-        hora = self.cleaned_data.get('hora_agendamiento')
-        if not hora:
-            return hora
-
-        hora_inicio = time(7, 0)
-        hora_fin = time(20, 0)
-        if hora < hora_inicio or hora > hora_fin:
-            raise forms.ValidationError('La hora debe estar entre 07:00 y 20:00.')
-        return hora
-
-    def clean_notas(self):
-        notas = (self.cleaned_data.get('notas') or '').strip()
-        if len(notas) > 300:
-            raise forms.ValidationError('Las notas no pueden superar los 300 caracteres.')
-        return notas
+        self.fields['cliente'].queryset = Cliente.objects.select_related('usuario').order_by('usuario_id')
+        self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
 
     def clean(self):
-        cleaned_data = super().clean()
+        cleaned = super().clean()
+        inicia_en = cleaned.get('inicia_en')
+        termina_en = cleaned.get('termina_en')
 
-        servicio = cleaned_data.get('servicio')
-        if servicio and str(getattr(servicio, 'estado_servicio', '') or '').strip().lower() != 'activo':
-            self.add_error('servicio', 'Solo puedes seleccionar servicios activos.')
+        if inicia_en and termina_en and termina_en <= inicia_en:
+            raise forms.ValidationError('La hora de fin debe ser posterior al inicio.')
 
-        cliente = cleaned_data.get('cliente')
-        if cliente:
-            usuario = getattr(cliente, 'usuario', None)
-            estado = str(getattr(usuario, 'estado_usuario', '') or '').strip().lower()
-            if usuario and (not getattr(usuario, 'is_active', True) or estado not in {'', 'activo'}):
-                self.add_error('cliente', 'El cliente seleccionado no está activo.')
+        if inicia_en:
+            if inicia_en < timezone.now() - timedelta(minutes=5):
+                self.add_error('inicia_en', 'La fecha y hora no pueden estar en el pasado.')
 
-        fecha = cleaned_data.get('fecha_agendamiento')
-        hora = cleaned_data.get('hora_agendamiento')
-        empleado = getattr(self.instance, 'empleado', None)
-        if empleado and fecha and hora:
+        empleado = cleaned.get('empleado')
+        if empleado and inicia_en and termina_en:
             qs = Agendamiento.objects.filter(
                 empleado=empleado,
-                fecha_agendamiento=fecha,
-                hora_agendamiento=hora,
+                estado__in={'PENDIENTE', 'CONFIRMADO', 'EN_PROCESO'},
+                inicia_en__lt=termina_en,
+                termina_en__gt=inicia_en,
             )
             if self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise forms.ValidationError('Ya tienes un agendamiento en esa fecha y hora.')
+                raise forms.ValidationError('Conflicto de horario: el empleado ya tiene una cita en ese rango.')
 
-        return cleaned_data
+        return cleaned
+
+
+class EmpleadoAgendamientoForm(AgendamientoForm):
+    class Meta(AgendamientoForm.Meta):
+        fields = [
+            'cliente',
+            'servicio',
+            'inicia_en',
+            'termina_en',
+            'estado',
+            'canal',
+            'notas',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cliente'].widget.attrs.update({'autocomplete': 'off'})
+        self.fields['servicio'].widget.attrs.update({'autocomplete': 'off'})
+        self.fields['notas'].widget.attrs.update({'maxlength': '300', 'placeholder': 'Observaciones adicionales (opcional)'})
+
+
+# ========== FORMULARIOS PARA SERVICIOS ==========
+
+class TipoServicioForm(forms.ModelForm):
+    class Meta:
+        model = TipoServicio
+        fields = ['codigo', 'nombre', 'activo']
+        widgets = {
+            'codigo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: MANICURE'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Manicura'}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class CategoriaServicioForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaServicio
+        fields = ['nombre', 'descripcion', 'activo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Uñas Acrílicas'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Descripción breve'}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class ServicioForm(forms.ModelForm):
+    class Meta:
+        model = Servicio
+        fields = ['tipo_servicio', 'categoria_servicio', 'nombre', 'descripcion', 'duracion_minutos', 'precio_base', 'activo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del servicio'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descripción detallada'}),
+            'duracion_minutos': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'En minutos'}),
+            'precio_base': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'tipo_servicio': forms.Select(attrs={'class': 'form-control'}),
+            'categoria_servicio': forms.Select(attrs={'class': 'form-control'}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class EmpleadoServicioForm(forms.ModelForm):
+    class Meta:
+        model = EmpleadoServicio
+        fields = ['empleado', 'servicio', 'duracion_personalizada_minutos', 'precio_personalizado', 'activo']
+        widgets = {
+            'empleado': forms.Select(attrs={'class': 'form-control'}),
+            'servicio': forms.Select(attrs={'class': 'form-control'}),
+            'duracion_personalizada_minutos': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': 'Opcional'}),
+            'precio_personalizado': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Opcional'}),
+            'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtrar solo empleados activos
+        self.fields['empleado'].queryset = Empleado.objects.filter(activo=True).select_related('usuario')
+        self.fields['servicio'].queryset = Servicio.objects.filter(activo=True)

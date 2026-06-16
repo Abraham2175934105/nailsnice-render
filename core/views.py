@@ -2,9 +2,9 @@ from django.shortcuts import render, redirect
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from decimal import Decimal
-from datetime import timedelta
+from datetime import timedelta, datetime, date
 
-from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField
+from django.db.models import Sum, Count, F, ExpressionWrapper, DecimalField, IntegerField
 from django.db.models.functions import TruncMonth, Coalesce
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -14,16 +14,17 @@ from django.urls import reverse
 
 from django.core.mail import send_mail
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_datetime, parse_date
 import re
 import random
 import string
 
 # Importaciones para el Dashboard y Auth
-from pedidos.models import Pedidos, Pedido, DetallePedido
-from inventario.models import ProductoMaquillaje
-from web.models import Clientes
-from usuarios.models import Usuario, Rol
+from pedidos.models import PedidoVenta, DetallePedidoVenta
+from productos.models import Producto
+from inventario.models import SaldoInventario
+from clientes.models import Cliente
+from usuarios.models import Usuario, RolAcceso, UsuarioRol
 from core.security import (
     get_client_ip,
     is_locked,
@@ -31,6 +32,17 @@ from core.security import (
     clear_failures,
     security_event,
 )
+
+# IMPORTACIÓN DE MODELOS BI UNMANAGED (OBJETIVO 7 - JUAN HERNÁNDEZ)
+from core.models import (
+    VWVentasDiarias,
+    VWProductosTopMensual,
+    VWSaludInventario,
+    VWAgendamientosDiarios,
+    VWValorCliente
+)
+
+from core.auth import admin_required
 
 LOW_STOCK_THRESHOLD = 5
 TOP_ITEMS_LIMIT = 5
@@ -44,9 +56,11 @@ def _clear_reset_session(request):
         if key in request.session:
             del request.session[key]
 
+
 def index(request):
     cart = request.session.get('cart', {})
     return render(request, 'home.html', {'cart': cart})
+
 
 @api_view(['GET'])
 def home_api(request):
@@ -62,109 +76,6 @@ def home_api(request):
         }
     })
 
-from core.auth import admin_required
-
-@admin_required
-def dashboard_view(request):
-    # Métricas con datos reales
-    pedidos_qs = Pedido.objects.all()
-    legacy_pedidos_qs = Pedidos.activos.all() if hasattr(Pedidos, 'activos') else Pedidos.objects.all()
-
-    ingresos = pedidos_qs.aggregate(total=Coalesce(Sum('total'), Decimal('0')))['total'] or Decimal('0')
-    total_pedidos = pedidos_qs.count()
-    if total_pedidos == 0:
-        total_pedidos = legacy_pedidos_qs.count()
-        ingresos = legacy_pedidos_qs.aggregate(total=Coalesce(Sum('precio'), Decimal('0')))['total'] or Decimal('0')
-    total_clientes = Clientes.objects.count()
-    total_productos = ProductoMaquillaje.activos.count()
-
-    # Series mensuales (ventas y pedidos)
-    monthly = (
-        pedidos_qs
-        .annotate(mes=TruncMonth('creado_en'))
-        .values('mes')
-        .annotate(
-            monto=Coalesce(Sum('total'), Decimal('0')),
-            pedidos=Count('id'),
-        )
-        .order_by('mes')
-    )
-    monthly_labels = [item['mes'].strftime('%b %Y') for item in monthly]
-    monthly_sales = [float(item['monto']) for item in monthly]
-    monthly_orders = [item['pedidos'] for item in monthly]
-
-    # Fallback con tabla legacy en caso de no tener pedidos en el modelo nuevo.
-    if not monthly_labels:
-        legacy_monthly = (
-            legacy_pedidos_qs
-            .annotate(mes=TruncMonth('fecha'))
-            .values('mes')
-            .annotate(
-                monto=Coalesce(Sum('precio'), Decimal('0')),
-                pedidos=Count('id'),
-            )
-            .order_by('mes')
-        )
-        monthly_labels = [item['mes'].strftime('%b %Y') for item in legacy_monthly]
-        monthly_sales = [float(item['monto']) for item in legacy_monthly]
-        monthly_orders = [item['pedidos'] for item in legacy_monthly]
-
-    # Top productos vendidos
-    sales_expr = ExpressionWrapper(F('precio_unitario') * F('cantidad'), output_field=DecimalField(max_digits=12, decimal_places=2))
-    top_vendidos = (
-        DetallePedido.objects
-        .values('producto__nombre')
-        .annotate(unidades=Coalesce(Sum('cantidad'), 0), ventas=Coalesce(Sum(sales_expr), Decimal('0')))
-        .order_by('-unidades')[:TOP_ITEMS_LIMIT]
-    )
-    top_names = [item['producto__nombre'] for item in top_vendidos]
-    top_qty = [item['unidades'] for item in top_vendidos]
-    top_sales = [float(item['ventas']) for item in top_vendidos]
-
-    if not top_names:
-        top_vendidos_legacy = (
-            legacy_pedidos_qs
-            .values('producto')
-            .annotate(unidades=Coalesce(Sum('cantidad'), 0), ventas=Coalesce(Sum('precio'), Decimal('0')))
-            .order_by('-unidades')[:TOP_ITEMS_LIMIT]
-        )
-        top_names = [item['producto'] for item in top_vendidos_legacy]
-        top_qty = [item['unidades'] for item in top_vendidos_legacy]
-        top_sales = [float(item['ventas']) for item in top_vendidos_legacy]
-
-    # Productos con mayor stock
-    stock_mas_altos = ProductoMaquillaje.activos.order_by('-stock')[:TOP_ITEMS_LIMIT]
-
-    low_stock_qs = ProductoMaquillaje.activos.filter(stock__lte=LOW_STOCK_THRESHOLD).order_by('stock', 'nombre')
-    low_stock_count = low_stock_qs.count()
-
-    # Legacy últimos pedidos (para compatibilidad visual)
-    ultimos_pedidos = Pedidos.objects.order_by('-id')[:5]
-    productos_bajo_stock = low_stock_qs[:8]
-
-    charts_payload = {
-        'monthly_labels': monthly_labels,
-        'monthly_sales': monthly_sales,
-        'monthly_orders': monthly_orders,
-        'top_names': top_names,
-        'top_qty': top_qty,
-        'top_sales': top_sales,
-        'stock_names': [p.nombre for p in stock_mas_altos],
-        'stock_qty': [p.stock for p in stock_mas_altos],
-    }
-
-    context = {
-        'total_pedidos': total_pedidos,
-        'ingresos': ingresos,
-        'total_clientes': total_clientes,
-        'total_productos': total_productos,
-        'productos_bajo_stock': productos_bajo_stock,
-        'low_stock_count': low_stock_count,
-        'low_stock_threshold': LOW_STOCK_THRESHOLD,
-        'ultimos_pedidos': ultimos_pedidos,
-        'charts_payload': charts_payload,
-    }
-    return render(request, 'dashboard.html', context)
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -188,12 +99,11 @@ def login_view(request):
             field_errors['contrasena'] = 'Debes ingresar tu contraseña.'
 
         if not field_errors:
-            usuario = Usuario.objects.filter(email=correo).first()
-            user_auth = authenticate(request, email=correo, password=contrasena)
+            usuario = Usuario.objects.filter(correo=correo).first()
+            user_auth = authenticate(request, username=correo, password=contrasena)
             active_ok = bool(
                 usuario
-                and getattr(usuario, 'is_active', True)
-                and getattr(usuario, 'estado_usuario', 'Activo') == 'Activo'
+                and (getattr(usuario, 'is_active', True) or str(getattr(usuario, 'estado', '')).upper() == 'ACTIVO')
             )
 
             if user_auth is None or not active_ok:
@@ -209,11 +119,14 @@ def login_view(request):
                 security_event('login_success', request, extra={'email': correo})
                 messages.success(request, 'Inicio de sesión exitoso.')
 
-                # Redirección según rol
-                role_name = str(getattr(getattr(user_auth, 'id_rol', None), 'nombre', '') or '').strip().lower()
-                if getattr(user_auth, 'is_superuser', False) or role_name in {'administrador', 'admin'}:
+                user_role_obj = UsuarioRol.objects.filter(usuario=user_auth).select_related('rol').first()
+                role_name = ""
+                if user_role_obj and user_role_obj.rol:
+                    role_name = str(user_role_obj.rol.nombre or '').strip().lower()
+
+                if role_name == 'administrador' or getattr(user_auth, 'is_superuser', False):
                     return redirect('dashboard')
-                if role_name == Rol.EMPLEADO.lower():
+                if role_name == 'empleado':
                     return redirect('empleado_agendamientos')
                 return redirect('index')
 
@@ -222,59 +135,45 @@ def login_view(request):
 
     return render(request, 'login.html', {'session_notice': session_notice})
 
+
 def logout_view(request):
     security_event('logout', request, extra={'email': getattr(request.user, 'email', None)})
     logout(request)
     request.session.flush()
     return redirect('index')
 
+
 def register_view(request):
     if request.user.is_authenticated:
         return redirect('index')
         
     if request.method == 'POST':
-        nombre1 = (request.POST.get('nombre') or '').strip()
-        nombre2 = (request.POST.get('nombre2') or '').strip()
-        apellido1 = (request.POST.get('apellido') or '').strip()
-        apellido2 = (request.POST.get('apellido2') or '').strip()
+        nombre = (request.POST.get('nombre') or '').strip()
+        apellido = (request.POST.get('apellido') or '').strip()
         direccion = (request.POST.get('direccion') or '').strip()
         telefono = (request.POST.get('telefono') or '').strip()
         correo = (request.POST.get('correo') or '').strip().lower()
         contrasena = request.POST.get('contrasena') or ''
         
-        # Validaciones de Seguridad y Formato
         errores = False
         field_errors = {}
 
-        # Solo letras A-Z sin espacios ni caracteres especiales (nombres y apellidos)
-        name_pattern = r'^[A-Za-z]+'  # Solo letras, sin espacios ni caracteres especiales
+        name_pattern = r'^[A-Za-z\s]+'
 
-        # Nombre y apellido obligatorios
-        if not nombre1:
-            field_errors['nombre'] = 'El primer nombre es obligatorio.'
+        if not nombre:
+            field_errors['nombre'] = 'El nombre es obligatorio.'
             errores = True
-        elif not re.fullmatch(name_pattern, nombre1):
-            field_errors['nombre'] = 'El primer nombre solo puede contener letras, sin espacios ni caracteres especiales.'
+        elif not re.fullmatch(name_pattern, nombre):
+            field_errors['nombre'] = 'El nombre solo puede contener letras.'
             errores = True
 
-        if not apellido1:
-            field_errors['apellido'] = 'El primer apellido es obligatorio.'
+        if not apellido:
+            field_errors['apellido'] = 'El apellido es obligatorio.'
             errores = True
-        elif not re.fullmatch(name_pattern, apellido1):
-            field_errors['apellido'] = 'El primer apellido solo puede contener letras, sin espacios ni caracteres especiales.'
+        elif not re.fullmatch(name_pattern, apellido):
+            field_errors['apellido'] = 'El apellido solo puede contener letras.'
             errores = True
-
-        if nombre2:
-            if not re.fullmatch(name_pattern, nombre2):
-                field_errors['nombre2'] = 'El segundo nombre solo puede contener letras, sin espacios ni caracteres especiales.'
-                errores = True
-
-        if apellido2:
-            if not re.fullmatch(name_pattern, apellido2):
-                field_errors['apellido2'] = 'El segundo apellido solo puede contener letras, sin espacios ni caracteres especiales.'
-                errores = True
             
-        # Teléfono: solo números, 10-11 dígitos y sin duplicados
         if not re.fullmatch(r'\d{10,11}', telefono or ''):
             field_errors['telefono'] = 'El teléfono debe tener entre 10 y 11 dígitos numéricos.'
             errores = True
@@ -283,7 +182,6 @@ def register_view(request):
                 field_errors['telefono'] = 'El teléfono ya se encuentra registrado.'
                 errores = True
         
-        # Correo electrónico: formato, longitud y unicidad
         if not correo:
             field_errors['correo'] = 'El correo electrónico es obligatorio.'
             errores = True
@@ -297,26 +195,15 @@ def register_view(request):
                 if len(local_part) < 6:
                     field_errors['correo'] = 'El correo debe tener al menos 6 caracteres antes del dominio.'
                     errores = True
-                # Se permite correo sin números, pero no puede estar compuesto solo por dígitos.
-                if local_part.isdigit():
-                    field_errors['correo'] = 'El correo no puede estar compuesto solo por números.'
-                    errores = True
 
-            if Usuario.objects.filter(email=correo).exists():
+            if Usuario.objects.filter(correo=correo).exists():
                 field_errors['correo'] = 'El correo ya está registrado.'
                 errores = True
 
-        # Dirección (validación simple de formato Colombia: Calle, Carrera, Avenida, etc.)
         if not direccion:
             field_errors['direccion'] = 'La dirección es obligatoria.'
             errores = True
-        else:
-            direccion_pattern = r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+'
-            if not re.match(direccion_pattern, direccion):
-                field_errors['direccion'] = 'La dirección debe tener un formato de vía colombiano (ej: "Calle 123 #45-67").'
-                errores = True
 
-        # Contraseña: 8-20 caracteres, mayúscula, minúscula, número y carácter especial
         if not contrasena:
             field_errors['contrasena'] = 'La contraseña es obligatoria.'
             errores = True
@@ -335,36 +222,29 @@ def register_view(request):
                 errores = True
             if not re.search(r'[^A-Za-z0-9]', contrasena):
                 field_errors['contrasena'] = 'La contraseña debe incluir al menos un carácter especial.'
-                errores = True
             
         if errores:
             return render(request, 'registro.html', {'field_errors': field_errors})
             
-        # Obtener o crear el Rol Cliente (id_rol_id = 2 en la base de datos)
-        rol_cliente, _ = Rol.objects.get_or_create(nombre=Rol.CLIENTE)
-        
-        # Crear el Usuario de Django
-        nuevo_usuario = Usuario.objects.create_user(
-            email=correo,
-            password=contrasena,
-            nombre1=nombre1,
-            nombre2=nombre2 or None,
-            apellido1=apellido1,
-            apellido2=apellido2 or None,
-            telefono=telefono,
-            id_rol=rol_cliente,
+        rol_cliente, _ = RolAcceso.objects.get_or_create(
+            codigo='CLIENTE',
+            defaults={'nombre': 'Cliente', 'descripcion': 'Cliente', 'es_sistema': True},
         )
         
-        # Crear el registro local en web.Clientes
-        Clientes.objects.create(
-            nombre=nombre1,
-            apellido=apellido1,
-            direccion=direccion,
-            telefono=telefono,
+        nuevo_usuario = Usuario(
             correo=correo,
+            nombre=nombre,
+            apellido=apellido,
+            telefono=telefono
+        )
+        nuevo_usuario.set_password(contrasena)
+        nuevo_usuario.save()
+
+        UsuarioRol.objects.update_or_create(
+            usuario=nuevo_usuario,
+            defaults={'rol': rol_cliente},
         )
         
-        # No iniciar sesión automáticamente; redirigir al login
         messages.success(request, 'Usuario registrado correctamente. Ahora puedes iniciar sesión.')
         return redirect('login')
         
@@ -374,26 +254,21 @@ def register_view(request):
 @login_required
 def profile_view(request):
     user = request.user
+    user_id = getattr(user, 'id_usuario', None) or getattr(user, 'id', None)
 
-    def _validate_user_fields(nombre1, nombre2, apellido1, apellido2, telefono):
+    def _validate_user_fields(nombre, apellido, telefono):
         errors = {}
-        name_pattern = r'^[A-Za-z]+'
+        name_pattern = r'^[A-Za-z\s]+'
 
-        if not nombre1:
-            errors['nombre'] = 'El primer nombre es obligatorio.'
-        elif not re.fullmatch(name_pattern, nombre1):
-            errors['nombre'] = 'Solo letras, sin espacios ni caracteres especiales.'
+        if not nombre:
+            errors['nombre'] = 'El nombre es obligatorio.'
+        elif not re.fullmatch(name_pattern, nombre):
+            errors['nombre'] = 'Solo letras y espacios permitidos.'
 
-        if nombre2 and not re.fullmatch(name_pattern, nombre2):
-            errors['nombre2'] = 'Solo letras, sin espacios ni caracteres especiales.'
-
-        if not apellido1:
-            errors['apellido'] = 'El primer apellido es obligatorio.'
-        elif not re.fullmatch(name_pattern, apellido1):
-            errors['apellido'] = 'Solo letras, sin espacios ni caracteres especiales.'
-
-        if apellido2 and not re.fullmatch(name_pattern, apellido2):
-            errors['apellido2'] = 'Solo letras, sin espacios ni caracteres especiales.'
+        if not apellido:
+            errors['apellido'] = 'El apellido es obligatorio.'
+        elif not re.fullmatch(name_pattern, apellido):
+            errors['apellido'] = 'Solo letras y espacios permitidos.'
 
         if not re.fullmatch(r'\d{10,11}', telefono or ''):
             errors['telefono'] = 'El teléfono debe tener entre 10 y 11 dígitos numéricos.'
@@ -413,13 +288,9 @@ def profile_view(request):
             return 'Debe incluir al menos un carácter especial.'
         return None
 
-    if hasattr(Pedidos, 'activos'):
-        pedidos_usuario = Pedidos.activos.filter(usuario__iexact=user.email).order_by('-fecha', '-id')
-    elif hasattr(Pedidos, 'objects'):
-        pedidos_usuario = Pedidos.objects.filter(usuario__iexact=user.email).order_by('-id')
-    else:
-        pedidos_usuario = []
-    cliente_db = Clientes.objects.filter(correo=user.email).first()
+    pedidos_usuario = PedidoVenta.objects.filter(cliente__usuario_id=user_id).order_by('-id_pedido')
+    cliente_db = Cliente.objects.filter(usuario_id=user_id).first()
+    
     security_info = {
         'last_login': user.last_login,
         'current_ip': get_client_ip(request),
@@ -431,15 +302,13 @@ def profile_view(request):
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         action = request.POST.get('action')
         if action == 'update_profile':
-            nombre1 = (request.POST.get('nombre1') or '').strip()
-            nombre2 = (request.POST.get('nombre2') or '').strip()
-            apellido1 = (request.POST.get('apellido1') or '').strip()
-            apellido2 = (request.POST.get('apellido2') or '').strip()
+            nombre = (request.POST.get('nombre') or '').strip()
+            apellido = (request.POST.get('apellido') or '').strip()
             telefono = (request.POST.get('telefono') or '').strip()
             direccion = (request.POST.get('direccion') or '').strip()
             password_actual = request.POST.get('password_actual') or ''
 
-            errors = _validate_user_fields(nombre1, nombre2, apellido1, apellido2, telefono)
+            errors = _validate_user_fields(nombre, apellido, telefono)
 
             direccion_pattern = r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+'
             if not direccion:
@@ -457,25 +326,19 @@ def profile_view(request):
                 return render(request, 'perfil.html', {
                     'field_errors': errors,
                     'pedidos': pedidos_usuario,
-                    'cliente_direccion': getattr(cliente_db, 'direccion', ''),
+                    'cliente_direccion': getattr(cliente_db, 'direccion', '') if hasattr(cliente_db, 'direccion') else '',
                     'security_info': security_info,
                 })
 
-            user.nombre1 = nombre1
-            user.nombre2 = nombre2 or None
-            user.apellido1 = apellido1
-            user.apellido2 = apellido2 or None
-            user.telefono = telefono
+            setattr(user, 'nombre', nombre)
+            setattr(user, 'apellido', apellido)
+            setattr(user, 'telefono', telefono)
             user.save()
 
-            # Actualizamos también el cliente en la app web si existe
-            cliente = Clientes.objects.filter(correo=user.email).first()
-            if cliente:
-                cliente.nombre = nombre1
-                cliente.apellido = apellido1
-                cliente.direccion = direccion
-                cliente.telefono = telefono
-                cliente.save()
+            if cliente_db is not None:
+                if hasattr(cliente_db, 'direccion'):
+                    setattr(cliente_db, 'direccion', direccion)
+                    cliente_db.save()
 
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': 'Datos actualizados correctamente.', 'redirect': reverse('perfil')})
@@ -506,7 +369,7 @@ def profile_view(request):
                 return render(request, 'perfil.html', {
                     'field_errors': errors,
                     'pedidos': pedidos_usuario,
-                    'cliente_direccion': getattr(cliente_db, 'direccion', ''),
+                    'cliente_direccion': getattr(cliente_db, 'direccion', '') if hasattr(cliente_db, 'direccion') else '',
                     'security_info': security_info,
                 })
 
@@ -520,7 +383,7 @@ def profile_view(request):
 
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
-        'cliente_direccion': getattr(cliente_db, 'direccion', ''),
+        'cliente_direccion': getattr(cliente_db, 'direccion', '') if hasattr(cliente_db, 'direccion') else '',
         'security_info': security_info,
     })
 
@@ -533,7 +396,7 @@ def forgot_password_view(request):
     field_errors = {}
 
     if request.method == 'POST':
-        metodo = request.POST.get('metodo')  # 'email' o 'sms'
+        metodo = request.POST.get('metodo')
         valor = (request.POST.get('identificador') or '').strip()
         client_ip = get_client_ip(request)
         identity_key = valor.lower() if metodo == 'email' else valor
@@ -551,42 +414,49 @@ def forgot_password_view(request):
         if not field_errors:
             usuario = None
             if metodo == 'email':
-                usuario = Usuario.objects.filter(email__iexact=valor).first()
+                usuario = Usuario.objects.filter(correo__iexact=valor).first()
             else:
                 usuario = Usuario.objects.filter(telefono=valor).first()
 
             usuario_activo = bool(
-                usuario
+                usuario is not None
                 and getattr(usuario, 'is_active', True)
-                and getattr(usuario, 'estado_usuario', 'Activo') == 'Activo'
+                and str(getattr(usuario, 'estado', 'Activo')).upper() == 'ACTIVO'
             )
 
             codigo = _generate_reset_code()
-            request.session['reset_user_id'] = usuario.id if usuario_activo else -1
+            
+            if usuario is not None and usuario_activo:
+                u_id = getattr(usuario, 'id_usuario', None) or getattr(usuario, 'id', -1)
+                u_telefono = getattr(usuario, 'telefono', '')
+                u_correo = getattr(usuario, 'correo', '')
+            else:
+                u_id = -1
+                u_telefono = ''
+                u_correo = ''
+
+            request.session['reset_user_id'] = u_id
             request.session['reset_method'] = metodo
             request.session['reset_code'] = codigo
             request.session['reset_attempts'] = 0
             request.session['reset_decoy'] = not usuario_activo
-            # Guardamos la fecha como string ISO para que sea serializable en sesiones JSON
             request.session['reset_created_at'] = timezone.now().isoformat()
 
-            if usuario_activo and metodo == 'email':
+            if usuario_activo and metodo == 'email' and u_correo:
                 try:
                     send_mail(
                         subject='Código de verificación - NailsNice',
                         message=f'Tu código de verificación es: {codigo}',
-                        from_email=None,  # usa DEFAULT_FROM_EMAIL si está definido en settings
-                        recipient_list=[usuario.email],
-                        fail_silently=False,  # en desarrollo conviene ver el error si falla el envío
+                        from_email=None,
+                        recipient_list=[u_correo],
+                        fail_silently=False,
                     )
-                except Exception as e:
-                    # En un entorno real se podría loggear; aquí mostramos un mensaje genérico
+                except Exception:
                     security_event('reset_email_delivery_error', request, extra={'identity': identity_key}, level='error')
                     messages.error(request, 'No se pudo procesar la solicitud en este momento. Intenta nuevamente.')
                     return render(request, 'forgot_password.html', {'field_errors': field_errors})
             elif usuario_activo:
-                # Simulación de envío SMS: se imprime en consola del servidor
-                print(f"[NailsNice] SMS a {usuario.telefono} - Código de verificación: {codigo}")
+                print(f"[NailsNice] SMS a {u_telefono} - Código de verificación: {codigo}")
 
             if usuario_activo:
                 clear_failures('reset_ip', client_ip)
@@ -616,19 +486,15 @@ def verify_reset_code_view(request):
         messages.error(request, 'El código es inválido o expiró. Solicita uno nuevo.')
         return redirect('forgot_password')
 
-    # Validar expiración del código (ej: 10 minutos)
     created_at_str = request.session.get('reset_created_at')
     if created_at_str:
-        created_at = parse_datetime(created_at_str)
-        # Si por alguna razón no se puede parsear, tratamos el código como expirado
+        created_at = parse_datetime(str(created_at_str))
         if not created_at:
             _clear_reset_session(request)
             messages.error(request, 'El código de verificación ha expirado. Solicita uno nuevo.')
             return redirect('forgot_password')
 
         now = timezone.now()
-        # Normalizamos ambas fechas a naive para evitar conflictos naive/aware,
-        # independientemente de la configuración USE_TZ
         if timezone.is_aware(created_at):
             created_at = timezone.make_naive(created_at, timezone.get_current_timezone())
         if timezone.is_aware(now):
@@ -658,7 +524,7 @@ def verify_reset_code_view(request):
                 extra={'attempts': request.session['reset_attempts']},
                 level='warning',
             )
-            if request.session['reset_attempts'] >= 5:
+            if int(request.session['reset_attempts']) >= 5:
                 _clear_reset_session(request)
                 messages.error(request, 'El código es inválido o expiró. Solicita uno nuevo.')
                 return redirect('forgot_password')
@@ -683,9 +549,8 @@ def new_password_view(request):
         messages.error(request, 'El enlace para restablecer la contraseña no es válido o ha expirado.')
         return redirect('forgot_password')
 
-    try:
-        usuario = Usuario.objects.get(id=user_id)
-    except Usuario.DoesNotExist:
+    usuario = Usuario.objects.filter(id_usuario=user_id).first() or Usuario.objects.filter(id=user_id).first()
+    if usuario is None:
         _clear_reset_session(request)
         messages.error(request, 'El enlace para restablecer la contraseña no es válido o ha expirado.')
         security_event('reset_password_invalid_session', request, level='warning')
@@ -702,7 +567,6 @@ def new_password_view(request):
         elif nueva != confirmar:
             field_errors['nueva'] = 'Las contraseñas no coinciden.'
         else:
-            # Reutilizamos las reglas del registro
             if len(nueva) < 8 or len(nueva) > 20:
                 field_errors['nueva'] = 'La contraseña debe tener entre 8 y 20 caracteres.'
             if not field_errors and not re.search(r'[A-Z]', nueva):
@@ -717,9 +581,8 @@ def new_password_view(request):
         if not field_errors:
             usuario.set_password(nueva)
             usuario.save()
-            security_event('reset_password_success', request, extra={'email': usuario.email})
+            security_event('reset_password_success', request, extra={'email': getattr(usuario, 'correo', '')})
 
-            # Limpiar estado de sesión del flujo de recuperación
             _clear_reset_session(request)
 
             messages.success(request, 'Contraseña actualizada con éxito. Ahora puedes iniciar sesión.')
@@ -728,3 +591,110 @@ def new_password_view(request):
         return render(request, 'new_password.html', {'field_errors': field_errors, 'usuario': usuario})
 
     return render(request, 'new_password.html', {'usuario': usuario})
+
+
+@admin_required
+def dashboard_view(request):
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    
+    hoy: date = datetime.now().date()
+    start_date: date = hoy - timedelta(days=30)
+    end_date: date = hoy
+
+    if start_date_str and end_date_str:
+        parsed_start = parse_date(start_date_str)
+        parsed_end = parse_date(end_date_str)
+        if parsed_start is not None and parsed_end is not None:
+            start_date = parsed_start
+            end_date = parsed_end
+
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    total_pedidos = PedidoVenta.objects.filter(
+        realizado_en__range=(start_datetime, end_datetime)
+    ).count()
+
+    ingresos_data = PedidoVenta.objects.filter(
+        realizado_en__range=(start_datetime, end_datetime)
+    ).aggregate(total=Sum('monto_total'))
+    ingresos = ingresos_data['total'] if ingresos_data['total'] else 0.0
+
+    total_clientes = PedidoVenta.objects.filter(
+        realizado_en__range=(start_datetime, end_datetime)
+    ).values('cliente').distinct().count()
+
+    total_productos = Producto.objects.filter(activo=True).count()
+
+    ventas_mensuales = PedidoVenta.objects.filter(
+        realizado_en__range=(start_datetime, end_datetime)
+    ).annotate(
+        mes=TruncMonth('realizado_en')
+    ).values('mes').annotate(
+        total_ventas=Sum('monto_total'),
+        total_pedidos=Count('id_pedido')
+    ).order_by('mes')
+
+    monthly_labels = [v['mes'].strftime('%b %Y') for v in ventas_mensuales if v['mes'] is not None]
+    monthly_sales = [float(v['total_ventas']) for v in ventas_mensuales if v['total_ventas'] is not None]
+    monthly_orders = [v['total_pedidos'] for v in ventas_mensuales]
+
+    top_productos = DetallePedidoVenta.objects.filter(
+        pedido__realizado_en__range=(start_datetime, end_datetime)
+    ).values(
+        nombre=F('producto__nombre')
+    ).annotate(
+        unidades=Sum('cantidad'),
+        total_recaudado=Sum(F('cantidad') * F('precio_unitario'))
+    ).order_by('-unidades')[:5]
+
+    top_names = [p['nombre'] for p in top_productos]
+    top_qty = [p['unidades'] for p in top_productos]
+    top_sales = [float(p['total_recaudado']) for p in top_productos]
+
+    low_stock_threshold = 5
+    
+    # RESOLUCIÓN SEGURA DE ATRIBUTOS PARA SALDOINVENTARIO (EVITA ALERTAS DE PYLANCE)
+    productos_stock_list = SaldoInventario.objects.values('stock', 'producto__nombre').order_by('-stock')[:5]
+    stock_names = [str(item.get('producto__nombre', '')) for item in productos_stock_list]
+    stock_qty = [item.get('stock', 0) for item in productos_stock_list]
+
+    productos_bajo_stock = SaldoInventario.objects.filter(
+        stock__lte=low_stock_threshold
+    ).values(
+        'stock', 
+        variante__producto__nombre=F('producto__nombre')
+    )
+    low_stock_count = productos_bajo_stock.count()
+
+    ultimos_pedidos = PedidoVenta.objects.filter(
+        realizado_en__range=(start_datetime, end_datetime)
+    ).select_related('cliente__usuario').order_by('-realizado_en')[:5]
+
+    charts_payload = {
+        'monthly_labels': monthly_labels,
+        'monthly_sales': monthly_sales,
+        'monthly_orders': monthly_orders,
+        'top_names': top_names,
+        'top_qty': top_qty,
+        'top_sales': top_sales,
+        'stock_names': stock_names,
+        'stock_qty': stock_qty
+    }
+
+    context = {
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': end_date.strftime('%Y-%m-%d'),
+        'total_pedidos': total_pedidos,
+        'ingresos': ingresos,
+        'total_clientes': total_clientes,
+        'total_productos': total_productos,
+        'low_stock_count': low_stock_count,
+        'low_stock_threshold': low_stock_threshold,
+        'productos_bajo_stock': productos_bajo_stock,
+        'ultimos_pedidos': ultimos_pedidos,
+        'charts_payload': charts_payload
+    }
+
+    return render(request, 'dashboard.html', context)

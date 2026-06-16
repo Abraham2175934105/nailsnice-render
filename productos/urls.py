@@ -3,11 +3,10 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-router.register(r'productos', views.ProductoViewSet)
-router.register(r'categorias', views.CategoriaViewSet)
-router.register(r'marcas', views.MarcaViewSet)
-router.register(r'colores', views.ColorViewSet)
-router.register(r'unidades-medida', views.UnidadMedidaViewSet)
+# Agregamos basename a todos para evitar el AssertionError
+router.register(r'productos', views.ProductoViewSet, basename='producto')
+router.register(r'categorias', views.CategoriaViewSet, basename='categoria')
+router.register(r'marcas', views.MarcaViewSet, basename='marca')
 
 urlpatterns = [
     path('productos/', views.productos_page, name='productos'),

@@ -43,6 +43,96 @@
         max-width: 60ch;
     }
 
+    /* ---- NUEVOS ESTILOS INTEGRADOS: FORMULARIO NAILS NICE ---- */
+    .bi-filter-toolbar {
+        margin-top: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .bi-filter-group {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(244, 92, 150, 0.3);
+        border-radius: 8px;
+        padding: 4px 10px;
+    }
+
+    .bi-filter-group label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #7d6474;
+        text-transform: uppercase;
+        margin-right: 8px;
+        user-select: none;
+    }
+
+    .bi-date-input {
+        border: none;
+        background: transparent;
+        color: #2d0d26;
+        font-size: 0.85rem;
+        font-weight: 600;
+        outline: none;
+    }
+
+    .bi-btn-submit {
+        background: #2d0d26;
+        color: #ffffff;
+        border: none;
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    .bi-btn-submit:hover {
+        background: #4e1d36;
+    }
+
+    .bi-btn-submit:active {
+        transform: scale(0.97);
+    }
+
+    .bi-btn-reset {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(244, 92, 150, 0.14);
+        border: 1px solid rgba(244, 92, 150, 0.25);
+        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        color: #9d3f6a;
+        text-decoration: none;
+        transition: background 0.2s ease;
+    }
+
+    .bi-btn-reset:hover {
+        background: rgba(244, 92, 150, 0.25);
+        color: #2d0d26;
+    }
+
+    .bi-feedback-error {
+        color: #d9487a;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-top: 8px;
+        display: none;
+        animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-3px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    /* --------------------------------------------------------- */
+
     .hero-insight-grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -161,7 +251,28 @@
         <p class="eyebrow">Centro de control</p>
         <h2>Analitica operativa para decisiones rapidas</h2>
         <p>Monitorea pedidos, ventas, stock critico y comportamiento de productos en un solo panel. Las graficas usan datos reales de tus tablas activas.</p>
+        
+        <!-- FORMULARIO DE FILTRADO INCORPORADO CON ESTILO CORPORATIVO -->
+        <form method="GET" action="{% url 'dashboard' %}" id="bi-filter-form" class="bi-filter-toolbar">
+            <div class="bi-filter-group">
+                <label for="start_date">Desde</label>
+                <input type="date" class="bi-date-input" id="start_date" name="start_date" value="{{ start_date }}" required>
+            </div>
+            
+            <div class="bi-filter-group">
+                <label for="end_date">Hasta</label>
+                <input type="date" class="bi-date-input" id="end_date" name="end_date" value="{{ end_date }}" required>
+            </div>
+
+            <button type="submit" class="bi-btn-submit" id="bi-submit-btn">Filtrar Rango</button>
+            
+            <a href="{% url 'dashboard' %}" class="bi-btn-reset" title="Restablecer (Últimos 30 días)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </a>
+        </form>
+        <div id="bi-error-message" class="bi-feedback-error"></div>
     </div>
+    
     <div class="hero-insight-grid">
         <article class="insight-pill">
             <span>Pedidos registrados</span>
@@ -252,10 +363,10 @@
                 <tbody>
                     {% for pedido in ultimos_pedidos %}
                     <tr>
-                        <td>{{ pedido.id }}</td>
-                        <td>{{ pedido.usuario }}</td>
-                        <td>{{ pedido.fecha|date:"d M Y" }}</td>
-                        <td><strong>${{ pedido.precio|floatformat:2 }}</strong></td>
+                        <td>{{ pedido.numero_pedido|default:pedido.id_pedido }}</td>
+                        <td>{{ pedido.cliente.usuario.correo }}</td>
+                        <td>{{ pedido.realizado_en|date:"d M Y" }}</td>
+                        <td><strong>${{ pedido.monto_total|floatformat:2 }}</strong></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -276,8 +387,8 @@
                 <tbody>
                     {% for producto in productos_bajo_stock %}
                     <tr>
-                        <td>{{ producto.nombre }}</td>
-                        <td>{{ producto.marca }}</td>
+                        <td>{{ producto.variante__producto__nombre }}</td>
+                        <td>{{ producto.variante__producto__marca__nombre|default:'-' }}</td>
                         <td><span class="badge badge-warning {% if producto.stock <= 2 %}stock-critical{% endif %}">{{ producto.stock }} unds</span></td>
                     </tr>
                     {% endfor %}
@@ -293,6 +404,55 @@
 {% block extra_js %}
 {{ charts_payload|json_script:"charts-data" }}
 <script>
+    // --- SCRIPT SENIOR DE VALIDACIÓN Y CONTROL DE ESTADO ---
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('bi-filter-form');
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        const errorMsg = document.getElementById('bi-error-message');
+        const submitBtn = document.getElementById('bi-submit-btn');
+
+        // Captura la fecha del sistema dinámicamente desde el motor de renderizado (Simulado a Jun 2026)
+        const maxLimitDate = "2026-06-16";
+        startDateInput.setAttribute('max', maxLimitDate);
+        endDateInput.setAttribute('max', maxLimitDate);
+
+        form.addEventListener('submit', function (event) {
+            const startVal = startDateInput.value;
+            const endVal = endDateInput.value;
+
+            // Ocultar errores previos
+            errorMsg.style.display = 'none';
+            errorMsg.innerText = '';
+
+            if (startVal && endVal) {
+                const startDate = new Date(startVal).getTime();
+                const endDate = new Date(endVal).getTime();
+
+                // Validación cruzada cronológica
+                if (startDate > endDate) {
+                    event.preventDefault(); // Cancela la llamada HTTP a core/views.py
+                    errorMsg.innerText = '⚠️ Error: La fecha inicial no puede ser posterior a la fecha final.';
+                    errorMsg.style.display = 'block';
+                    return false;
+                }
+
+                // Deshabilitación y estado visual de carga (Previene Double-Submit)
+                submitBtn.innerText = 'Procesando...';
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.pointerEvents = 'none';
+            }
+        });
+
+        // Evento reactivo para limpiar estados de error en cuanto el usuario interactúa
+        [startDateInput, endDateInput].forEach(input => {
+            input.addEventListener('input', () => {
+                errorMsg.style.display = 'none';
+            });
+        });
+    });
+
+    // --- RENDERIZADO ORIGINAL DE CHART.JS ---
     (function() {
         const dataNode = document.getElementById('charts-data');
         const chartsData = dataNode ? JSON.parse(dataNode.textContent) : {};

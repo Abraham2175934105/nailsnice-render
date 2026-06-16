@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, ServicioCliente
+from .models import Cliente
 
 
 class MinZeroAdminMixin:
@@ -12,15 +12,15 @@ class MinZeroAdminMixin:
 
 @admin.register(Cliente)
 class ClienteAdmin(MinZeroAdminMixin, admin.ModelAdmin):
-    list_display = ('usuario', 'direccion', 'puntos_fidelidad')
-    search_fields = ('usuario__email', 'usuario__nombre1', 'direccion')
+    list_display = ('usuario', 'fecha_nacimiento', 'acepta_fidelizacion')
+    search_fields = ('usuario__correo', 'usuario__nombre', 'usuario__apellido')
     readonly_fields = ('creado_en', 'actualizado_en')
     fieldsets = (
         ('Usuario', {
             'fields': ('usuario',)
         }),
         ('Información del Cliente', {
-            'fields': ('direccion', 'puntos_fidelidad')
+            'fields': ('fecha_nacimiento', 'acepta_fidelizacion')
         }),
         ('Fechas', {
             'fields': ('creado_en', 'actualizado_en'),
@@ -28,9 +28,3 @@ class ClienteAdmin(MinZeroAdminMixin, admin.ModelAdmin):
         }),
     )
 
-@admin.register(ServicioCliente)
-class ServicioClienteAdmin(MinZeroAdminMixin, admin.ModelAdmin):
-    list_display = ('cliente', 'canal_comunicacion', 'estado_ticket', 'fecha_contacto')
-    list_filter = ('canal_comunicacion', 'estado_ticket', 'fecha_contacto')
-    search_fields = ('cliente__usuario__email',)
-    readonly_fields = ('fecha_contacto',)

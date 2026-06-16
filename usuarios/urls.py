@@ -2,11 +2,23 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
+# Configuración del espacio de nombres para reversión de URLs (reverse_lazy)
+app_name = 'usuarios'
+
+# 1. Enrutador para la API REST (Datos JSON)
 router = DefaultRouter()
 router.register(r'usuarios', views.UsuarioViewSet)
 router.register(r'roles', views.RolViewSet)
 router.register(r'empleados', views.EmpleadoViewSet)
 
+# 2. Definición combinada de Rutas (API + Pantallas de Interfaz HTML)
 urlpatterns = [
+    # Rutas heredadas de la API
     path('api/', include(router.urls)),
+    
+    # Nuevas rutas corregidas para la interfaz administrativa de gestión (Server-Rendered HTML)
+    path('gestion/', views.UsuarioListView.as_view(), name='usuario_list'),
+    path('gestion/crear/', views.UsuarioCreateView.as_view(), name='usuario_create'),
+    path('gestion/<int:id_usuario>/editar/', views.UsuarioUpdateView.as_view(), name='usuario_edit'),
+    path('gestion/<int:id_usuario>/estado/', views.alternar_estado_usuario_view, name='usuario_toggle_status'),
 ]
