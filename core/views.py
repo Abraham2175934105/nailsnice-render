@@ -119,7 +119,7 @@ def login_view(request):
                 security_event('login_success', request, extra={'email': correo})
                 messages.success(request, 'Inicio de sesión exitoso.')
 
-                user_role_obj = UsuarioRol.objects.filter(usuario=user_auth).select_related('rol').first()
+                user_role_obj = UsuarioRol.objects.filter(usuario=user_auth).select_related('id_rol').first()
                 role_name = ""
                 if user_role_obj and user_role_obj.rol:
                     role_name = str(user_role_obj.rol.nombre or '').strip().lower()
