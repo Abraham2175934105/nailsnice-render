@@ -21,4 +21,7 @@ urlpatterns = [
     path('gestion/crear/', views.UsuarioCreateView.as_view(), name='usuario_create'),
     path('gestion/<int:id_usuario>/editar/', views.UsuarioUpdateView.as_view(), name='usuario_edit'),
     path('gestion/<int:id_usuario>/estado/', views.alternar_estado_usuario_view, name='usuario_toggle_status'),
+    # Password recovery endpoints (JSON)
+    path('password-reset/request/', views.request_password_reset, name='password_reset_request'),
+    path('password-reset/verify/', views.verify_password_reset, name='password_reset_verify'),
 ]

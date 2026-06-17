@@ -13,6 +13,15 @@ from core.permissions import IsAdminOnly
 from .models import Usuario, RolAcceso, Empleado
 from .serializers import UsuarioSerializer, RolAccesoSerializer, EmpleadoSerializer
 from .forms import UsuarioForm  # Formulario del módulo
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.core.mail import send_mail
+from django.utils import timezone
+from datetime import timedelta
+import random
+from .models import CodigoRecuperacion
+from django.views.decorators.csrf import csrf_exempt
 
 
 # =========================================================================
@@ -81,6 +90,89 @@ def alternar_estado_usuario_view(request, id_usuario):
         messages.success(request, f"El estado de {usuario.correo} ahora es {usuario.estado}.")
         
     return redirect('usuarios:usuario_list')
+
+
+# ------------------------------------------------------------------
+# Password recovery endpoints (simple JSON API)
+# ------------------------------------------------------------------
+
+
+@csrf_exempt
+@require_POST
+def request_password_reset(request):
+    """Recibe JSON `{'correo': 'user@example.com'}`. Genera código, guarda y envía email."""
+    try:
+        import json
+        payload = json.loads(request.body)
+        correo = payload.get('correo')
+        if not correo:
+            return JsonResponse({'error': 'correo is required'}, status=400)
+
+        usuario = Usuario.objects.filter(correo__iexact=correo).first()
+
+        # generar código de 6 dígitos
+        codigo = str(random.randint(0, 999999)).zfill(6)
+        ahora = timezone.now()
+        expira = ahora + timedelta(minutes=10)
+
+        CodigoRecuperacion.objects.create(
+            usuario=usuario,
+            correo=correo,
+            codigo=codigo,
+            expira_en=expira,
+        )
+
+        # render email
+        context = {
+            'codigo': codigo,
+            'correo': correo,
+            'expira_en': expira,
+            'sitio_nombre': 'Nails Nice',
+        }
+        html = render_to_string('usuarios/email_recovery.html', context)
+        subject = 'Código de recuperación de contraseña - Nails Nice'
+        from_email = None  # Django usará DEFAULT_FROM_EMAIL
+
+        # send_mail maneja texto y html
+        send_mail(subject, f'Código: {codigo}', from_email, [correo], html_message=html)
+
+        return JsonResponse({'status': 'ok', 'message': 'Código enviado si el correo existe'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def verify_password_reset(request):
+    """Recibe JSON `{'correo','codigo','nueva_password'}`. Verifica y actualiza la contraseña."""
+    try:
+        import json
+        payload = json.loads(request.body)
+        correo = payload.get('correo')
+        codigo = payload.get('codigo')
+        nueva = payload.get('nueva_password')
+        if not (correo and codigo and nueva):
+            return JsonResponse({'error': 'correo, codigo y nueva_password son requeridos'}, status=400)
+
+        ahora = timezone.now()
+        cr = CodigoRecuperacion.objects.filter(correo__iexact=correo, codigo=codigo, usado=False, expira_en__gte=ahora).order_by('-creado_en').first()
+        if not cr:
+            return JsonResponse({'error': 'Código inválido o expirado'}, status=400)
+
+        if not cr.usuario:
+            # Ningún usuario registrado con ese correo
+            return JsonResponse({'error': 'No existe usuario para este correo'}, status=400)
+
+        usuario = cr.usuario
+        usuario.set_password(nueva)
+        usuario.save()
+
+        cr.usado = True
+        cr.save()
+
+        return JsonResponse({'status': 'ok', 'message': 'Contraseña actualizada'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 # =========================================================================

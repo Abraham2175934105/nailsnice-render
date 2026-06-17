@@ -275,3 +275,34 @@ class Empleado(models.Model):
 
     def __str__(self):
         return f"Empleado: {self.usuario.nombre} {self.usuario.apellido} ({self.codigo_empleado})"
+
+
+class CodigoRecuperacion(models.Model):
+    """Código temporal para recuperación de contraseña enviado por email.
+
+    Campos:
+    - id_codigo: PK
+    - usuario: FK a `Usuario` (nullable si el correo no existe en la app)
+    - correo: email objetivo (repetido para consultas rápidas)
+    - codigo: 6 dígitos (string)
+    - creado_en: timestamp
+    - expira_en: timestamp
+    - usado: booleano para marcar uso
+    """
+    id_codigo = models.BigAutoField(primary_key=True, db_column='id_codigo')
+    usuario = models.ForeignKey(Usuario, null=True, blank=True, on_delete=models.CASCADE, db_column='id_usuario', related_name='codigos_recuperacion')
+    correo = models.EmailField(max_length=180, db_column='correo_objetivo', db_index=True)
+    codigo = models.CharField(max_length=6, db_index=True)
+    creado_en = models.DateTimeField(auto_now_add=True, db_column='creado_en')
+    expira_en = models.DateTimeField(db_column='expira_en')
+    usado = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'codigo_recuperacion'
+        managed = True
+        indexes = [
+            models.Index(fields=['correo', 'codigo']),
+        ]
+
+    def __str__(self):
+        return f"Codigo {self.codigo} -> {self.correo} (usado={self.usado})"
