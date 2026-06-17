@@ -17,12 +17,12 @@ def hash_placeholder_passwords(apps, schema_editor):
     # We'll check for values that do not look like Django hashed values (no '$').
     placeholders = ['!', '', None]
     qs = Usuario.objects.all()
-    qs = [u for u in qs if (u.password in placeholders) or ('$' not in (u.password or ''))]
-    if not qs.exists():
+    filtered = [u for u in qs if (u.password in placeholders) or ('$' not in (u.password or ''))]
+    if not filtered:
         return
 
     # If qs is a list (filtered above), iterate accordingly
-    for u in qs:
+    for u in filtered:
         # use set_password to use User model's hashing backends and then save to DB column
         u.set_password('12345678Ns.')
         # ensure we update the DB column that maps to password field (hash_contrasena)
