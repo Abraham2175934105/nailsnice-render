@@ -131,12 +131,14 @@ VALUES
 INSERT INTO proveedor_pago (id_proveedor, codigo, nombre, activo) VALUES
   (1, 'PAYU', 'PayU Latam', true),
   (2, 'STRIPE', 'Stripe', true),
-  (3, 'PLACEHOLDER', 'Tarjeta Demo', true);
+  (3, 'PLACEHOLDER', 'Tarjeta Demo', true)
+ON CONFLICT (id_proveedor) DO NOTHING;
 
 INSERT INTO tipo_metodo_pago (id_tipo_metodo, codigo, nombre, activo) VALUES
   (1, 'TARJETA', 'Tarjeta de crédito/débito', true),
   (2, 'EFECTIVO', 'Efectivo', true),
-  (3, 'PSE', 'PSE/Transferencia', true);
+  (3, 'PSE', 'PSE/Transferencia', true)
+ON CONFLICT (id_tipo_metodo) DO NOTHING;
 
 -- Minimal payment tokens for clients
 INSERT INTO metodo_pago_cliente (id_metodo_pago, id_usuario_cliente, id_tipo_metodo, id_proveedor, token, etiqueta_mascara, nombre_titular, ultimos4, mes_expiracion, anio_expiracion, es_predeterminado, estado, creado_en, actualizado_en)
@@ -150,7 +152,8 @@ VALUES
   (7, 1016, 1, 1, 'tok_card_1616', 'Visa ****3210', 'Laura Pérez', '3210', 6, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (8, 1017, 1, 2, 'tok_card_1717', 'MC ****2109', 'Julián Meza', '2109', 5, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (9, 1018, 1, 3, 'tok_card_1818', 'Visa ****1098', 'Sofía López', '1098', 4, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (10, 1019, 1, 1, 'tok_card_1919', 'MC ****0987', 'Andrés Molina', '0987', 3, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (10, 1019, 1, 1, 'tok_card_1919', 'MC ****0987', 'Andrés Molina', '0987', 3, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_metodo_pago) DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- Catalog: Brands, Categories, Subcategories
