@@ -591,13 +591,14 @@ const Products = (() => {
             AppState.isLoading = true;
             renderSkeletons(12);
             try {
-                const [products, marcas, categorias, colores, inventario] = await Promise.all([
+                const [products, marcas, categorias, colores] = await Promise.all([
                     fetchAll('productos'),
                     fetchAll('marcas'),
                     fetchAll('categorias'),
                     fetchAll('colores'),
-                    fetchAll(CONFIG.inventoryEndpoint),
                 ]);
+                
+                const inventario = [];
 
                 const categoriaMap = new Map((categorias || []).map((c) => [String(c.id), c.nombre_categoria]));
                 const marcaMap = new Map((marcas || []).map((m) => [String(m.id), m.nombre_marca]));
