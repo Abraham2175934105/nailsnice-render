@@ -643,7 +643,7 @@ def dashboard_view(request):
     top_productos = DetallePedidoVenta.objects.filter(
         pedido__realizado_en__range=(start_datetime, end_datetime)
     ).values(
-        nombre=F('producto__nombre')
+        nombre=F('variante__producto__nombre')
     ).annotate(
         unidades=Sum('cantidad'),
         total_recaudado=Sum(F('cantidad') * F('precio_unitario'))
