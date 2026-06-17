@@ -238,9 +238,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configure DATABASES from DATABASE_URL using dj-database-url (Render internal DB recommended)
 # Use the Render internal URL as a sensible default if DATABASE_URL is not set.
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://admin:2O4M5jI0KvBVpo6fkwZd9l8S8bpQ0JgB@dpg-d8pg2s5ckfvc73a89g4g-a/nailsnice')
-DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=(os.environ.get('DJANGO_DEBUG','').lower() not in {'1','true','yes'}))
-}
+# If DATABASE_URL is a sqlite URL (local dev/migrations), configure SQLite directly
+if DATABASE_URL.startswith('sqlite'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=(os.environ.get('DJANGO_DEBUG','').lower() not in {'1','true','yes'}))
+    }
 
 # Use SQLite for tests to avoid external DB dependency during CI/local runs.
 if 'test' in sys.argv:
