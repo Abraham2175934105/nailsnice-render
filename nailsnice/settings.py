@@ -16,6 +16,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from django.core.exceptions import ImproperlyConfigured
 from urllib.parse import urlparse
+import dj_database_url
 
 DB_ENGINE = os.environ.get('DB_ENGINE', 'sqlite').strip().lower()
 if DB_ENGINE in {'mysql', 'mariadb'}:
@@ -25,33 +26,7 @@ if DB_ENGINE in {'mysql', 'mariadb'}:
     from django.db.backends.base.base import BaseDatabaseWrapper
     BaseDatabaseWrapper.check_database_version_supported = lambda self: None
 
-# Soporta DATABASE_URL estilo Heroku/Render/Neon: postgres://user:pass@host:port/dbname
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    parsed = urlparse(DATABASE_URL)
-    scheme = parsed.scheme or ''
-    if scheme.startswith('postgres') or scheme.startswith('postgresql'):
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': parsed.path.lstrip('/'),
-                'USER': parsed.username or os.environ.get('DB_USER', ''),
-                'PASSWORD': parsed.password or os.environ.get('DB_PASSWORD', ''),
-                'HOST': parsed.hostname or os.environ.get('DB_HOST', ''),
-                'PORT': str(parsed.port or os.environ.get('DB_PORT', '5432')),
-            }
-        }
-    elif scheme.startswith('mysql'):
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.mysql',
-                'NAME': parsed.path.lstrip('/'),
-                'USER': parsed.username or os.environ.get('DB_USER', ''),
-                'PASSWORD': parsed.password or os.environ.get('DB_PASSWORD', ''),
-                'HOST': parsed.hostname or os.environ.get('DB_HOST', ''),
-                'PORT': str(parsed.port or os.environ.get('DB_PORT', '3306')),
-            }
-        }
+# Database configuration is handled later using dj-database-url and DATABASE_URL
 
 # Patch para compatibilidad de Django 4.2 con Python 3.14+ (Template Context)
 from django.template import context
@@ -157,41 +132,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'nailsnice.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-if 'DATABASES' not in globals() and DB_ENGINE in {'postgres', 'postgresql'}:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', 'nailsnice'),
-            'USER': os.environ.get('DB_USER', 'postgres'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('DB_PORT', '5432'),
-        }
-    }
-elif 'DATABASES' not in globals() and DB_ENGINE in {'mysql', 'mariadb'}:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.environ.get('DB_NAME', 'nailsnice'),
-            'USER': os.environ.get('DB_USER', 'root'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('DB_PORT', '3306'),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-            },
-        }
-    }
-elif 'DATABASES' not in globals():
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+# DATABASES will be configured below using dj-database-url after DEBUG is set.
 
 # Use SQLite automatically for tests to avoid external DB dependency during CI/local runs.
 if 'test' in sys.argv:
@@ -293,6 +234,20 @@ if DEBUG:
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configure DATABASES from DATABASE_URL using dj-database-url (Render internal DB recommended)
+# Use the Render internal URL as a sensible default if DATABASE_URL is not set.
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://admin:2O4M5jI0KvBVpo6fkwZd9l8S8bpQ0JgB@dpg-d8pg2s5ckfvc73a89g4g-a/nailsnice')
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=(os.environ.get('DJANGO_DEBUG','').lower() not in {'1','true','yes'}))
+}
+
+# Use SQLite for tests to avoid external DB dependency during CI/local runs.
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 
 # Custom User Model
 AUTH_USER_MODEL = 'usuarios.Usuario'

@@ -28,3 +28,4 @@ uvicorn==0.44.0
 django-extensions==4.1
 psycopg2-binary
 whitenoise
+dj-database-url>=1.0.0
