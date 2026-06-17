@@ -22,6 +22,11 @@ urlpatterns = [
     path('gestion/<int:id_usuario>/editar/', views.UsuarioUpdateView.as_view(), name='usuario_edit'),
     path('gestion/<int:id_usuario>/estado/', views.alternar_estado_usuario_view, name='usuario_toggle_status'),
     # Password recovery endpoints (JSON)
+    # Interfaz de recuperación (HTML)
+    path('password-reset/', views.password_reset_request_page, name='password_reset_page'),
+    path('password-reset/change/', views.password_reset_verify_page, name='password_reset_change_page'),
+
+    # Password recovery endpoints (JSON)
     path('password-reset/request/', views.request_password_reset, name='password_reset_request'),
     path('password-reset/verify/', views.verify_password_reset, name='password_reset_verify'),
 ]

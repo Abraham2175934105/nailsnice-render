@@ -1,7 +1,7 @@
 from django.views.generic import ListView, CreateView, UpdateView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from rest_framework import viewsets
 
@@ -13,6 +13,7 @@ from core.permissions import IsAdminOnly
 from .models import Usuario, RolAcceso, Empleado
 from .serializers import UsuarioSerializer, RolAccesoSerializer, EmpleadoSerializer
 from .forms import UsuarioForm  # Formulario del módulo
+from .forms import PasswordResetRequestForm, PasswordResetConfirmForm
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
 from django.template.loader import render_to_string
@@ -139,6 +140,77 @@ def request_password_reset(request):
         return JsonResponse({'status': 'ok', 'message': 'Código enviado si el correo existe'})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def password_reset_request_page(request):
+    """Interfaz HTML: formulario para solicitar código por correo."""
+    if request.method == 'POST':
+        form = PasswordResetRequestForm(request.POST)
+        if form.is_valid():
+            correo = form.cleaned_data['correo']
+            usuario = Usuario.objects.filter(correo__iexact=correo).first()
+
+            codigo = str(random.randint(0, 999999)).zfill(6)
+            ahora = timezone.now()
+            expira = ahora + timedelta(minutes=10)
+
+            CodigoRecuperacion.objects.create(
+                usuario=usuario,
+                correo=correo,
+                codigo=codigo,
+                expira_en=expira,
+            )
+
+            context = {
+                'codigo': codigo,
+                'correo': correo,
+                'expira_en': expira,
+                'sitio_nombre': 'Nails Nice',
+            }
+            html = render_to_string('usuarios/email_recovery.html', context)
+            subject = 'Código de recuperación de contraseña - Nails Nice'
+            send_mail(subject, f'Código: {codigo}', None, [correo], html_message=html)
+
+            messages.success(request, 'Si existe una cuenta con ese correo, se ha enviado un código de verificación.')
+            return redirect(reverse('usuarios:password_reset_change_page') + f'?correo={correo}')
+    else:
+        form = PasswordResetRequestForm()
+    return render(request, 'usuarios/password_reset_request.html', {'form': form})
+
+
+def password_reset_verify_page(request):
+    """Interfaz HTML: formulario para verificar código y establecer nueva contraseña."""
+    if request.method == 'POST':
+        form = PasswordResetConfirmForm(request.POST)
+        if form.is_valid():
+            correo = form.cleaned_data['correo']
+            codigo = form.cleaned_data['codigo']
+            nueva = form.cleaned_data['nueva_password1']
+
+            ahora = timezone.now()
+            cr = CodigoRecuperacion.objects.filter(correo__iexact=correo, codigo=codigo, usado=False, expira_en__gte=ahora).order_by('-creado_en').first()
+            if not cr:
+                messages.error(request, 'Código inválido o expirado')
+            elif not cr.usuario:
+                messages.error(request, 'No existe usuario para este correo')
+            else:
+                usuario = cr.usuario
+                usuario.set_password(nueva)
+                usuario.save()
+
+                cr.usado = True
+                cr.save()
+
+                messages.success(request, 'Contraseña actualizada. Ya puedes iniciar sesión.')
+                return redirect('login')
+    else:
+        initial = {}
+        correo_get = request.GET.get('correo')
+        if correo_get:
+            initial['correo'] = correo_get
+        form = PasswordResetConfirmForm(initial=initial)
+
+    return render(request, 'usuarios/password_reset_verify.html', {'form': form})
 
 
 @csrf_exempt

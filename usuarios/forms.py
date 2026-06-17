@@ -60,3 +60,48 @@ class UsuarioForm(forms.ModelForm):
             UsuarioRol.objects.create(id_usuario=usuario, id_rol=rol_seleccionado)
             
         return usuario
+
+
+class PasswordResetRequestForm(forms.Form):
+    correo = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@correo.com'}),
+        label='Correo electrónico'
+    )
+
+
+class PasswordResetConfirmForm(forms.Form):
+    correo = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@correo.com'}),
+        label='Correo electrónico'
+    )
+    codigo = forms.CharField(
+        max_length=6,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Código de 6 dígitos'}),
+        label='Código'
+    )
+    nueva_password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Nueva contraseña'}),
+        label='Nueva contraseña'
+    )
+    nueva_password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirmar contraseña'}),
+        label='Confirmar contraseña'
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        pw1 = cleaned.get('nueva_password1')
+        pw2 = cleaned.get('nueva_password2')
+        if pw1 and pw2 and pw1 != pw2:
+            raise forms.ValidationError('Las contraseñas no coinciden')
+        if pw1:
+            if len(pw1) < 8:
+                raise forms.ValidationError('La contraseña debe tener al menos 8 caracteres')
+            import re
+            if not re.search(r'\d', pw1):
+                raise forms.ValidationError('La contraseña debe incluir al menos un número')
+            if not re.search(r'[A-Z]', pw1):
+                raise forms.ValidationError('La contraseña debe incluir al menos una letra mayúscula')
+            if not re.search(r'[a-z]', pw1):
+                raise forms.ValidationError('La contraseña debe incluir al menos una letra minúscula')
+        return cleaned
