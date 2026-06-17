@@ -57,7 +57,8 @@ VALUES
   (1026, 'diego.ortega@gmail.com', '!', 'Diego', 'Ortega', '3165556683', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1027, 'alejandro.salas@gmail.com', '!', 'Alejandro', 'Salas', '3175556684', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1028, 'juan.lozano@gmail.com', '!', 'Juan', 'Lozano', '3185556685', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1029, 'patricia.cruz@gmail.com', '!', 'Patricia', 'Cruz', '3195556686', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1029, 'patricia.cruz@gmail.com', '!', 'Patricia', 'Cruz', '3195556686', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_usuario) DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- User roles (usuario_rol) mapping
@@ -93,7 +94,8 @@ VALUES
   (1026, 3),
   (1027, 3),
   (1028, 3),
-  (1029, 3);
+  (1029, 3)
+ON CONFLICT DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- Clients (perfil_cliente)
@@ -109,7 +111,8 @@ VALUES
   (1016, '1999-06-05', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1017, '1994-08-19', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1018, '2000-01-25', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1019, '1996-03-11', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1019, '1996-03-11', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_usuario) DO NOTHING;
 
 -- Addresses for clients (direccion_usuario)
 INSERT INTO direccion_usuario (id_direccion, id_usuario, tipo_direccion, etiqueta, nombre_destinatario, linea1, linea2, ciudad, departamento, codigo_postal, codigo_pais, es_predeterminada_envio, es_predeterminada_factura, creado_en, actualizado_en)
@@ -123,7 +126,8 @@ VALUES
   (7, 1016, 'ENVIO', 'Casa', 'Laura Pérez', 'Cra 16 #8-20', NULL, 'Manizales', 'Caldas', '170001', 'CO', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (8, 1017, 'ENVIO', 'Casa', 'Julián Meza', 'Av 19 #5-50', NULL, 'Cúcuta', 'Norte de Santander', '540001', 'CO', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (9, 1018, 'ENVIO', 'Casa', 'Sofia López', 'Calle 40 #7-80', NULL, 'Ibagué', 'Tolima', '730001', 'CO', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (10, 1019, 'ENVIO', 'Casa', 'Andrés Molina', 'Cra 25 #2-10', NULL, 'Cartagena', 'Bolívar', '130001', 'CO', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (10, 1019, 'ENVIO', 'Casa', 'Andrés Molina', 'Cra 25 #2-10', NULL, 'Cartagena', 'Bolívar', '130001', 'CO', true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_direccion) DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- Payment providers and types
@@ -169,7 +173,8 @@ VALUES
   (7, 'GelMaster', 'Geles y acrílicos profesionales', true, CURRENT_TIMESTAMP),
   (8, 'PureNails', 'Líneas naturales y veganas', true, CURRENT_TIMESTAMP),
   (9, 'SparkleCo', 'Brillos y efectos especiales', true, CURRENT_TIMESTAMP),
-  (10, 'HydraCare', 'Cuidado y tratamientos', true, CURRENT_TIMESTAMP);
+  (10, 'HydraCare', 'Cuidado y tratamientos', true, CURRENT_TIMESTAMP)
+ON CONFLICT (id_marca) DO NOTHING;
 
 INSERT INTO categoria_catalogo (id_categoria, nombre, slug, descripcion, activo, creado_en)
 VALUES
@@ -182,7 +187,8 @@ VALUES
   (7, 'Accesorios', 'accesorios', 'Accesorios decorativos', true, CURRENT_TIMESTAMP),
   (8, 'Geles', 'geles', 'Geles y acrílicos', true, CURRENT_TIMESTAMP),
   (9, 'Esmaltes', 'esmaltes', 'Esmaltes en diversos acabados', true, CURRENT_TIMESTAMP),
-  (10, 'Cuidado', 'cuidado', 'Productos de cuidado y salud de uñas', true, CURRENT_TIMESTAMP);
+  (10, 'Cuidado', 'cuidado', 'Productos de cuidado y salud de uñas', true, CURRENT_TIMESTAMP)
+ON CONFLICT (id_categoria) DO NOTHING;
 
 INSERT INTO subcategoria_catalogo (id_subcategoria, id_categoria, nombre, slug, descripcion, activo, creado_en)
 VALUES
@@ -195,7 +201,8 @@ VALUES
   (7, 9, 'Esmaltes Brillo', 'esmaltes-brillo', 'Acabado brillante', true, CURRENT_TIMESTAMP),
   (8, 8, 'Geles UV', 'geles-uv', 'Geles curables UV', true, CURRENT_TIMESTAMP),
   (9, 4, 'Tratamientos Fortalecedores', 'tratamientos-fortalecedores', 'Vitaminas y fortalecedores', true, CURRENT_TIMESTAMP),
-  (10, 7, 'Accesorios Brillo', 'accesorios-brillo', 'Pedrería y brillos', true, CURRENT_TIMESTAMP);
+  (10, 7, 'Accesorios Brillo', 'accesorios-brillo', 'Pedrería y brillos', true, CURRENT_TIMESTAMP)
+ON CONFLICT (id_subcategoria) DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- Products, variants and images (10 products with 1 variante each + images)
@@ -212,7 +219,8 @@ VALUES
   (5007, 8, 7, 'Gel UV - Clear', 'gel-uv-clear', 'Gel transparente para sellado', 'Gel transparente de curado rápido.', 'Requiere lámpara UV/LED', 'ACTIVO', 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (5008, 4, 3, 'Pedicure Spa - Sal', 'pedicure-spa-sal', 'Sales relajantes para pedicure', 'Sales aromáticas para baño de pies.', 'Contiene sales minerales', 'ACTIVO', 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (5009, 9, 5, 'Tratamiento Fortalecedor', 'tratamiento-fortalecedor', 'Tratamiento para uñas frágiles', 'Sérum vitamínico fortalecedor.', 'Aplicar 2 veces por semana', 'ACTIVO', 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (5010, 10, 6, 'Pedrería Mix', 'pedreria-mix', 'Mix de pedrería para decoración', 'Pedrería y cristales variados para uñas.', 'Distintos tamaños y colores', 'ACTIVO', 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (5010, 10, 6, 'Pedrería Mix', 'pedreria-mix', 'Mix de pedrería para decoración', 'Pedrería y cristales variados para uñas.', 'Distintos tamaños y colores', 'ACTIVO', 1000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_producto) DO NOTHING;
 
 -- Variants
 INSERT INTO variante_producto (id_variante, id_producto, sku, codigo_barras, nombre_variante, precio, costo, codigo_moneda, peso_gramos, activo, creado_en, actualizado_en)
@@ -226,7 +234,8 @@ VALUES
   (6007, 5007, 'SKUGELC-0007', NULL, 'Gel Clear 30ml', 42000.00, 20000.00, 'COP', 80.00, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (6008, 5008, 'SKUSPASAL-0008', NULL, 'Sal Spa 500g', 25000.00, 9000.00, 'COP', 600.00, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (6009, 5009, 'SKUTRAT-0009', NULL, 'Sérum Fortalecedor 30ml', 38000.00, 14000.00, 'COP', 50.00, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (6010, 5010, 'SKUPEDR-0010', NULL, 'Mix Pedrería', 15000.00, 4000.00, 'COP', 30.00, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (6010, 5010, 'SKUPEDR-0010', NULL, 'Mix Pedrería', 15000.00, 4000.00, 'COP', 30.00, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_variante) DO NOTHING;
 
 -- Product images (use high-quality Unsplash images about nails/manicure/pedicure)
 INSERT INTO imagen_producto (id_imagen, id_producto, id_variante, ruta_almacenamiento, texto_alternativo, orden, es_principal, creado_en)
@@ -240,7 +249,8 @@ VALUES
   (7007, 5007, 6007, 'https://images.unsplash.com/photo-1505448735724-61b4f6a8be3b', 'Gel uv transparente', 0, true, CURRENT_TIMESTAMP),
   (7008, 5008, 6008, 'https://images.unsplash.com/photo-1519183071298-a2962be90bca', 'Pedicure spa con sales', 0, true, CURRENT_TIMESTAMP),
   (7009, 5009, 6009, 'https://images.unsplash.com/photo-1520975923025-4e5451b1d784', 'Tratamiento fortalecedor para uñas', 0, true, CURRENT_TIMESTAMP),
-  (7010, 5010, 6010, 'https://images.unsplash.com/photo-1544025162-14bd1f6f0d5b', 'Pedrería para decoración de uñas', 0, true, CURRENT_TIMESTAMP);
+  (7010, 5010, 6010, 'https://images.unsplash.com/photo-1544025162-14bd1f6f0d5b', 'Pedrería para decoración de uñas', 0, true, CURRENT_TIMESTAMP)
+ON CONFLICT (id_imagen) DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- Warehouses (bodega) and inventory (saldo_inventario)
@@ -256,7 +266,8 @@ VALUES
   (7, 'BOD-MNZ', 'Bodega Manizales', 'Manizales', 'CO', true, CURRENT_TIMESTAMP),
   (8, 'BOD-CUC', 'Bodega Cúcuta', 'Cúcuta', 'CO', true, CURRENT_TIMESTAMP),
   (9, 'BOD-IBA', 'Bodega Ibagué', 'Ibagué', 'CO', true, CURRENT_TIMESTAMP),
-  (10, 'BOD-CTG', 'Bodega Cartagena', 'Cartagena', 'CO', true, CURRENT_TIMESTAMP);
+  (10, 'BOD-CTG', 'Bodega Cartagena', 'Cartagena', 'CO', true, CURRENT_TIMESTAMP)
+ON CONFLICT (id_bodega) DO NOTHING;
 
 -- Inventory: associate each variant with a bodega and stock
 INSERT INTO saldo_inventario (id_variante, id_bodega, cantidad_existencia, cantidad_reservada, nivel_reorden, actualizado_en)
@@ -270,7 +281,8 @@ VALUES
   (6007, 4, 25, 1, 5, CURRENT_TIMESTAMP),
   (6008, 5, 60, 4, 10, CURRENT_TIMESTAMP),
   (6009, 6, 45, 3, 8, CURRENT_TIMESTAMP),
-  (6010, 7, 90, 6, 15, CURRENT_TIMESTAMP);
+  (6010, 7, 90, 6, 15, CURRENT_TIMESTAMP)
+ON CONFLICT (id_variante, id_bodega) DO NOTHING;
 
 -- ------------------------------------------------------------------
 -- Services (tipo_servicio, categoria_servicio, servicio) - 10 services
@@ -286,7 +298,8 @@ VALUES
   (1, 'Manicure', 'Servicios de manicure', true),
   (2, 'Pedicure', 'Servicios de pedicure', true),
   (3, 'Decoración', 'Arte y decoración', true),
-  (4, 'Tratamientos', 'Cuidado y salud', true);
+  (4, 'Tratamientos', 'Cuidado y salud', true)
+ON CONFLICT (id_categoria_servicio) DO NOTHING;
 
 INSERT INTO servicio (id_servicio, id_tipo_servicio, id_categoria_servicio, nombre, descripcion, duracion_minutos, precio_base, activo, creado_en)
 VALUES
@@ -299,7 +312,8 @@ VALUES
   (8007, 1, 4, 'Tratamiento Fortalecedor', 'Sérum fortalecedor profesional', 30, 42000.00, true, CURRENT_TIMESTAMP),
   (8008, 1, 2, 'Pedicure Express', 'Limpieza y esmalte rápido', 30, 30000.00, true, CURRENT_TIMESTAMP),
   (8009, 1, 1, 'Manicure Express', 'Lima y esmalte rápido', 25, 25000.00, true, CURRENT_TIMESTAMP),
-  (8010, 1, 4, 'Tratamiento Hidratante de Cutículas', 'Cuidado intensivo de cutículas', 20, 20000.00, true, CURRENT_TIMESTAMP);
+  (8010, 1, 4, 'Tratamiento Hidratante de Cutículas', 'Cuidado intensivo de cutículas', 20, 20000.00, true, CURRENT_TIMESTAMP)
+ON CONFLICT (id_servicio) DO NOTHING;
 
 -- Assign some employees (perfil_empleado) — employees must reference existing usuario PKs
 INSERT INTO perfil_empleado (id_usuario, codigo_empleado, fecha_contratacion, cargo, activo, notas, creado_en, actualizado_en)
@@ -313,7 +327,8 @@ VALUES
   (1007, 'EMP-007', '2023-06-30', 'Técnico', true, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1008, 'EMP-008', '2024-01-12', 'Técnico', true, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   (1009, 'EMP-009', '2024-08-21', 'Técnico', true, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1028, 'EMP-010', '2018-09-01', 'Gerente', true, 'Gerente de sucursal', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1028, 'EMP-010', '2018-09-01', 'Gerente', true, 'Gerente de sucursal', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id_usuario) DO NOTHING;
 
 -- Assign employees to services (empleado_servicio)
 INSERT INTO empleado_servicio (id_usuario_empleado, id_servicio, duracion_personalizada_minutos, precio_personalizado, activo)
@@ -327,8 +342,27 @@ VALUES
   (1007, 8003, NULL, NULL, true),
   (1008, 8006, NULL, NULL, true),
   (1009, 8009, NULL, NULL, true),
-  (1028, 8010, NULL, NULL, true);
+  (1028, 8010, NULL, NULL, true)
+ON CONFLICT (id_usuario_empleado, id_servicio) DO NOTHING;
 
 COMMIT;
+
+-- ------------------------------------------------------------------
+-- Reset sequences to max(id) to avoid nextval collisions on serials
+-- ------------------------------------------------------------------
+SELECT setval(pg_get_serial_sequence('usuario','id_usuario'), COALESCE((SELECT MAX(id_usuario) FROM usuario), 0), true);
+SELECT setval(pg_get_serial_sequence('direccion_usuario','id_direccion'), COALESCE((SELECT MAX(id_direccion) FROM direccion_usuario), 0), true);
+SELECT setval(pg_get_serial_sequence('proveedor_pago','id_proveedor'), COALESCE((SELECT MAX(id_proveedor) FROM proveedor_pago), 0), true);
+SELECT setval(pg_get_serial_sequence('tipo_metodo_pago','id_tipo_metodo'), COALESCE((SELECT MAX(id_tipo_metodo) FROM tipo_metodo_pago), 0), true);
+SELECT setval(pg_get_serial_sequence('metodo_pago_cliente','id_metodo_pago'), COALESCE((SELECT MAX(id_metodo_pago) FROM metodo_pago_cliente), 0), true);
+SELECT setval(pg_get_serial_sequence('marca_catalogo','id_marca'), COALESCE((SELECT MAX(id_marca) FROM marca_catalogo), 0), true);
+SELECT setval(pg_get_serial_sequence('categoria_catalogo','id_categoria'), COALESCE((SELECT MAX(id_categoria) FROM categoria_catalogo), 0), true);
+SELECT setval(pg_get_serial_sequence('subcategoria_catalogo','id_subcategoria'), COALESCE((SELECT MAX(id_subcategoria) FROM subcategoria_catalogo), 0), true);
+SELECT setval(pg_get_serial_sequence('producto','id_producto'), COALESCE((SELECT MAX(id_producto) FROM producto), 0), true);
+SELECT setval(pg_get_serial_sequence('variante_producto','id_variante'), COALESCE((SELECT MAX(id_variante) FROM variante_producto), 0), true);
+SELECT setval(pg_get_serial_sequence('imagen_producto','id_imagen'), COALESCE((SELECT MAX(id_imagen) FROM imagen_producto), 0), true);
+SELECT setval(pg_get_serial_sequence('bodega','id_bodega'), COALESCE((SELECT MAX(id_bodega) FROM bodega), 0), true);
+SELECT setval(pg_get_serial_sequence('servicio','id_servicio'), COALESCE((SELECT MAX(id_servicio) FROM servicio), 0), true);
+SELECT setval(pg_get_serial_sequence('perfil_empleado','id_usuario'), COALESCE((SELECT MAX(id_usuario) FROM perfil_empleado), 0), true);
 
 -- End of seed file
