@@ -24,40 +24,40 @@ BEGIN;
 -- Users (usuario)
 -- id_usuario chosen explicitly for referential seeding
 -- ------------------------------------------------------------------
-INSERT INTO usuario (id_usuario, correo, hash_contrasena, nombre, apellido, telefono, estado, es_staff, es_superusuario, es_activo, ultimo_login, creado_en, actualizado_en)
+INSERT INTO usuario (id_usuario, correo, hash_contrasena, nombre, apellido, telefono, estado, es_staff, es_superusuario, ultimo_login, creado_en, actualizado_en)
 VALUES
-  (1000, 'admin@nailsnice.com', '!', 'Administrador', 'Nails', '3100000000', 'ACTIVO', true, true, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1001, 'juan.perez@gmail.com', '!', 'Juan', 'Pérez', '3123456789', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1002, 'maria.lopez@hotmail.com', '!', 'María', 'López', '3112345678', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1003, 'andres.garcia@gmail.com', '!', 'Andrés', 'García', '3109876543', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1004, 'laura.martinez@outlook.com', '!', 'Laura', 'Martínez', '3132109876', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1005, 'pedro.romero@gmail.com', '!', 'Pedro', 'Romero', '3001234567', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1006, 'sergio.ramos@gmail.com', '!', 'Sergio', 'Ramos', '3205550123', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1007, 'luisa.cardenas@yahoo.com', '!', 'Luisa', 'Cárdenas', '3142223344', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1008, 'carlos.estrada@gmail.com', '!', 'Carlos', 'Estrada', '3153334455', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1009, 'ana.gomez@outlook.com', '!', 'Ana', 'Gómez', '3174445566', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1000, 'admin@nailsnice.com', '!', 'Administrador', 'Nails', '3100000000', 'ACTIVO', true, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1001, 'juan.perez@gmail.com', '!', 'Juan', 'Pérez', '3123456789', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1002, 'maria.lopez@hotmail.com', '!', 'María', 'López', '3112345678', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1003, 'andres.garcia@gmail.com', '!', 'Andrés', 'García', '3109876543', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1004, 'laura.martinez@outlook.com', '!', 'Laura', 'Martínez', '3132109876', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1005, 'pedro.romero@gmail.com', '!', 'Pedro', 'Romero', '3001234567', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1006, 'sergio.ramos@gmail.com', '!', 'Sergio', 'Ramos', '3205550123', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1007, 'luisa.cardenas@yahoo.com', '!', 'Luisa', 'Cárdenas', '3142223344', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1008, 'carlos.estrada@gmail.com', '!', 'Carlos', 'Estrada', '3153334455', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1009, 'ana.gomez@outlook.com', '!', 'Ana', 'Gómez', '3174445566', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   -- Clients (will be linked to perfil_cliente)
-  (1010, 'valentina.gomez@outlook.com', '!', 'Valentina', 'Gómez', '3124567890', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1011, 'carlos.mendoza@gmail.com', '!', 'Carlos', 'Mendoza', '3102345678', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1012, 'catalina.romero@gmail.com', '!', 'Catalina', 'Romero', '3112349876', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1013, 'diego.fuentes@yahoo.com', '!', 'Diego', 'Fuentes', '3139876540', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1014, 'mariana.ruiz@gmail.com', '!', 'Mariana', 'Ruiz', '3148765430', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1015, 'fernando.arias@gmail.com', '!', 'Fernando', 'Arias', '3157654321', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1016, 'laura.perez@gmail.com', '!', 'Laura', 'Pérez', '3166543210', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1017, 'julian.meza@gmail.com', '!', 'Julián', 'Meza', '3175432109', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1018, 'sofia.lopez@gmail.com', '!', 'Sofía', 'López', '3184321098', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1019, 'andres.molina@gmail.com', '!', 'Andrés', 'Molina', '3193210987', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1010, 'valentina.gomez@outlook.com', '!', 'Valentina', 'Gómez', '3124567890', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1011, 'carlos.mendoza@gmail.com', '!', 'Carlos', 'Mendoza', '3102345678', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1012, 'catalina.romero@gmail.com', '!', 'Catalina', 'Romero', '3112349876', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1013, 'diego.fuentes@yahoo.com', '!', 'Diego', 'Fuentes', '3139876540', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1014, 'mariana.ruiz@gmail.com', '!', 'Mariana', 'Ruiz', '3148765430', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1015, 'fernando.arias@gmail.com', '!', 'Fernando', 'Arias', '3157654321', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1016, 'laura.perez@gmail.com', '!', 'Laura', 'Pérez', '3166543210', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1017, 'julian.meza@gmail.com', '!', 'Julián', 'Meza', '3175432109', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1018, 'sofia.lopez@gmail.com', '!', 'Sofía', 'López', '3184321098', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1019, 'andres.molina@gmail.com', '!', 'Andrés', 'Molina', '3193210987', 'ACTIVO', false, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   -- Additional regular users (creators / placeholders / staff)
-  (1020, 'camila.medina@gmail.com', '!', 'Camila', 'Medina', '3105556677', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1021, 'santiago.vargas@gmail.com', '!', 'Santiago', 'Vargas', '3115556678', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1022, 'andrea.vega@gmail.com', '!', 'Andrea', 'Vega', '3125556679', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1023, 'esteban.martinez@gmail.com', '!', 'Esteban', 'Martínez', '3135556680', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1024, 'laura.torres@gmail.com', '!', 'Laura', 'Torres', '3145556681', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1025, 'karen.rocha@gmail.com', '!', 'Karen', 'Rocha', '3155556682', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1026, 'diego.ortega@gmail.com', '!', 'Diego', 'Ortega', '3165556683', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1027, 'alejandro.salas@gmail.com', '!', 'Alejandro', 'Salas', '3175556684', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1028, 'juan.lozano@gmail.com', '!', 'Juan', 'Lozano', '3185556685', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1029, 'patricia.cruz@gmail.com', '!', 'Patricia', 'Cruz', '3195556686', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1020, 'camila.medina@gmail.com', '!', 'Camila', 'Medina', '3105556677', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1021, 'santiago.vargas@gmail.com', '!', 'Santiago', 'Vargas', '3115556678', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1022, 'andrea.vega@gmail.com', '!', 'Andrea', 'Vega', '3125556679', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1023, 'esteban.martinez@gmail.com', '!', 'Esteban', 'Martínez', '3135556680', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1024, 'laura.torres@gmail.com', '!', 'Laura', 'Torres', '3145556681', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1025, 'karen.rocha@gmail.com', '!', 'Karen', 'Rocha', '3155556682', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1026, 'diego.ortega@gmail.com', '!', 'Diego', 'Ortega', '3165556683', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1027, 'alejandro.salas@gmail.com', '!', 'Alejandro', 'Salas', '3175556684', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1028, 'juan.lozano@gmail.com', '!', 'Juan', 'Lozano', '3185556685', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1029, 'patricia.cruz@gmail.com', '!', 'Patricia', 'Cruz', '3195556686', 'ACTIVO', true, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ------------------------------------------------------------------
 -- User roles (usuario_rol) mapping
