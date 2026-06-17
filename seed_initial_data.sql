@@ -278,7 +278,8 @@ VALUES
 INSERT INTO tipo_servicio (id_tipo_servicio, codigo, nombre, activo)
 VALUES
   (1, 'SERVICIO', 'Servicio', true),
-  (2, 'PRODUCTO', 'Producto', true);
+  (2, 'PRODUCTO', 'Producto', true)
+ON CONFLICT (id_tipo_servicio) DO NOTHING;
 
 INSERT INTO categoria_servicio (id_categoria_servicio, nombre, descripcion, activo)
 VALUES
