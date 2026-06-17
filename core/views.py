@@ -655,16 +655,26 @@ def dashboard_view(request):
 
     low_stock_threshold = 5
     
-    # RESOLUCIÓN SEGURA DE ATRIBUTOS PARA SALDOINVENTARIO (EVITA ALERTAS DE PYLANCE)
-    productos_stock_list = SaldoInventario.objects.values('stock', 'producto__nombre').order_by('-stock')[:5]
-    stock_names = [str(item.get('producto__nombre', '')) for item in productos_stock_list]
+    stock_expr = ExpressionWrapper(F('cantidad_existencia') - F('cantidad_reservada'), output_field=IntegerField())
+    
+    # RESOLUCIÓN SEGURA DE ATRIBUTOS PARA SALDOINVENTARIO (EVITA ALERTAS DE PYLANCE Y ERRORES 500)
+    productos_stock_list = SaldoInventario.objects.annotate(
+        stock=stock_expr
+    ).values(
+        'stock', 
+        nombre=F('variante__producto__nombre')
+    ).order_by('-stock')[:5]
+    
+    stock_names = [str(item.get('nombre', '')) for item in productos_stock_list]
     stock_qty = [item.get('stock', 0) for item in productos_stock_list]
 
-    productos_bajo_stock = SaldoInventario.objects.filter(
+    productos_bajo_stock = SaldoInventario.objects.annotate(
+        stock=stock_expr
+    ).filter(
         stock__lte=low_stock_threshold
     ).values(
         'stock', 
-        variante__producto__nombre=F('producto__nombre')
+        nombre=F('variante__producto__nombre')
     )
     low_stock_count = productos_bajo_stock.count()
 

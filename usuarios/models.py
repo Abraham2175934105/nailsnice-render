@@ -107,6 +107,16 @@ class Usuario(AbstractBaseUser):
         return f"{self.nombre} {self.apellido} ({self.correo})"
 
     @property
+    def email(self):
+        """Backward-compatible alias used across the codebase and templates."""
+        return self.correo
+
+    @property
+    def id(self):
+        """Alias for primary key to support code that expects `user.id`."""
+        return self.id_usuario
+
+    @property
     def nombre1(self):
         return self.nombre
 

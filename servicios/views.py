@@ -231,7 +231,13 @@ def eliminar_agendamiento(request, id):
 
 
 def _get_or_create_employee_for_user(user):
-    empleado, _ = Empleado.objects.get_or_create(usuario=user)
+    empleado, _ = Empleado.objects.get_or_create(
+        usuario=user,
+        defaults={
+            'codigo_empleado': f"EMP-{getattr(user, 'id_usuario', getattr(user, 'id', 0))}",
+            'cargo': 'Empleado Generado'
+        }
+    )
     return empleado
 
 
