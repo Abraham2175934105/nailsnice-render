@@ -625,7 +625,7 @@ def dashboard_view(request):
         realizado_en__range=(start_datetime, end_datetime)
     ).values('cliente').distinct().count()
 
-    total_productos = Producto.objects.filter(activo=True).count()
+    total_productos = Producto.objects.filter(estado='ACTIVO').count()
 
     ventas_mensuales = PedidoVenta.objects.filter(
         realizado_en__range=(start_datetime, end_datetime)
