@@ -15,18 +15,10 @@ BEGIN;
 -- ------------------------------------------------------------------
 -- Roles (rol_acceso)
 -- ------------------------------------------------------------------
-INSERT INTO rol_acceso (id_rol, codigo, nombre, descripcion, es_sistema)
-VALUES
-  (1, 'ADMIN', 'Administrador', 'Acceso total al sistema', true),
-  (2, 'EMPLEADO', 'Empleado', 'Usuario con permisos operativos', true),
-  (3, 'CLIENTE', 'Cliente', 'Rol para clientes', true),
-  (4, 'GERENTE', 'Gerente', 'Responsable de sucursal', true),
-  (5, 'SUPERVISOR', 'Supervisor', 'Supervisa operaciones', false),
-  (6, 'RECEPCIONISTA', 'Recepcionista', 'Atiende reservas y caja', false),
-  (7, 'TECNICO', 'Técnico', 'Realiza servicios técnicos', false),
-  (8, 'VENDEDOR', 'Vendedor', 'Ventas y atención', false),
-  (9, 'CONTADOR', 'Contador', 'Reportes financieros', false),
-  (10, 'MARKETING', 'Marketing', 'Promociones y contenidos', false);
+-- ------------------------------------------------------------------
+-- Roles: ya existen en la base — NO insertar aquí.
+-- IDs asumidos por este seed: 1 = Administrador, 2 = Cliente, 3 = Empleado
+-- ------------------------------------------------------------------
 
 -- ------------------------------------------------------------------
 -- Users (usuario)
@@ -34,38 +26,38 @@ VALUES
 -- ------------------------------------------------------------------
 INSERT INTO usuario (id_usuario, correo, hash_contrasena, nombre, apellido, telefono, estado, es_staff, es_superusuario, es_activo, ultimo_login, creado_en, actualizado_en)
 VALUES
-  (1000, 'admin@nailsnice.test', '!', 'Admin', 'Nails', '+571000000000', 'ACTIVO', true, true, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1001, 'juan.perez@nailsnice.test', '!', 'Juan', 'Pérez', '+573001234001', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1002, 'maria.lopez@nailsnice.test', '!', 'María', 'López', '+573001234002', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1003, 'andres.garcia@nailsnice.test', '!', 'Andrés', 'García', '+573001234003', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1004, 'laura.martinez@nailsnice.test', '!', 'Laura', 'Martínez', '+573001234004', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1005, 'pedro.romeo@nailsnice.test', '!', 'Pedro', 'Romero', '+573001234005', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1006, 'empleado6@nailsnice.test', '!', 'Sergio', 'Ramos', '+573001234006', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1007, 'empleado7@nailsnice.test', '!', 'Luisa', 'Cárdenas', '+573001234007', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1008, 'empleado8@nailsnice.test', '!', 'Carlos', 'Estrada', '+573001234008', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1009, 'empleado9@nailsnice.test', '!', 'Ana', 'Gómez', '+573001234009', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1000, 'admin@nailsnice.com', '!', 'Administrador', 'Nails', '3100000000', 'ACTIVO', true, true, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1001, 'juan.perez@gmail.com', '!', 'Juan', 'Pérez', '3123456789', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1002, 'maria.lopez@hotmail.com', '!', 'María', 'López', '3112345678', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1003, 'andres.garcia@gmail.com', '!', 'Andrés', 'García', '3109876543', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1004, 'laura.martinez@outlook.com', '!', 'Laura', 'Martínez', '3132109876', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1005, 'pedro.romero@gmail.com', '!', 'Pedro', 'Romero', '3001234567', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1006, 'sergio.ramos@gmail.com', '!', 'Sergio', 'Ramos', '3205550123', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1007, 'luisa.cardenas@yahoo.com', '!', 'Luisa', 'Cárdenas', '3142223344', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1008, 'carlos.estrada@gmail.com', '!', 'Carlos', 'Estrada', '3153334455', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1009, 'ana.gomez@outlook.com', '!', 'Ana', 'Gómez', '3174445566', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   -- Clients (will be linked to perfil_cliente)
-  (1010, 'cliente1@example.com', '!', 'Valentina', 'Sosa', '+57301234010', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1011, 'cliente2@example.com', '!', 'Miguel', 'Torres', '+57301234011', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1012, 'cliente3@example.com', '!', 'Catalina', 'Romero', '+57301234012', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1013, 'cliente4@example.com', '!', 'Diego', 'Fuentes', '+57301234013', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1014, 'cliente5@example.com', '!', 'Mariana', 'Ruiz', '+57301234014', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1015, 'cliente6@example.com', '!', 'Fernando', 'Arias', '+57301234015', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1016, 'cliente7@example.com', '!', 'Laura', 'Pérez', '+57301234016', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1017, 'cliente8@example.com', '!', 'Julián', 'Meza', '+57301234017', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1018, 'cliente9@example.com', '!', 'Sofia', 'López', '+57301234018', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1019, 'cliente10@example.com', '!', 'Andrés', 'Molina', '+57301234019', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  -- Additional regular users (creators / placeholders)
-  (1020, 'content@nailsnice.test', '!', 'Contento', 'Medina', '+573001234020', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1021, 'ventas@nailsnice.test', '!', 'Vendedor', 'Perez', '+573001234021', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1022, 'soporte@nailsnice.test', '!', 'Soporte', 'Vega', '+573001234022', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1023, 'tester01@nailsnice.test', '!', 'Test', 'Uno', '+573001234023', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1024, 'tester02@nailsnice.test', '!', 'Test', 'Dos', '+573001234024', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1025, 'marketing@nailsnice.test', '!', 'Marketing', 'Rocha', '+573001234025', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1026, 'finanzas@nailsnice.test', '!', 'Finanzas', 'Ortega', '+573001234026', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1027, 'logistica@nailsnice.test', '!', 'Logistica', 'Salas', '+573001234027', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1028, 'gerencia@nailsnice.test', '!', 'Gerente', 'Lozano', '+573001234028', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (1029, 'reportes@nailsnice.test', '!', 'Reportes', 'Cruz', '+573001234029', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1010, 'valentina.gomez@outlook.com', '!', 'Valentina', 'Gómez', '3124567890', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1011, 'carlos.mendoza@gmail.com', '!', 'Carlos', 'Mendoza', '3102345678', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1012, 'catalina.romero@gmail.com', '!', 'Catalina', 'Romero', '3112349876', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1013, 'diego.fuentes@yahoo.com', '!', 'Diego', 'Fuentes', '3139876540', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1014, 'mariana.ruiz@gmail.com', '!', 'Mariana', 'Ruiz', '3148765430', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1015, 'fernando.arias@gmail.com', '!', 'Fernando', 'Arias', '3157654321', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1016, 'laura.perez@gmail.com', '!', 'Laura', 'Pérez', '3166543210', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1017, 'julian.meza@gmail.com', '!', 'Julián', 'Meza', '3175432109', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1018, 'sofia.lopez@gmail.com', '!', 'Sofía', 'López', '3184321098', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1019, 'andres.molina@gmail.com', '!', 'Andrés', 'Molina', '3193210987', 'ACTIVO', false, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  -- Additional regular users (creators / placeholders / staff)
+  (1020, 'camila.medina@gmail.com', '!', 'Camila', 'Medina', '3105556677', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1021, 'santiago.vargas@gmail.com', '!', 'Santiago', 'Vargas', '3115556678', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1022, 'andrea.vega@gmail.com', '!', 'Andrea', 'Vega', '3125556679', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1023, 'esteban.martinez@gmail.com', '!', 'Esteban', 'Martínez', '3135556680', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1024, 'laura.torres@gmail.com', '!', 'Laura', 'Torres', '3145556681', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1025, 'karen.rocha@gmail.com', '!', 'Karen', 'Rocha', '3155556682', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1026, 'diego.ortega@gmail.com', '!', 'Diego', 'Ortega', '3165556683', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1027, 'alejandro.salas@gmail.com', '!', 'Alejandro', 'Salas', '3175556684', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1028, 'juan.lozano@gmail.com', '!', 'Juan', 'Lozano', '3185556685', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (1029, 'patricia.cruz@gmail.com', '!', 'Patricia', 'Cruz', '3195556686', 'ACTIVO', true, false, true, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ------------------------------------------------------------------
 -- User roles (usuario_rol) mapping
@@ -73,28 +65,35 @@ VALUES
 INSERT INTO usuario_rol (id_usuario_rol, id_usuario, id_rol)
 VALUES
   (1, 1000, 1), -- admin
-  (2, 1001, 2),
-  (3, 1002, 2),
-  (4, 1003, 2),
-  (5, 1004, 2),
-  (6, 1005, 2),
-  (7, 1006, 2),
-  (8, 1007, 2),
-  (9, 1008, 2),
-  (10, 1009, 2),
-  (11, 1010, 3),
-  (12, 1011, 3),
-  (13, 1012, 3),
-  (14, 1013, 3),
-  (15, 1014, 3),
-  (16, 1015, 3),
-  (17, 1016, 3),
-  (18, 1017, 3),
-  (19, 1018, 3),
-  (20, 1019, 3),
-  (21, 1028, 4),
-  (22, 1026, 9),
-  (23, 1025, 10);
+  (2, 1001, 3),
+  (3, 1002, 3),
+  (4, 1003, 3),
+  (5, 1004, 3),
+  (6, 1005, 3),
+  (7, 1006, 3),
+  (8, 1007, 3),
+  (9, 1008, 3),
+  (10, 1009, 3),
+  (11, 1010, 2),
+  (12, 1011, 2),
+  (13, 1012, 2),
+  (14, 1013, 2),
+  (15, 1014, 2),
+  (16, 1015, 2),
+  (17, 1016, 2),
+  (18, 1017, 2),
+  (19, 1018, 2),
+  (20, 1019, 2),
+  (21, 1020, 3),
+  (22, 1021, 3),
+  (23, 1022, 3),
+  (24, 1023, 3),
+  (25, 1024, 3),
+  (26, 1025, 3),
+  (27, 1026, 3),
+  (28, 1027, 3),
+  (29, 1028, 3),
+  (30, 1029, 3);
 
 -- ------------------------------------------------------------------
 -- Clients (perfil_cliente)
@@ -142,16 +141,16 @@ INSERT INTO tipo_metodo_pago (id_tipo_metodo, codigo, nombre, activo) VALUES
 -- Minimal payment tokens for clients
 INSERT INTO metodo_pago_cliente (id_metodo_pago, id_usuario_cliente, id_tipo_metodo, id_proveedor, token, etiqueta_mascara, nombre_titular, ultimos4, mes_expiracion, anio_expiracion, es_predeterminado, estado, creado_en, actualizado_en)
 VALUES
-  (1, 1010, 1, 1, 'tok_visa_1010', 'Visa ****1010', 'Valentina Sosa', '1010', 12, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (2, 1011, 1, 2, 'tok_card_1111', 'MC ****1111', 'Miguel Torres', '1111', 11, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (3, 1012, 1, 3, 'tok_card_1212', 'Visa ****1212', 'Catalina Romero', '1212', 10, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (4, 1013, 1, 1, 'tok_card_1313', 'Visa ****1313', 'Diego Fuentes', '1313', 9, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (5, 1014, 1, 2, 'tok_card_1414', 'MC ****1414', 'Mariana Ruiz', '1414', 8, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (6, 1015, 1, 3, 'tok_card_1515', 'Visa ****1515', 'Fernando Arias', '1515', 7, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (7, 1016, 1, 1, 'tok_card_1616', 'Visa ****1616', 'Laura Pérez', '1616', 6, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (8, 1017, 1, 2, 'tok_card_1717', 'MC ****1717', 'Julián Meza', '1717', 5, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (9, 1018, 1, 3, 'tok_card_1818', 'Visa ****1818', 'Sofia López', '1818', 4, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (10, 1019, 1, 1, 'tok_card_1919', 'MC ****1919', 'Andrés Molina', '1919', 3, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (1, 1010, 1, 1, 'tok_visa_1010', 'Visa ****7890', 'Valentina Gómez', '7890', 12, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (2, 1011, 1, 2, 'tok_card_1111', 'MC ****5678', 'Carlos Mendoza', '5678', 11, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (3, 1012, 1, 3, 'tok_card_1212', 'Visa ****9876', 'Catalina Romero', '9876', 10, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (4, 1013, 1, 1, 'tok_card_1313', 'Visa ****6540', 'Diego Fuentes', '6540', 9, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (5, 1014, 1, 2, 'tok_card_1414', 'MC ****5430', 'Mariana Ruiz', '5430', 8, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (6, 1015, 1, 3, 'tok_card_1515', 'Visa ****4321', 'Fernando Arias', '4321', 7, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (7, 1016, 1, 1, 'tok_card_1616', 'Visa ****3210', 'Laura Pérez', '3210', 6, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (8, 1017, 1, 2, 'tok_card_1717', 'MC ****2109', 'Julián Meza', '2109', 5, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (9, 1018, 1, 3, 'tok_card_1818', 'Visa ****1098', 'Sofía López', '1098', 4, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (10, 1019, 1, 1, 'tok_card_1919', 'MC ****0987', 'Andrés Molina', '0987', 3, 2026, true, 'ACTIVO', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- ------------------------------------------------------------------
 -- Catalog: Brands, Categories, Subcategories
