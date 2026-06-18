@@ -1,4 +1,4 @@
-﻿{% extends 'base_form.html' %}
+{% extends 'base_form.html' %}
 {% load static %}
 
 {% block title %}Producto | Crear / Editar{% endblock %}
@@ -14,66 +14,87 @@
 
   <form method="POST" enctype="multipart/form-data" class="form-grid">
     {% csrf_token %}
-    <div class="field">
-      <label for="{{ form_variante.producto.id_for_label }}">Producto</label>
-      {{ form_variante.producto }}
-      {% if form_variante.producto.errors %}<span class="badge-chip">{{ form_variante.producto.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.sku.id_for_label }}">SKU</label>
-      {{ form_variante.sku }}
-      {% if form_variante.sku.errors %}<span class="badge-chip">{{ form_variante.sku.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.codigo_barras.id_for_label }}">Código de barras</label>
-      {{ form_variante.codigo_barras }}
-      {% if form_variante.codigo_barras.errors %}<span class="badge-chip">{{ form_variante.codigo_barras.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.nombre_variante.id_for_label }}">Nombre de variante</label>
-      {{ form_variante.nombre_variante }}
-      {% if form_variante.nombre_variante.errors %}<span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.precio.id_for_label }}">Precio</label>
-      {{ form_variante.precio }}
-      {% if form_variante.precio.errors %}<span class="badge-chip">{{ form_variante.precio.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.costo.id_for_label }}">Costo</label>
-      {{ form_variante.costo }}
-      {% if form_variante.costo.errors %}<span class="badge-chip">{{ form_variante.costo.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.peso_gramos.id_for_label }}">Peso (g)</label>
-      {{ form_variante.peso_gramos }}
-      {% if form_variante.peso_gramos.errors %}<span class="badge-chip">{{ form_variante.peso_gramos.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_variante.activo.id_for_label }}">Activo</label>
-      {{ form_variante.activo }}
-      {% if form_variante.activo.errors %}<span class="badge-chip">{{ form_variante.activo.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_saldo.bodega.id_for_label }}">Bodega</label>
-      {{ form_saldo.bodega }}
-      {% if form_saldo.bodega.errors %}<span class="badge-chip">{{ form_saldo.bodega.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">Stock</label>
-      {{ form_saldo.cantidad_existencia }}
-      {% if form_saldo.cantidad_existencia.errors %}<span class="badge-chip">{{ form_saldo.cantidad_existencia.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">Reservado</label>
-      {{ form_saldo.cantidad_reservada }}
-      {% if form_saldo.cantidad_reservada.errors %}<span class="badge-chip">{{ form_saldo.cantidad_reservada.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label for="{{ form_saldo.nivel_reorden.id_for_label }}">Nivel reorden</label>
-      {{ form_saldo.nivel_reorden }}
-      {% if form_saldo.nivel_reorden.errors %}<span class="badge-chip">{{ form_saldo.nivel_reorden.errors }}</span>{% endif %}
-    </div>
+    
+    {% if form %}
+      <!-- Formulario Legacy (ProductoMaquillaje) -->
+      {% for field in form %}
+        {% if field.name == 'imagen' and producto.imagen %}
+          <div class="u-grid-full u-text-center" style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 12px;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-primary);">Foto Actual del Producto</label>
+            <img src="{{ producto.imagen.url }}" class="img-thumbnail" style="max-width: 150px; display: block; margin: 0 auto 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 2px solid var(--accent-color, #e0e0e0);">
+          </div>
+        {% endif %}
+        <div class="field {% if field.name == 'descripcion' %}u-grid-full{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <span class="badge-chip">{{ field.errors|join:", " }}</span>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <!-- Formulario Moderno (VarianteProducto) -->
+      <div class="field">
+        <label for="{{ form_variante.producto.id_for_label }}">Producto</label>
+        {{ form_variante.producto }}
+        {% if form_variante.producto.errors %}<span class="badge-chip">{{ form_variante.producto.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.sku.id_for_label }}">SKU</label>
+        {{ form_variante.sku }}
+        {% if form_variante.sku.errors %}<span class="badge-chip">{{ form_variante.sku.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.codigo_barras.id_for_label }}">Código de barras</label>
+        {{ form_variante.codigo_barras }}
+        {% if form_variante.codigo_barras.errors %}<span class="badge-chip">{{ form_variante.codigo_barras.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.nombre_variante.id_for_label }}">Nombre de variante</label>
+        {{ form_variante.nombre_variante }}
+        {% if form_variante.nombre_variante.errors %}<span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.precio.id_for_label }}">Precio</label>
+        {{ form_variante.precio }}
+        {% if form_variante.precio.errors %}<span class="badge-chip">{{ form_variante.precio.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.costo.id_for_label }}">Costo</label>
+        {{ form_variante.costo }}
+        {% if form_variante.costo.errors %}<span class="badge-chip">{{ form_variante.costo.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.peso_gramos.id_for_label }}">Peso (g)</label>
+        {{ form_variante.peso_gramos }}
+        {% if form_variante.peso_gramos.errors %}<span class="badge-chip">{{ form_variante.peso_gramos.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_variante.activo.id_for_label }}">Activo</label>
+        {{ form_variante.activo }}
+        {% if form_variante.activo.errors %}<span class="badge-chip">{{ form_variante.activo.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_saldo.bodega.id_for_label }}">Bodega</label>
+        {{ form_saldo.bodega }}
+        {% if form_saldo.bodega.errors %}<span class="badge-chip">{{ form_saldo.bodega.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">Stock</label>
+        {{ form_saldo.cantidad_existencia }}
+        {% if form_saldo.cantidad_existencia.errors %}<span class="badge-chip">{{ form_saldo.cantidad_existencia.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">Reservado</label>
+        {{ form_saldo.cantidad_reservada }}
+        {% if form_saldo.cantidad_reservada.errors %}<span class="badge-chip">{{ form_saldo.cantidad_reservada.errors }}</span>{% endif %}
+      </div>
+      <div class="field">
+        <label for="{{ form_saldo.nivel_reorden.id_for_label }}">Nivel reorden</label>
+        {{ form_saldo.nivel_reorden }}
+        {% if form_saldo.nivel_reorden.errors %}<span class="badge-chip">{{ form_saldo.nivel_reorden.errors }}</span>{% endif %}
+      </div>
+    {% endif %}
 
     <div class="form-actions form-actions-center u-grid-full">
       <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>

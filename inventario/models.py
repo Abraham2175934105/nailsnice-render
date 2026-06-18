@@ -156,7 +156,7 @@ class ProductoMaquillaje(models.Model):
     marca = models.CharField(max_length=120, null=True, blank=True)
     proveedor = models.CharField(max_length=120, null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
-    imagen = models.CharField(max_length=255, null=True, blank=True)
+    imagen = models.FileField(upload_to='productos/', null=True, blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
 
     objects = models.Manager()

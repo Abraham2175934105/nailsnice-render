@@ -243,7 +243,7 @@ def editar_producto(request, id):
                 return redirect('lista_inventario')
         else:
             form = ProductoMaquillajeForm(instance=producto)
-        return render(request, 'inventario/formulario_legacy.html', {
+        return render(request, 'inventario/formulario.html', {
             'form': form,
             'producto': producto,
         })
