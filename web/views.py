@@ -20,7 +20,7 @@ CLIENT_COLUMNS = [
     ('telefono', 'Telefono'),
     ('estado', 'Estado'),
     ('rol', 'Rol'),
-    ('fecha_nacimiento', 'Fecha nacimiento'),
+    ('acepta_fidelizacion', 'Acepta fidelizacion'),
     ('acepta_fidelizacion', 'Fidelizacion'),
 ]
 CLIENT_DEFAULT_COLUMNS = ['id_usuario', 'nombre', 'apellido', 'correo', 'telefono', 'estado', 'rol']
@@ -71,7 +71,7 @@ def _build_client_rows(queryset, selected):
         'telefono': ('Telefono', lambda c: c.usuario.telefono or ''),
         'estado': ('Estado', lambda c: c.usuario.estado),
         'rol': ('Rol', lambda c: _get_role_name(c.usuario)),
-        'fecha_nacimiento': ('Fecha nacimiento', lambda c: c.fecha_nacimiento),
+        'acepta_fidelizacion': ('Fidelizacion', lambda c: 'Sí' if c.acepta_fidelizacion else 'No'),
         'acepta_fidelizacion': ('Fidelizacion', lambda c: 'Si' if c.acepta_fidelizacion else 'No'),
     }
     keys = [k for k in selected if k in config] or CLIENT_DEFAULT_COLUMNS
@@ -379,7 +379,7 @@ def carga_masiva_clientes(request):
                 errores.append(f'Fila {idx + 1}: {role_error}')
                 continue
 
-            fecha_nacimiento = _as_text(row.get('fecha_nacimiento', ''))
+            acepta_fidelizacion = _as_bool(row.get('acepta_fidelizacion', True))
             acepta_fid = _as_text(row.get('acepta_fidelizacion', '1'))
             estado = _as_text(row.get('estado', 'ACTIVO')).upper() or 'ACTIVO'
 
@@ -388,7 +388,6 @@ def carga_masiva_clientes(request):
                 'nombre': data['nombre'],
                 'apellido': data['apellido'],
                 'telefono': data['telefono'],
-                'fecha_nacimiento': fecha_nacimiento,
                 'acepta_fidelizacion': acepta_fid not in {'0', 'false', 'no'},
                 'estado': estado,
                 'rol': role_obj.pk if role_obj else None,

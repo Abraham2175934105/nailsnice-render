@@ -42,7 +42,6 @@ class ClienteSerializer(serializers.ModelSerializer):
         model = Cliente
         fields = [
             'usuario',
-            'fecha_nacimiento',
             'acepta_fidelizacion',
             'creado_en',
             'actualizado_en',

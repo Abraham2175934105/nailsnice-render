@@ -1,4 +1,4 @@
-﻿{% extends 'base_form.html' %}
+{% extends 'base_form.html' %}
 {% load static %}
 
 {% block title %}Usuario | Crear / Editar{% endblock %}
@@ -45,11 +45,6 @@
             {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
         </div>
 
-        <div class="field">
-            <label for="id_fecha_nacimiento">Fecha de nacimiento</label>
-            {{ form.fecha_nacimiento }}
-            {% if form.fecha_nacimiento.errors %}<span class="badge-chip">{{ form.fecha_nacimiento.errors }}</span>{% endif %}
-        </div>
         <div class="field">
             <label for="id_acepta_fidelizacion">Acepta fidelización</label>
             {{ form.acepta_fidelizacion }}

@@ -39,11 +39,10 @@ class ClienteForm(forms.ModelForm):
 
     class Meta:
         model = Cliente
-        fields = ['fecha_nacimiento', 'acepta_fidelizacion']
+        fields = ['acepta_fidelizacion']
         widgets = {
-            'fecha_nacimiento': forms.DateInput(
-                attrs={'type': 'date'},
-                format='%Y-%m-%d',
+            'acepta_fidelizacion': forms.CheckboxInput(
+                attrs={'class': 'form-checkbox'}
             ),
         }
 

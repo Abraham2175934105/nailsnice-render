@@ -10,7 +10,6 @@ class Cliente(models.Model):
         on_delete=models.CASCADE,
         related_name='perfil_cliente',
     )
-    fecha_nacimiento = models.DateField(null=True, blank=True)
     acepta_fidelizacion = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True, db_column='actualizado_en')

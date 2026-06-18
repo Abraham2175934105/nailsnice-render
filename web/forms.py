@@ -6,24 +6,30 @@ from clientes.models import Cliente
 from usuarios.models import RolAcceso, Usuario, UsuarioRol
 
 
+import re
+
+from django import forms
+
+from clientes.models import Cliente
+from usuarios.models import RolAcceso, Usuario, UsuarioRol
+
+
 ESTADO_CHOICES = [
     ('ACTIVO', 'Activo'),
     ('INACTIVO', 'Inactivo'),
     ('BLOQUEADO', 'Bloqueado'),
 ]
 
-
-class ClienteForm(forms.Form):
-    correo = forms.EmailField(label='Correo', max_length=150)
-    nombre = forms.CharField(label='Nombre(s)', max_length=80, required=False)
-    apellido = forms.CharField(label='Apellido(s)', max_length=80, required=False)
+class UsuarioForm(forms.Form):
+    correo = forms.EmailField(label='Correo')
+    nombre = forms.CharField(max_length=100, required=False)
+    apellido = forms.CharField(max_length=100, required=False)
     telefono = forms.CharField(label='Telefono', max_length=30, required=False)
-    fecha_nacimiento = forms.DateField(label='Fecha de nacimiento', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    acepta_fidelizacion = forms.BooleanField(label='Acepta fidelizacion', required=False, initial=True)
-    estado = forms.ChoiceField(label='Estado', choices=ESTADO_CHOICES)
-    rol = forms.ModelChoiceField(queryset=RolAcceso.objects.none(), required=False, label='Rol')
-    es_staff = forms.BooleanField(label='Es staff', required=False)
-    es_superusuario = forms.BooleanField(label='Es superusuario', required=False)
+    estado = forms.ChoiceField(choices=ESTADO_CHOICES, initial='ACTIVO')
+    es_staff = forms.BooleanField(required=False, label='Es staff')
+    es_superusuario = forms.BooleanField(required=False, label='Es superusuario')
+    rol = forms.ModelChoiceField(queryset=RolAcceso.objects.none(), required=False)
+    acepta_fidelizacion = forms.BooleanField(required=False, label='Acepta fidelizacion')
     password = forms.CharField(
         max_length=128,
         required=False,
@@ -56,7 +62,6 @@ class ClienteForm(forms.Form):
                 self.fields['rol'].initial = usuario.rol_asignado.rol
 
         if perfil:
-            self.fields['fecha_nacimiento'].initial = perfil.fecha_nacimiento
             self.fields['acepta_fidelizacion'].initial = perfil.acepta_fidelizacion
 
     def clean_nombre(self):
@@ -124,8 +129,7 @@ class ClienteForm(forms.Form):
         perfil = self.perfil_instance
         if not perfil:
             perfil = Cliente(usuario=usuario)
-        perfil.fecha_nacimiento = data.get('fecha_nacimiento')
-        perfil.acepta_fidelizacion = bool(data.get('acepta_fidelizacion'))
+        perfil.acepta_fidelizacion = data.get('acepta_fidelizacion', False)
         perfil.save()
 
         if rol:

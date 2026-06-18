@@ -12,7 +12,7 @@ class MinZeroAdminMixin:
 
 @admin.register(Cliente)
 class ClienteAdmin(MinZeroAdminMixin, admin.ModelAdmin):
-    list_display = ('usuario', 'fecha_nacimiento', 'acepta_fidelizacion')
+    list_display = ('usuario', 'acepta_fidelizacion')
     search_fields = ('usuario__correo', 'usuario__nombre', 'usuario__apellido')
     readonly_fields = ('creado_en', 'actualizado_en')
     fieldsets = (
@@ -20,7 +20,7 @@ class ClienteAdmin(MinZeroAdminMixin, admin.ModelAdmin):
             'fields': ('usuario',)
         }),
         ('Información del Cliente', {
-            'fields': ('fecha_nacimiento', 'acepta_fidelizacion')
+            'fields': ('acepta_fidelizacion',)
         }),
         ('Fechas', {
             'fields': ('creado_en', 'actualizado_en'),

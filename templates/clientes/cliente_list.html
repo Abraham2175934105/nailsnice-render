@@ -25,8 +25,7 @@
       <thead>
         <tr>
           <th>Correo</th>
-          <th>Nombre</th>
-          <th>F. Nacimiento</th>
+          <th>Teléfono</th>
           <th>Fidelización</th>
           <th>Registrado</th>
           <th>Acciones</th>
@@ -36,8 +35,7 @@
         {% for cliente in clientes %}
         <tr>
           <td>{{ cliente.usuario.correo }}</td>
-          <td>{{ cliente.usuario.nombre|default:"—" }} {{ cliente.usuario.apellido|default:"" }}</td>
-          <td>{{ cliente.fecha_nacimiento|date:"d M Y"|default:"—" }}</td>
+          <td>{{ cliente.usuario.telefono|default:"—" }}</td>
           <td>
             {% if cliente.acepta_fidelizacion %}
               <span class="badge badge-success">Activa</span>
