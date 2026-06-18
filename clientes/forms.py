@@ -30,12 +30,7 @@ class ClienteForm(forms.ModelForm):
         label='Apellido',
         required=False,
     )
-    password = forms.CharField(
-        label='Contraseña',
-        widget=forms.PasswordInput(attrs={'placeholder': 'Mínimo 8 caracteres'}),
-        required=False,
-        help_text='Dejar en blanco para no cambiar (solo en edición).',
-    )
+
 
     class Meta:
         model = Cliente
@@ -60,19 +55,8 @@ class ClienteForm(forms.ModelForm):
             self.fields['correo'].initial = u.correo
             self.fields['nombre'].initial = getattr(u, 'nombre', '')
             self.fields['apellido'].initial = getattr(u, 'apellido', '')
-            self.fields['password'].required = False
-        else:
-            self.fields['password'].required = True
 
-    # ------------------------------------------------------------------
-    # Validación de contraseña mínima solo cuando se proporciona
-    # ------------------------------------------------------------------
 
-    def clean_password(self):
-        pwd = self.cleaned_data.get('password', '')
-        if pwd and len(pwd) < 8:
-            raise forms.ValidationError('La contraseña debe tener al menos 8 caracteres.')
-        return pwd
 
     # ------------------------------------------------------------------
     # Guardado: actualiza o crea usuario + cliente en una sola llamada
@@ -90,8 +74,6 @@ class ClienteForm(forms.ModelForm):
                 u.nombre = cd.get('nombre', '')
             if hasattr(u, 'apellido'):
                 u.apellido = cd.get('apellido', '')
-            if cd.get('password'):
-                u.set_password(cd['password'])
             if commit:
                 u.save()
                 cliente.save()
@@ -104,8 +86,8 @@ class ClienteForm(forms.ModelForm):
                 correo=cd['correo'],
                 nombre=cd.get('nombre', ''),
                 apellido=cd.get('apellido', ''),
-                password=cd['password'],
             )
+            u.set_unusable_password()
 
             # Asignar rol 'Cliente' automáticamente
             rol_cliente, _ = RolAcceso.objects.get_or_create(

@@ -71,11 +71,6 @@
         {{ form.correo }}
         {% if form.correo.errors %}<span class="form-error">{{ form.correo.errors.0 }}</span>{% endif %}
       </div>
-      <div class="form-group">
-        <label for="{{ form.password.id_for_label }}">Contraseña *</label>
-        {{ form.password }}
-        {% if form.password.errors %}<span class="form-error">{{ form.password.errors.0 }}</span>{% endif %}
-      </div>
     </div>
 
     <p class="eyebrow form-divider">Información personal</p>

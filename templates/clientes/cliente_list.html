@@ -35,7 +35,13 @@
         {% for cliente in clientes %}
         <tr>
           <td>{{ cliente.usuario.correo }}</td>
-          <td>{{ cliente.usuario.telefono|default:"—" }}</td>
+          <td>
+            {% if cliente.usuario.telefono %}
+              {{ cliente.usuario.telefono }}
+            {% else %}
+              <span style="color:#a58b9a; font-style:italic;">No registrado</span>
+            {% endif %}
+          </td>
           <td>
             {% if cliente.acepta_fidelizacion %}
               <span class="badge badge-success">Activa</span>

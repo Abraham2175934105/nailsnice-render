@@ -186,12 +186,6 @@
           {{ form.correo }}
           {% if form.correo.errors %}<span class="form-error">{{ form.correo.errors.0 }}</span>{% endif %}
         </div>
-        <div class="form-group">
-          <label for="{{ form.password.id_for_label }}">Nueva contraseña</label>
-          {{ form.password }}
-          <span class="form-hint">{{ form.password.help_text }}</span>
-          {% if form.password.errors %}<span class="form-error">{{ form.password.errors.0 }}</span>{% endif %}
-        </div>
       </div>
 
       <p class="eyebrow" style="margin:16px 0 10px;">Información personal</p>
@@ -214,6 +208,18 @@
           {{ form.acepta_fidelizacion }}
           <span>Acepta programa de fidelización</span>
         </label>
+      </div>
+
+      <p class="eyebrow form-divider" style="margin:20px 0 10px;">Auditoría</p>
+      <div class="form-row" style="margin-bottom:24px;">
+        <div class="form-group">
+          <label>Registrado el</label>
+          <input type="text" value="{{ cliente.creado_en|date:'d M Y, H:i'|default:'—' }}" readonly disabled style="background: rgba(244,92,150,0.05); cursor: not-allowed; border-color: rgba(244,92,150,0.1); color:#7d6474;">
+        </div>
+        <div class="form-group">
+          <label>Última actualización</label>
+          <input type="text" value="{{ cliente.actualizado_en|date:'d M Y, H:i'|default:'—' }}" readonly disabled style="background: rgba(244,92,150,0.05); cursor: not-allowed; border-color: rgba(244,92,150,0.1); color:#7d6474;">
+        </div>
       </div>
 
       <div class="form-actions">
