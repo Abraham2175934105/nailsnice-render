@@ -6,13 +6,51 @@
 
 {% block page_actions %}
 <div class="page-actions">
-  <a href="{% url 'clientes:cliente_create' %}" class="btn-pill">
+  <a href="{% url 'clientes_carga_masiva' %}" class="btn-pill">
+    <svg aria-hidden="true"><use href="#icon-export"></use></svg>Carga masiva
+  </a>
+  <a href="{% url 'clientes:cliente_create' %}" class="btn-pill btn-primary">
     <svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo cliente
   </a>
 </div>
 {% endblock %}
 
 {% block content %}
+<form method="get" class="glass-panel u-p-16 u-mb-14">
+  <!-- Main Search Bar -->
+  <div class="search-main-row u-mb-14" style="display: flex; gap: 10px; width: 100%;">
+    <div style="flex: 1; position: relative;">
+      <input type="search" name="q" placeholder="Buscar por nombre, correo o teléfono..." value="{{ search|default:'' }}" 
+             style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(244, 92, 150, 0.25); outline: none; box-shadow: 0 4px 10px rgba(44, 9, 29, 0.04); font-family: inherit; font-size: 0.95rem;">
+    </div>
+    <button class="btn-primary" type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; border: 1px solid rgba(244, 92, 150, 0.85); background: linear-gradient(135deg, #f45c96, #ff8fbc); color: #fff; box-shadow: 0 8px 18px rgba(244, 92, 150, 0.25);">
+      <svg aria-hidden="true" style="width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.5;"><use href="#icon-search"></use></svg>
+      Buscar
+    </button>
+  </div>
+
+  <!-- Filters Row -->
+  <div class="filters-row" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; width: 180px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Fidelización</label>
+      <select name="fidelizacion" style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem; color: #1c1624;">
+        <option value="">Todos</option>
+        <option value="activa" {% if fidelizacion_selected == 'activa' %}selected{% endif %}>Activa</option>
+        <option value="inactiva" {% if fidelizacion_selected == 'inactiva' %}selected{% endif %}>Inactiva</option>
+      </select>
+    </div>
+
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; width: 180px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Orden</label>
+      <select name="orden" style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem; color: #1c1624;">
+        <option value="recientes" {% if orden_selected == 'recientes' %}selected{% endif %}>Más recientes</option>
+        <option value="nombre_asc" {% if orden_selected == 'nombre_asc' %}selected{% endif %}>Nombre A-Z</option>
+        <option value="nombre_desc" {% if orden_selected == 'nombre_desc' %}selected{% endif %}>Nombre Z-A</option>
+      </select>
+    </div>
+  </div>
+</form>
+
 <section class="table-card glass-panel">
   <div class="chart-head">
     <h3>Todos los clientes</h3>
@@ -24,6 +62,7 @@
     <table>
       <thead>
         <tr>
+          <th>Nombre</th>
           <th>Correo</th>
           <th>Teléfono</th>
           <th>Fidelización</th>
@@ -34,6 +73,7 @@
       <tbody>
         {% for cliente in clientes %}
         <tr>
+          <td><strong>{{ cliente.usuario.nombre|default:"" }} {{ cliente.usuario.apellido|default:"" }}</strong></td>
           <td>{{ cliente.usuario.correo }}</td>
           <td>
             {% if cliente.usuario.telefono %}
@@ -44,16 +84,16 @@
           </td>
           <td>
             {% if cliente.acepta_fidelizacion %}
-              <span class="badge badge-success">Activa</span>
+              <span class="badge badge-success" style="background: rgba(47, 156, 119, 0.16); color: #2d8c6f; border: 1px solid rgba(47, 156, 119, 0.35); padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82rem;">Activa</span>
             {% else %}
-              <span class="badge badge-warning">Inactiva</span>
+              <span class="badge badge-warning" style="background: rgba(230, 162, 60, 0.12); color: #d97706; border: 1px solid rgba(230, 162, 60, 0.35); padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82rem;">Inactiva</span>
             {% endif %}
           </td>
           <td>{{ cliente.creado_en|date:"d M Y" }}</td>
           <td>
             <a href="{% url 'clientes:cliente_detail' cliente.pk %}"
-               class="btn-icon" aria-label="Ver detalle">
-              <svg aria-hidden="true"><use href="#icon-edit"></use></svg>
+               class="btn-icon" aria-label="Ver detalle" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(244, 92, 150, 0.25); color: #f45c96; transition: all 0.2s;">
+              <svg aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5;"><use href="#icon-edit"></use></svg>
             </a>
           </td>
         </tr>
@@ -62,7 +102,7 @@
     </table>
   </div>
   {% else %}
-    <div class="empty-state">No hay clientes registrados aún.</div>
+    <div class="empty-state">No se encontraron clientes con los filtros seleccionados.</div>
   {% endif %}
 </section>
 {% endblock %}

@@ -347,7 +347,6 @@ def crear_pedido(request):
                 'linea1': form.cleaned_data['direccion_linea1'],
                 'ciudad': form.cleaned_data['ciudad'],
                 'departamento': form.cleaned_data.get('departamento'),
-                'codigo_postal': form.cleaned_data.get('codigo_postal'),
                 'nombre_destinatario': form.cleaned_data.get('nombre_destinatario'),
             }
             create_pedido_from_cart(
@@ -377,7 +376,6 @@ def editar_pedido(request, id):
         'direccion_linea1': getattr(direccion, 'linea1', ''),
         'ciudad': getattr(direccion, 'ciudad', ''),
         'departamento': getattr(direccion, 'departamento', ''),
-        'codigo_postal': getattr(direccion, 'codigo_postal', ''),
         'nombre_destinatario': getattr(direccion, 'nombre_destinatario', ''),
         'estado': pedido.estado,
     }
@@ -400,7 +398,6 @@ def editar_pedido(request, id):
                 pedido.direccion_envio.linea1 = form.cleaned_data['direccion_linea1']
                 pedido.direccion_envio.ciudad = form.cleaned_data['ciudad']
                 pedido.direccion_envio.departamento = form.cleaned_data.get('departamento') or None
-                pedido.direccion_envio.codigo_postal = form.cleaned_data.get('codigo_postal') or None
                 pedido.direccion_envio.nombre_destinatario = form.cleaned_data.get('nombre_destinatario') or pedido.direccion_envio.nombre_destinatario
                 pedido.direccion_envio.save()
             pedido.save(update_fields=['estado', 'actualizado_en'])
@@ -477,7 +474,6 @@ def empleado_crear_pedido(request):
                 'linea1': form.cleaned_data['direccion_linea1'],
                 'ciudad': form.cleaned_data['ciudad'],
                 'departamento': form.cleaned_data.get('departamento'),
-                'codigo_postal': form.cleaned_data.get('codigo_postal'),
                 'nombre_destinatario': form.cleaned_data.get('nombre_destinatario'),
             }
             create_pedido_from_cart(
@@ -514,7 +510,6 @@ def empleado_editar_pedido(request, id):
         'direccion_linea1': getattr(direccion, 'linea1', ''),
         'ciudad': getattr(direccion, 'ciudad', ''),
         'departamento': getattr(direccion, 'departamento', ''),
-        'codigo_postal': getattr(direccion, 'codigo_postal', ''),
         'nombre_destinatario': getattr(direccion, 'nombre_destinatario', ''),
         'estado': pedido.estado,
     }
@@ -536,7 +531,6 @@ def empleado_editar_pedido(request, id):
                 pedido.direccion_envio.linea1 = form.cleaned_data['direccion_linea1']
                 pedido.direccion_envio.ciudad = form.cleaned_data['ciudad']
                 pedido.direccion_envio.departamento = form.cleaned_data.get('departamento') or None
-                pedido.direccion_envio.codigo_postal = form.cleaned_data.get('codigo_postal') or None
                 pedido.direccion_envio.nombre_destinatario = form.cleaned_data.get('nombre_destinatario') or pedido.direccion_envio.nombre_destinatario
                 pedido.direccion_envio.save()
             pedido.save(update_fields=['estado', 'actualizado_en'])

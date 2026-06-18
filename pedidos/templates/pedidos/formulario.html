@@ -16,47 +16,42 @@
   <form method="POST" class="form-grid">
     {% csrf_token %}
     <div class="field">
-      <label>Cliente</label>
+      <label for="{{ form.cliente.id_for_label }}">{{ form.cliente.label }}</label>
       {{ form.cliente }}
       {% if form.cliente.errors %}<span class="badge-chip">{{ form.cliente.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Variante</label>
+      <label for="{{ form.variante.id_for_label }}">{{ form.variante.label }}</label>
       {{ form.variante }}
       {% if form.variante.errors %}<span class="badge-chip">{{ form.variante.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Cantidad</label>
+      <label for="{{ form.cantidad.id_for_label }}">{{ form.cantidad.label }}</label>
       {{ form.cantidad }}
       {% if form.cantidad.errors %}<span class="badge-chip">{{ form.cantidad.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Dirección</label>
+      <label for="{{ form.direccion_linea1.id_for_label }}">{{ form.direccion_linea1.label }}</label>
       {{ form.direccion_linea1 }}
       {% if form.direccion_linea1.errors %}<span class="badge-chip">{{ form.direccion_linea1.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Ciudad</label>
+      <label for="{{ form.ciudad.id_for_label }}">{{ form.ciudad.label }}</label>
       {{ form.ciudad }}
       {% if form.ciudad.errors %}<span class="badge-chip">{{ form.ciudad.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Departamento</label>
+      <label for="{{ form.departamento.id_for_label }}">{{ form.departamento.label }}</label>
       {{ form.departamento }}
       {% if form.departamento.errors %}<span class="badge-chip">{{ form.departamento.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Código postal</label>
-      {{ form.codigo_postal }}
-      {% if form.codigo_postal.errors %}<span class="badge-chip">{{ form.codigo_postal.errors }}</span>{% endif %}
-    </div>
-    <div class="field">
-      <label>Destinatario</label>
+      <label for="{{ form.nombre_destinatario.id_for_label }}">{{ form.nombre_destinatario.label }}</label>
       {{ form.nombre_destinatario }}
       {% if form.nombre_destinatario.errors %}<span class="badge-chip">{{ form.nombre_destinatario.errors }}</span>{% endif %}
     </div>
     <div class="field">
-      <label>Estado</label>
+      <label for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
       {{ form.estado }}
       {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
     </div>
@@ -67,4 +62,83 @@
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const clienteSelect = document.getElementById('{{ form.cliente.id_for_label }}');
+    const inputDireccion = document.getElementById('{{ form.direccion_linea1.id_for_label }}');
+    const inputCiudad = document.getElementById('{{ form.ciudad.id_for_label }}');
+    const inputDepto = document.getElementById('{{ form.departamento.id_for_label }}');
+    const inputDestinatario = document.getElementById('{{ form.nombre_destinatario.id_for_label }}');
+
+    if (!clienteSelect) return;
+
+    function autofillCliente(clienteId) {
+        if (!clienteId) return;
+
+        // Fetch client details for name fallback
+        const clientPromise = fetch(`/api/clientes/${clienteId}/`)
+            .then(res => {
+                if (!res.ok) throw new Error('Error al obtener datos del cliente');
+                return res.json();
+            });
+
+        // Fetch client addresses
+        const addressesPromise = fetch(`/api/clientes/${clienteId}/direcciones/`)
+            .then(res => {
+                if (!res.ok) throw new Error('Error al obtener direcciones');
+                return res.json();
+            });
+
+        Promise.all([clientPromise, addressesPromise])
+            .then(([clientData, addresses]) => {
+                // Find default shipping address or fall back to the first available
+                let address = addresses.find(a => a.es_predeterminada_envio);
+                if (!address && addresses.length > 0) {
+                    address = addresses[0];
+                }
+
+                if (address) {
+                    if (inputDireccion) inputDireccion.value = address.linea1 || '';
+                    if (inputCiudad) inputCiudad.value = address.ciudad || '';
+                    if (inputDepto) inputDepto.value = address.departamento || '';
+                    
+                    if (inputDestinatario) {
+                        if (address.nombre_destinatario) {
+                            inputDestinatario.value = address.nombre_destinatario;
+                        } else if (clientData && clientData.usuario) {
+                            const u = clientData.usuario;
+                            inputDestinatario.value = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+                        }
+                    }
+                } else {
+                    // No registered address, fall back to client's name for recipient
+                    if (inputDestinatario && clientData && clientData.usuario) {
+                        const u = clientData.usuario;
+                        inputDestinatario.value = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error autocompletando datos de cliente:', err);
+            });
+    }
+
+    // Trigger on load if already selected
+    if (clienteSelect.value) {
+        const isCreate = !{{ is_edit|yesno:"true,false" }};
+        const isEmpty = !inputDireccion.value && !inputCiudad.value;
+        if (isCreate || isEmpty) {
+            autofillCliente(clienteSelect.value);
+        }
+    }
+
+    // Trigger on select change
+    clienteSelect.addEventListener('change', function() {
+        autofillCliente(this.value);
+    });
+});
+</script>
 {% endblock %}

@@ -76,12 +76,6 @@
     </div>
 
     <div class="field">
-      <label for="{{ form.codigo_postal.id_for_label }}">Código postal</label>
-      {{ form.codigo_postal }}
-      {% if form.codigo_postal.errors %}<span class="badge-chip">{{ form.codigo_postal.errors }}</span>{% endif %}
-    </div>
-
-    <div class="field">
       <label for="{{ form.nombre_destinatario.id_for_label }}">Destinatario</label>
       {{ form.nombre_destinatario }}
       {% if form.nombre_destinatario.errors %}<span class="badge-chip">{{ form.nombre_destinatario.errors }}</span>{% endif %}

@@ -112,9 +112,39 @@ class MetodoPagoClienteViewSet(
 
 @login_required
 def cliente_list(request):
-    """Lista de todos los clientes."""
+    """Lista de todos los clientes con búsqueda y filtros."""
     clientes = Cliente.objects.select_related('usuario').all()
-    return render(request, 'clientes/cliente_list.html', {'clientes': clientes})
+
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        from django.db.models import Q
+        clientes = clientes.filter(
+            Q(usuario__correo__icontains=search)
+            | Q(usuario__nombre__icontains=search)
+            | Q(usuario__apellido__icontains=search)
+            | Q(usuario__telefono__icontains=search)
+        )
+
+    fidelizacion = (request.GET.get('fidelizacion') or '').strip().lower()
+    if fidelizacion == 'activa':
+        clientes = clientes.filter(acepta_fidelizacion=True)
+    elif fidelizacion == 'inactiva':
+        clientes = clientes.filter(acepta_fidelizacion=False)
+
+    orden = (request.GET.get('orden') or 'recientes').strip().lower()
+    if orden == 'nombre_asc':
+        clientes = clientes.order_by('usuario__nombre', 'usuario__apellido')
+    elif orden == 'nombre_desc':
+        clientes = clientes.order_by('-usuario__nombre', '-usuario__apellido')
+    else:
+        clientes = clientes.order_by('-creado_en')
+
+    return render(request, 'clientes/cliente_list.html', {
+        'clientes': clientes,
+        'search': search,
+        'fidelizacion_selected': fidelizacion,
+        'orden_selected': orden,
+    })
 
 
 @login_required

@@ -20,30 +20,47 @@
 
 {% block content %}
 <form method="get" class="glass-panel u-p-16 u-mb-14">
-  <div class="search-bar search-bar-extended">
-    <input type="search" name="q" placeholder="Buscar por nombre, descripción o marca" value="{{ search|default:'' }}">
-    
-    <label class="filter-label">Categoría
-      <select name="categorias" multiple class="search-multiselect">
+  <!-- Main Search Bar -->
+  <div class="search-main-row u-mb-14" style="display: flex; gap: 10px; width: 100%;">
+    <div style="flex: 1; position: relative;">
+      <input type="search" name="q" placeholder="Buscar por nombre, descripción o marca..." value="{{ search|default:'' }}" 
+             style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(244, 92, 150, 0.25); outline: none; box-shadow: 0 4px 10px rgba(44, 9, 29, 0.04); font-family: inherit; font-size: 0.95rem;">
+    </div>
+    <button class="btn-primary" type="submit" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; border: 1px solid rgba(244, 92, 150, 0.85); background: linear-gradient(135deg, #f45c96, #ff8fbc); color: #fff; box-shadow: 0 8px 18px rgba(244, 92, 150, 0.25);">
+      <svg aria-hidden="true" style="width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.5;"><use href="#icon-search"></use></svg>
+      Buscar
+    </button>
+  </div>
+
+  <!-- Filters Row -->
+  <div class="filters-row" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Categoría</label>
+      <select name="categorias" style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem; color: #1c1624;">
+        <option value="">Todas las categorías</option>
         {% for categoria in categorias_export %}
           <option value="{{ categoria.id_categoria }}" {% if categoria.id_categoria|stringformat:'s' in categorias_selected %}selected{% endif %}>
             {{ categoria.nombre }}
           </option>
         {% endfor %}
       </select>
-      <small class="section-subtitle">Ctrl/Cmd para varias categorías</small>
-    </label>
+    </div>
 
-    <label class="filter-label">Precio mín
-      <input type="number" name="precio_min" min="0" step="0.01" placeholder="0.00" value="{{ precio_min }}">
-    </label>
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; width: 120px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Precio Mín</label>
+      <input type="number" name="precio_min" min="0" step="0.01" placeholder="0.00" value="{{ precio_min }}"
+             style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem;">
+    </div>
 
-    <label class="filter-label">Precio máx
-      <input type="number" name="precio_max" min="0" step="0.01" placeholder="999999" value="{{ precio_max }}">
-    </label>
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; width: 120px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Precio Máx</label>
+      <input type="number" name="precio_max" min="0" step="0.01" placeholder="999999" value="{{ precio_max }}"
+             style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem;">
+    </div>
 
-    <label class="filter-label">Orden
-      <select name="orden">
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; width: 160px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Orden</label>
+      <select name="orden" style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem; color: #1c1624;">
         <option value="recientes" {% if orden_selected == 'recientes' %}selected{% endif %}>Más recientes</option>
         <option value="precio_asc" {% if orden_selected == 'precio_asc' %}selected{% endif %}>Precio ascendente</option>
         <option value="precio_desc" {% if orden_selected == 'precio_desc' %}selected{% endif %}>Precio descendente</option>
@@ -51,21 +68,18 @@
         <option value="nombre_desc" {% if orden_selected == 'nombre_desc' %}selected{% endif %}>Nombre Z-A</option>
         <option value="categoria" {% if orden_selected == 'categoria' %}selected{% endif %}>Categoría</option>
       </select>
-    </label>
+    </div>
 
-    <label class="filter-label">Por página
-      <select name="page_size" onchange="this.form.submit()">
+    <div class="filter-group" style="display: flex; flex-direction: column; gap: 4px; width: 110px;">
+      <label style="font-size: 0.75rem; font-weight: 700; color: #7c6574; text-transform: uppercase; letter-spacing: 0.05em;">Por página</label>
+      <select name="page_size" onchange="this.form.submit()" style="padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(244, 92, 150, 0.25); background: #fff; width: 100%; font-family: inherit; font-size: 0.9rem; color: #1c1624;">
         <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
         <option value="15" {% if page_size == 15 %}selected{% endif %}>15</option>
         <option value="20" {% if page_size == 20 %}selected{% endif %}>20</option>
         <option value="25" {% if page_size == 25 %}selected{% endif %}>25</option>
         <option value="30" {% if page_size == 30 %}selected{% endif %}>30</option>
       </select>
-    </label>
-
-    <button class="btn-primary" type="submit">
-      <svg aria-hidden="true"><use href="#icon-search"></use></svg>Buscar
-    </button>
+    </div>
   </div>
 </form>
 
