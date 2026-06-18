@@ -274,7 +274,7 @@
                             data-estado="{{ p.estado }}"
                             data-total="{{ p.precio|floatformat:0 }}"
                             data-metodo="{{ p.metodo_pago }}"
-                            data-items='{{ p.items|default:"[]" }}'
+                            data-items="{{ p.items_json|default:'[]'|escapejs }}"
                             data-direccion-linea1="{{ p.direccion_completa.linea1|default:'' }}"
                             data-direccion-linea2="{{ p.direccion_completa.linea2|default:'' }}"
                             data-direccion-ciudad="{{ p.direccion_completa.ciudad|default:'' }}"
@@ -318,7 +318,7 @@
                 </div>
             </div>
 
-            {{# Tabla de productos #}}
+            {# Tabla de productos #}
             <div style="overflow-x:auto;margin-bottom:1rem;">
                 <table style="width:100%;border-collapse:collapse;font-size:.85rem;" id="d-items-table">
                     <thead>
@@ -341,7 +341,7 @@
                 </table>
             </div>
 
-            {{# Metadatos del pedido #}}
+            {# Metadatos del pedido #}
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;padding:.75rem;background:var(--color-surface,#f9fafb);border-radius:.5rem;font-size:.82rem;">
                 <div>
                     <p style="margin:0;opacity:.6;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;">Método de pago</p>

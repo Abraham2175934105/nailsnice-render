@@ -247,27 +247,33 @@ def profile_view(request):
         .order_by('-id_pedido')
     )
 
-    # Helper: obtiene el metodo_pago_tipo de un pedido con SQL crudo y aislado.
-    # Si la columna no existe, devuelve '' sin propagar ningún error.
+    # Helper: obtiene el metodo_pago_tipo con SQL crudo AISLADO via SAVEPOINT.
+    # SAVEPOINT es la única forma segura de ejecutar SQL que puede fallar dentro
+    # de una transacción PostgreSQL sin contaminar el estado de la conexión.
     def _get_metodo_pago_safe(pedido_id):
-        from django.db import connection, ProgrammingError, OperationalError
+        from django.db import connection
+        sp_name = 'sp_metodo_pago'
         try:
             with connection.cursor() as cur:
-                # Intentar leer la columna nueva primero
-                cur.execute(
-                    'SELECT metodo_pago_tipo FROM transaccion_pago '
-                    'WHERE id_pedido = %s ORDER BY id_transaccion LIMIT 1',
-                    [pedido_id],
-                )
-                row = cur.fetchone()
-                return (row[0] or '') if row else ''
-        except (ProgrammingError, OperationalError):
-            # Columna no existe todavía en la BD → ignorar silenciosamente
-            try:
-                connection.connection.rollback()  # limpiar transacción abortada
-            except Exception:
-                pass
-            return ''
+                cur.execute(f'SAVEPOINT {sp_name}')
+                try:
+                    cur.execute(
+                        'SELECT metodo_pago_tipo FROM transaccion_pago '
+                        'WHERE id_pedido = %s ORDER BY id_transaccion LIMIT 1',
+                        [pedido_id],
+                    )
+                    row = cur.fetchone()
+                    cur.execute(f'RELEASE SAVEPOINT {sp_name}')
+                    return (row[0] or '') if row else ''
+                except Exception:
+                    # Columna no existe o cualquier error SQL:
+                    # revertir SOLO el savepoint, la transacción principal sigue limpia.
+                    try:
+                        cur.execute(f'ROLLBACK TO SAVEPOINT {sp_name}')
+                        cur.execute(f'RELEASE SAVEPOINT {sp_name}')
+                    except Exception:
+                        pass
+                    return ''
         except Exception:
             return ''
 
@@ -319,9 +325,13 @@ def profile_view(request):
                 )
                 total_cantidad = sum(d.cantidad for d in detalles)
 
-                # ── Método de pago (consulta SQL aislada, a prueba de fallos) ─
+                # ── Método de pago (SAVEPOINT-isolated SQL) ──────────────────
                 tipo_raw = _get_metodo_pago_safe(p.id_pedido)
                 metodo_pago = _fmt_metodo(tipo_raw)
+
+                # ── Items serializado como JSON válido para el template ────────
+                import json as _json
+                items_json = _json.dumps(items_detalle, ensure_ascii=False)
 
                 # ── Dirección de envío ────────────────────────────────────────
                 dir_obj = p.direccion_envio
@@ -354,7 +364,8 @@ def profile_view(request):
                     'cantidad':          total_cantidad,
                     'direccion':         direccion_str,
                     'metodo_pago':       metodo_pago,
-                    'items':             items_detalle,
+                    'items':             items_detalle,        # lista Python para lógica
+                    'items_json':        items_json,           # JSON string seguro para el template HTML
                     'direccion_completa': direccion_completa,
                 })
             except Exception as _pedido_err:
@@ -376,12 +387,20 @@ def profile_view(request):
         pedidos_usuario = []
 
 
-    security_info = {
-        'last_login': user.last_login,
-        'current_ip': get_client_ip(request),
-        'session_expire_browser_close': request.session.get_expire_at_browser_close(),
-        'session_expires_at': timezone.now() + timedelta(seconds=request.session.get_expiry_age()),
-    }
+    try:
+        security_info = {
+            'last_login': user.last_login,
+            'current_ip': get_client_ip(request),
+            'session_expire_browser_close': request.session.get_expire_at_browser_close(),
+            'session_expires_at': timezone.now() + timedelta(seconds=request.session.get_expiry_age()),
+        }
+    except Exception:
+        security_info = {
+            'last_login': None,
+            'current_ip': '',
+            'session_expire_browser_close': True,
+            'session_expires_at': None,
+        }
 
     if request.method == 'POST':
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
