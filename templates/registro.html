@@ -65,12 +65,32 @@
                         </div>
                     </div>
 
-                    <div class="form-group full-width floating {% if field_errors.direccion %}has-error{% endif %}">
+                    <div class="form-group full-width floating {% if field_errors.linea1 %}has-error{% elif request.method == 'POST' and request.POST.linea1 %}has-success{% endif %}">
                         <div class="input-wrapper">
-                            <input type="text" name="direccion" id="direccion" class="form-input" required placeholder=" " value="{{ request.POST.direccion }}">
-                            <label for="direccion" class="form-label">Dirección (Colombia)</label>
-                            {% if field_errors.direccion %}
-                                <div class="field-tooltip">{{ field_errors.direccion }}</div>
+                            <input type="text" name="linea1" id="linea1" class="form-input" required placeholder=" " value="{{ request.POST.linea1 }}">
+                            <label for="linea1" class="form-label">Dirección Principal (Colombia) *</label>
+                            {% if field_errors.linea1 %}
+                                <div class="field-tooltip">{{ field_errors.linea1 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group floating {% if field_errors.ciudad %}has-error{% elif request.method == 'POST' and request.POST.ciudad %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="ciudad" id="ciudad" class="form-input" required placeholder=" " value="{{ request.POST.ciudad|default:'Bogotá' }}">
+                            <label for="ciudad" class="form-label">Ciudad *</label>
+                            {% if field_errors.ciudad %}
+                                <div class="field-tooltip">{{ field_errors.ciudad }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group floating {% if field_errors.departamento %}has-error{% elif request.method == 'POST' and request.POST.departamento %}has-success{% endif %}">
+                        <div class="input-wrapper">
+                            <input type="text" name="departamento" id="departamento" class="form-input" required placeholder=" " value="{{ request.POST.departamento|default:'Cundinamarca' }}">
+                            <label for="departamento" class="form-label">Departamento *</label>
+                            {% if field_errors.departamento %}
+                                <div class="field-tooltip">{{ field_errors.departamento }}</div>
                             {% endif %}
                         </div>
                     </div>

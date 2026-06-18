@@ -48,7 +48,9 @@ class RegistroForm(forms.Form):
     nombre = forms.CharField(max_length=100, required=True)
     apellido = forms.CharField(max_length=100, required=True)
     telefono = forms.CharField(max_length=20, required=True)
-    direccion = forms.CharField(max_length=160, required=True)
+    linea1 = forms.CharField(max_length=160, required=True)
+    ciudad = forms.CharField(max_length=80, required=True)
+    departamento = forms.CharField(max_length=80, required=True)
     correo = forms.EmailField(max_length=180, required=True)
     contrasena = forms.CharField(required=True)
 
@@ -84,12 +86,24 @@ class RegistroForm(forms.Form):
             raise forms.ValidationError('El correo ya está registrado.')
         return correo
 
-    def clean_direccion(self):
-        direccion = self.cleaned_data.get('direccion', '').strip()
+    def clean_linea1(self):
+        linea1 = self.cleaned_data.get('linea1', '').strip()
         direccion_pattern = r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+'
-        if not re.match(direccion_pattern, direccion):
+        if not re.match(direccion_pattern, linea1):
             raise forms.ValidationError('Usa un formato de vía colombiano (ej: "Calle 123 #45-67").')
-        return direccion
+        return linea1
+
+    def clean_ciudad(self):
+        ciudad = self.cleaned_data.get('ciudad', '').strip()
+        if not ciudad:
+            raise forms.ValidationError('La ciudad es obligatoria.')
+        return ciudad
+
+    def clean_departamento(self):
+        departamento = self.cleaned_data.get('departamento', '').strip()
+        if not departamento:
+            raise forms.ValidationError('El departamento es obligatorio.')
+        return departamento
 
     def clean_contrasena(self):
         contrasena = self.cleaned_data.get('contrasena', '')

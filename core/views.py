@@ -159,7 +159,9 @@ def register_view(request):
             nombre = form.cleaned_data['nombre']
             apellido = form.cleaned_data['apellido']
             telefono = form.cleaned_data['telefono']
-            direccion = form.cleaned_data['direccion']
+            linea1 = form.cleaned_data['linea1']
+            ciudad = form.cleaned_data['ciudad']
+            departamento = form.cleaned_data['departamento']
             contrasena = form.cleaned_data['contrasena']
             
             rol_cliente, _ = RolAcceso.objects.get_or_create(
@@ -167,42 +169,53 @@ def register_view(request):
                 defaults={'nombre': 'Cliente', 'descripcion': 'Cliente', 'es_sistema': True},
             )
             
-            nuevo_usuario = Usuario(
-                correo=correo,
-                nombre=nombre,
-                apellido=apellido,
-                telefono=telefono,
-                estado='ACTIVO'
-            )
-            nuevo_usuario.set_password(contrasena)
-            nuevo_usuario.save()
+            from django.db import transaction
+            try:
+                with transaction.atomic():
+                    nuevo_usuario = Usuario(
+                        correo=correo,
+                        nombre=nombre,
+                        apellido=apellido,
+                        telefono=telefono,
+                        estado='ACTIVO'
+                    )
+                    nuevo_usuario.set_password(contrasena)
+                    nuevo_usuario.save()
 
-            # Create the Client profile
-            Cliente.objects.create(
-                usuario=nuevo_usuario,
-                acepta_fidelizacion=True
-            )
+                    # Create the Client profile
+                    Cliente.objects.create(
+                        usuario=nuevo_usuario,
+                        acepta_fidelizacion=True
+                    )
 
-            # Create default shipping address for the user
-            DireccionUsuario.objects.create(
-                usuario=nuevo_usuario,
-                tipo_direccion='ENVIO',
-                etiqueta='Principal',
-                nombre_destinatario=f"{nombre} {apellido}",
-                linea1=direccion,
-                ciudad='Bogotá',
-                codigo_pais='CO',
-                es_predeterminada_envio=True,
-                es_predeterminada_factura=True
-            )
+                    # Create default shipping address for the user
+                    DireccionUsuario.objects.create(
+                        usuario=nuevo_usuario,
+                        tipo_direccion='ENVIO',
+                        etiqueta='Principal',
+                        nombre_destinatario=f"{nombre} {apellido}",
+                        linea1=linea1,
+                        ciudad=ciudad,
+                        departamento=departamento,
+                        codigo_pais='CO',
+                        es_predeterminada_envio=True,
+                        es_predeterminada_factura=True
+                    )
 
-            UsuarioRol.objects.update_or_create(
-                usuario=nuevo_usuario,
-                defaults={'rol': rol_cliente},
-            )
-            
-            messages.success(request, 'Usuario registrado correctamente. Ahora puedes iniciar sesión.')
-            return redirect('login')
+                    UsuarioRol.objects.update_or_create(
+                        usuario=nuevo_usuario,
+                        defaults={'rol': rol_cliente},
+                    )
+                
+                messages.success(request, 'Usuario registrado correctamente. Ahora puedes iniciar sesión.')
+                return redirect('login')
+            except Exception as e:
+                form.add_error(None, f"Error al registrar el usuario: {str(e)}")
+                field_errors = {field: error_list[0] for field, error_list in form.errors.items()}
+                # Add non-field errors to the response if they exist
+                if form.non_field_errors():
+                    field_errors['non_field_errors'] = form.non_field_errors()[0]
+                return render(request, 'registro.html', {'field_errors': field_errors})
         else:
             field_errors = {field: error_list[0] for field, error_list in form.errors.items()}
             return render(request, 'registro.html', {'field_errors': field_errors})

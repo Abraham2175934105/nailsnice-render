@@ -55,7 +55,9 @@ class RegistroFormValidationTests(TestCase):
             'nombre': 'Carlos',
             'apellido': 'Gomez',
             'telefono': '3123456789',
-            'direccion': 'Calle 45 #12-34',
+            'linea1': 'Calle 45 #12-34',
+            'ciudad': 'Bogotá',
+            'departamento': 'Cundinamarca',
             'correo': 'carlos.gomez@test.com',
             'contrasena': 'Segura123!'
         }
@@ -67,7 +69,9 @@ class RegistroFormValidationTests(TestCase):
             'nombre': 'Carlos Alberto',
             'apellido': 'Gomez',
             'telefono': '3123456789',
-            'direccion': 'Calle 45 #12-34',
+            'linea1': 'Calle 45 #12-34',
+            'ciudad': 'Bogotá',
+            'departamento': 'Cundinamarca',
             'correo': 'carlos.gomez@test.com',
             'contrasena': 'Segura123!'
         }
@@ -80,7 +84,9 @@ class RegistroFormValidationTests(TestCase):
             'nombre': 'Carlos',
             'apellido': 'Gomez123',
             'telefono': '3123456789',
-            'direccion': 'Calle 45 #12-34',
+            'linea1': 'Calle 45 #12-34',
+            'ciudad': 'Bogotá',
+            'departamento': 'Cundinamarca',
             'correo': 'carlos.gomez@test.com',
             'contrasena': 'Segura123!'
         }
@@ -102,7 +108,9 @@ class RegistroFormValidationTests(TestCase):
             'nombre': 'Maria',
             'apellido': 'Perez',
             'telefono': '3129999999',
-            'direccion': 'Calle 45 #12-34',
+            'linea1': 'Calle 45 #12-34',
+            'ciudad': 'Bogotá',
+            'departamento': 'Cundinamarca',
             'correo': 'Carlos.Gomez@test.com',
             'contrasena': 'Segura123!'
         }
@@ -116,7 +124,9 @@ class RegistroFormValidationTests(TestCase):
             'nombre': 'Maria',
             'apellido': 'Perez',
             'telefono': '3123456789',
-            'direccion': 'Calle 45 #12-34',
+            'linea1': 'Calle 45 #12-34',
+            'ciudad': 'Bogotá',
+            'departamento': 'Cundinamarca',
             'correo': 'maria.perez@test.com',
             'contrasena': 'Segura123!'
         }
@@ -130,7 +140,9 @@ class RegistroFormValidationTests(TestCase):
             'nombre': 'Carlos',
             'apellido': 'Gomez',
             'telefono': '3123456789',
-            'direccion': 'Calle 45 #12-34',
+            'linea1': 'Calle 45 #12-34',
+            'ciudad': 'Bogotá',
+            'departamento': 'Cundinamarca',
             'correo': 'carlos.gomez@test.com',
         }
         
