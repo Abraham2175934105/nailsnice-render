@@ -34,19 +34,26 @@
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>SKU</th><th>Producto</th><th>Bodega</th><th>Stock</th><th>Reservado</th><th>Disponible</th><th>Precio</th><th>Estado</th><th>Acciones</th>
+        <th>ID</th><th>SKU</th><th>Producto</th><th>Bodega</th><th>Existencias</th><th>Reservado</th><th>Disponible</th><th>Niv. Reorden</th><th>Precio</th><th>Estado</th><th>Acciones</th>
       </tr>
     </thead>
     <tbody>
       {% for item in inventario_items %}
       <tr>
         <td>{{ item.id_variante }}</td>
-        <td>{{ item.sku }}</td>
+        <td><code>{{ item.sku|default:"—" }}</code></td>
         <td>{{ item.producto }}</td>
-        <td>{{ item.bodega }}</td>
-        <td>{{ item.stock }}</td>
-        <td>{{ item.reservado }}</td>
-        <td>{{ item.disponible }}</td>
+        <td>{{ item.bodega|default:"—" }}</td>
+        <td><strong>{{ item.stock }}</strong></td>
+        <td>{{ item.reservado|default:"0" }}</td>
+        <td>
+          {% if item.disponible == 0 %}
+            <span style="color:#d9487a;font-weight:700;">{{ item.disponible }}</span>
+          {% else %}
+            <span style="color:#27ae60;font-weight:700;">{{ item.disponible }}</span>
+          {% endif %}
+        </td>
+        <td>{{ item.nivel_reorden|default:"—" }}</td>
         <td>${{ item.precio }}</td>
         <td>
           {% if item.activo %}
@@ -62,7 +69,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="10" class="empty-row-cell">
+        <td colspan="11" class="empty-row-cell">
           <div class="empty-state-inline">
             <strong>Sin productos en inventario</strong>
             <span>Registra tu primer producto para habilitar catálogo y ventas.</span>

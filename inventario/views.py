@@ -107,13 +107,20 @@ def lista_inventario(request):
         using_saldos = True
     search = (request.GET.get('q') or '').strip()
     if search:
-        productos_qs = productos_qs.filter(
-            Q(variante__sku__icontains=search)
-            | Q(variante__producto__nombre__icontains=search)
-            | Q(variante__producto__marca__nombre__icontains=search)
-            | Q(bodega__nombre__icontains=search)
-            | Q(bodega__codigo__icontains=search)
-        )
+        if using_saldos:
+            productos_qs = productos_qs.filter(
+                Q(variante__sku__icontains=search)
+                | Q(variante__producto__nombre__icontains=search)
+                | Q(variante__producto__marca__nombre__icontains=search)
+                | Q(bodega__nombre__icontains=search)
+                | Q(bodega__codigo__icontains=search)
+            )
+        else:
+            productos_qs = productos_qs.filter(
+                Q(nombre__icontains=search)
+                | Q(marca__icontains=search)
+                | Q(proveedor__icontains=search)
+            )
 
     page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
     paginator = Paginator(productos_qs, page_size)
@@ -145,6 +152,7 @@ def lista_inventario(request):
                 'stock': saldo.cantidad_existencia,
                 'reservado': saldo.cantidad_reservada,
                 'disponible': disponible,
+                'nivel_reorden': saldo.nivel_reorden,
                 'precio': saldo.variante.precio,
                 'activo': saldo.variante.activo,
             })

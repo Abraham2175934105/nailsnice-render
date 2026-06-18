@@ -30,6 +30,11 @@ class ClienteForm(forms.ModelForm):
         label='Apellido',
         required=False,
     )
+    telefono = forms.CharField(
+        max_length=30,
+        label='Teléfono / Celular',
+        required=False,
+    )
 
 
     class Meta:
@@ -55,6 +60,7 @@ class ClienteForm(forms.ModelForm):
             self.fields['correo'].initial = u.correo
             self.fields['nombre'].initial = getattr(u, 'nombre', '')
             self.fields['apellido'].initial = getattr(u, 'apellido', '')
+            self.fields['telefono'].initial = getattr(u, 'telefono', '')
 
 
 
@@ -74,6 +80,8 @@ class ClienteForm(forms.ModelForm):
                 u.nombre = cd.get('nombre', '')
             if hasattr(u, 'apellido'):
                 u.apellido = cd.get('apellido', '')
+            if hasattr(u, 'telefono'):
+                u.telefono = cd.get('telefono', '')
             if commit:
                 u.save()
                 cliente.save()
@@ -86,6 +94,7 @@ class ClienteForm(forms.ModelForm):
                 correo=cd['correo'],
                 nombre=cd.get('nombre', ''),
                 apellido=cd.get('apellido', ''),
+                telefono=cd.get('telefono', ''),
             )
             u.set_unusable_password()
 
@@ -123,11 +132,14 @@ class DireccionUsuarioForm(forms.ModelForm):
             'linea2',
             'ciudad',
             'departamento',
-            'codigo_postal',
             'codigo_pais',
             'es_predeterminada_envio',
             'es_predeterminada_factura',
         ]
+        labels = {
+            'linea1': 'Dirección Principal (Calle, Carrera, Número) *',
+            'linea2': 'Información Adicional (Apto, Bloque, Barrio) - Opcional',
+        }
         widgets = {
             'tipo_direccion': forms.Select(attrs={'class': 'form-select'}),
             'etiqueta': forms.TextInput(attrs={'placeholder': 'Ej: Casa, Oficina'}),
@@ -136,7 +148,6 @@ class DireccionUsuarioForm(forms.ModelForm):
             'linea2': forms.TextInput(attrs={'placeholder': 'Apartamento, piso, referencia (opcional)'}),
             'ciudad': forms.TextInput(attrs={'placeholder': 'Ciudad'}),
             'departamento': forms.TextInput(attrs={'placeholder': 'Departamento / Estado'}),
-            'codigo_postal': forms.TextInput(attrs={'placeholder': 'Ej: 110111'}),
             'codigo_pais': forms.TextInput(attrs={
                 'maxlength': 2,
                 'placeholder': 'CO',

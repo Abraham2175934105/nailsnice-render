@@ -19,11 +19,22 @@
     <div class="detail-grid">
         <div>
             <span class="detail-label">Cliente</span>
-            <span class="detail-value">{{ pedido.cliente.usuario.correo }}</span>
+            <span class="detail-value">
+                {{ pedido.cliente.usuario.nombre|default:"" }} {{ pedido.cliente.usuario.apellido|default:"" }}
+                <small style="color:#7d6474;"> &nbsp;·&nbsp; {{ pedido.cliente.usuario.correo }}</small>
+            </span>
         </div>
         <div>
-            <span class="detail-label">Estado</span>
-            <span class="pill-tag">{{ pedido.estado }}</span>
+            <span class="detail-label">Estado del pedido</span>
+            {% if pedido.estado == 'PAGADO' or pedido.estado == 'ENTREGADO' %}
+                <span class="badge badge-soft badge-active">{{ pedido.estado }}</span>
+            {% elif pedido.estado == 'CANCELADO' or pedido.estado == 'REEMBOLSADO' %}
+                <span class="badge badge-soft badge-inactive">{{ pedido.estado }}</span>
+            {% elif pedido.estado == 'ENVIADO' or pedido.estado == 'PROCESANDO' %}
+                <span class="badge badge-soft" style="background:rgba(91,142,226,0.15);color:#2563eb;border:1px solid rgba(91,142,226,0.3);">{{ pedido.estado }}</span>
+            {% else %}
+                <span class="badge badge-soft" style="background:rgba(245,158,11,0.15);color:#b45309;border:1px solid rgba(245,158,11,0.3);">{{ pedido.estado }}</span>
+            {% endif %}
         </div>
         <div>
             <span class="detail-label">Subtotal</span>
@@ -43,16 +54,26 @@
         </div>
         <div>
             <span class="detail-label">Total</span>
-            <span class="detail-value"><strong>${{ pedido.monto_total }}</strong></span>
+            <span class="detail-value"><strong style="font-size:1.1rem;color:#2d0d26;">${{ pedido.monto_total }}</strong></span>
         </div>
         <div>
-            <span class="detail-label">Fecha</span>
-            <span class="detail-value">{{ pedido.realizado_en|date:"d M Y H:i" }}</span>
+            <span class="detail-label">Realizado</span>
+            <span class="detail-value">{{ pedido.realizado_en|date:"d M Y, H:i" }}</span>
         </div>
+        <div>
+            <span class="detail-label">Última actualización</span>
+            <span class="detail-value">{{ pedido.actualizado_en|date:"d M Y, H:i" }}</span>
+        </div>
+        {% if pedido.puntos_ganados %}
+        <div>
+            <span class="detail-label">Puntos ganados</span>
+            <span class="detail-value">+{{ pedido.puntos_ganados }} pts</span>
+        </div>
+        {% endif %}
         {% if pedido.direccion_envio %}
         <div>
-            <span class="detail-label">Dirección envío</span>
-            <span class="detail-value">{{ pedido.direccion_envio.linea1 }}, {{ pedido.direccion_envio.ciudad }}</span>
+            <span class="detail-label">Dirección de envío</span>
+            <span class="detail-value">{{ pedido.direccion_envio.linea1 }}, {{ pedido.direccion_envio.ciudad }}{% if pedido.direccion_envio.departamento %}, {{ pedido.direccion_envio.departamento }}{% endif %}</span>
         </div>
         {% endif %}
     </div>

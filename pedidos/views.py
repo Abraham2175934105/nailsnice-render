@@ -172,36 +172,44 @@ def _get_user_shipping_address(user) -> dict:
 
 
 def _sync_user_shipping_address(user, direccion_data: dict):
-    linea1 = (direccion_data.get('linea1') or '').strip()
-    ciudad = (direccion_data.get('ciudad') or '').strip()
-    if not linea1 or not ciudad:
-        return
+    """Sincroniza la dirección de envío del checkout con el perfil del usuario.
+    Si el usuario no tiene perfil de cliente (sin OneToOne perfil_cliente),
+    la operación se omite silenciosamente para no bloquear el pedido.
+    """
+    try:
+        linea1 = (direccion_data.get('linea1') or '').strip()
+        ciudad = (direccion_data.get('ciudad') or '').strip()
+        if not linea1 or not ciudad:
+            return
 
-    direccion = DireccionUsuario.objects.filter(usuario=user, es_predeterminada_envio=True).first()
-    if direccion:
-        direccion.linea1 = linea1
-        direccion.linea2 = (direccion_data.get('linea2') or '').strip() or None
-        direccion.ciudad = ciudad
-        direccion.departamento = (direccion_data.get('departamento') or '').strip() or None
-        direccion.codigo_postal = (direccion_data.get('codigo_postal') or '').strip() or None
-        direccion.nombre_destinatario = (direccion_data.get('nombre_destinatario') or direccion.nombre_destinatario)
-        direccion.save()
-        return
+        direccion = DireccionUsuario.objects.filter(usuario=user, es_predeterminada_envio=True).first()
+        if direccion:
+            direccion.linea1 = linea1
+            direccion.linea2 = (direccion_data.get('linea2') or '').strip() or None
+            direccion.ciudad = ciudad
+            direccion.departamento = (direccion_data.get('departamento') or '').strip() or None
+            direccion.codigo_postal = (direccion_data.get('codigo_postal') or '').strip() or None
+            direccion.nombre_destinatario = (direccion_data.get('nombre_destinatario') or direccion.nombre_destinatario)
+            direccion.save()
+            return
 
-    DireccionUsuario.objects.create(
-        usuario=user,
-        tipo_direccion='ENVIO',
-        etiqueta='Checkout',
-        nombre_destinatario=(direccion_data.get('nombre_destinatario') or user.correo)[:120],
-        linea1=linea1[:160],
-        linea2=(direccion_data.get('linea2') or '').strip()[:160] or None,
-        ciudad=ciudad[:80],
-        departamento=(direccion_data.get('departamento') or '').strip()[:80] or None,
-        codigo_postal=(direccion_data.get('codigo_postal') or '').strip()[:20] or None,
-        codigo_pais='CO',
-        es_predeterminada_envio=True,
-        es_predeterminada_factura=False,
-    )
+        DireccionUsuario.objects.create(
+            usuario=user,
+            tipo_direccion='ENVIO',
+            etiqueta='Checkout',
+            nombre_destinatario=(direccion_data.get('nombre_destinatario') or user.correo)[:120],
+            linea1=linea1[:160],
+            linea2=(direccion_data.get('linea2') or '').strip()[:160] or None,
+            ciudad=ciudad[:80],
+            departamento=(direccion_data.get('departamento') or '').strip()[:80] or None,
+            codigo_postal=(direccion_data.get('codigo_postal') or '').strip()[:20] or None,
+            codigo_pais='CO',
+            es_predeterminada_envio=True,
+            es_predeterminada_factura=False,
+        )
+    except Exception:
+        # El pedido ya fue creado; fallar en sincronizar la dirección no debe revertirlo.
+        pass
 
 
 def inicio(request):

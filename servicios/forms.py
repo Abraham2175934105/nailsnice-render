@@ -31,11 +31,19 @@ class AgendamientoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['cliente'].queryset = Cliente.objects.select_related('usuario').order_by('usuario_id')
         self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
+        # termina_en es opcional en el formulario — se calcula automáticamente en clean()
+        self.fields['termina_en'].required = False
 
     def clean(self):
         cleaned = super().clean()
         inicia_en = cleaned.get('inicia_en')
         termina_en = cleaned.get('termina_en')
+        servicio = cleaned.get('servicio')
+
+        # Auto-calcular termina_en si no se proporcionó pero sí hay servicio e inicia_en
+        if inicia_en and not termina_en and servicio:
+            termina_en = inicia_en + timedelta(minutes=servicio.duracion_minutos)
+            cleaned['termina_en'] = termina_en
 
         if inicia_en and termina_en and termina_en <= inicia_en:
             raise forms.ValidationError('La hora de fin debe ser posterior al inicio.')
@@ -135,3 +143,19 @@ class EmpleadoServicioForm(forms.ModelForm):
         # Filtrar solo empleados activos
         self.fields['empleado'].queryset = Empleado.objects.filter(activo=True).select_related('usuario')
         self.fields['servicio'].queryset = Servicio.objects.filter(activo=True)
+
+    def clean(self):
+        cleaned = super().clean()
+        empleado = cleaned.get('empleado')
+        servicio = cleaned.get('servicio')
+        if empleado and servicio:
+            qs = EmpleadoServicio.objects.filter(empleado=empleado, servicio=servicio)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError(
+                    f'El empleado ya tiene asignado el servicio "{servicio.nombre}". '
+                    'Edita la asignación existente en vez de crear una nueva.'
+                )
+        return cleaned
+

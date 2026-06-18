@@ -34,25 +34,49 @@
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>Cliente</th><th>Servicio</th><th>Empleado</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Acciones</th>
+        <th>ID</th><th>Cliente</th><th>Servicio</th><th>Técnico</th><th>Inicia</th><th>Termina</th><th>Duración</th><th>Estado</th><th>Canal</th><th>Acciones</th>
       </tr>
     </thead>
     <tbody>
       {% for ag in agendamientos %}
       <tr>
         <td>{{ ag.id_agendamiento }}</td>
-        <td>{{ ag.cliente.usuario.correo }}</td>
-        <td>{{ ag.servicio.nombre }}</td>
-        <td>{{ ag.empleado.usuario.correo|default:'Sin asignar' }}</td>
-        <td>{{ ag.inicia_en|date:"d M Y" }}</td>
-        <td>{{ ag.inicia_en|time:"H:i" }}</td>
         <td>
-          {% if ag.estado == 'CONFIRMADO' or ag.estado == 'EN_PROCESO' %}
-            <span class="badge badge-soft badge-active">{{ ag.estado }}</span>
+          {{ ag.cliente.usuario.nombre|default:"" }} {{ ag.cliente.usuario.apellido|default:"" }}
+          <small style="color:#7d6474;display:block;">{{ ag.cliente.usuario.correo }}</small>
+        </td>
+        <td>
+          <strong>{{ ag.servicio.nombre }}</strong>
+          <small style="color:#7d6474;display:block;">{{ ag.servicio.duracion_minutos }} min · ${{ ag.servicio.precio_base }}</small>
+        </td>
+        <td>
+          {% if ag.empleado.usuario.nombre %}
+            {{ ag.empleado.usuario.nombre }} {{ ag.empleado.usuario.apellido|default:"" }}
           {% else %}
-            <span class="badge badge-soft badge-inactive">{{ ag.estado }}</span>
+            <em style="color:#a58b9a;">Sin asignar</em>
           {% endif %}
         </td>
+        <td>
+          <strong>{{ ag.inicia_en|date:"d M Y" }}</strong>
+          <small style="color:#7d6474;display:block;">{{ ag.inicia_en|time:"H:i" }}</small>
+        </td>
+        <td>
+          <strong>{{ ag.termina_en|date:"d M Y" }}</strong>
+          <small style="color:#7d6474;display:block;">{{ ag.termina_en|time:"H:i" }}</small>
+        </td>
+        <td>{{ ag.servicio.duracion_minutos }} min</td>
+        <td>
+          {% if ag.estado == 'COMPLETADO' %}
+            <span class="badge badge-soft badge-active">{{ ag.estado }}</span>
+          {% elif ag.estado == 'CANCELADO' or ag.estado == 'NO_ASISTIO' %}
+            <span class="badge badge-soft badge-inactive">{{ ag.estado }}</span>
+          {% elif ag.estado == 'EN_PROCESO' or ag.estado == 'CONFIRMADO' %}
+            <span class="badge badge-soft" style="background:rgba(91,142,226,0.15);color:#2563eb;border:1px solid rgba(91,142,226,0.3);">{{ ag.estado }}</span>
+          {% else %}
+            <span class="badge badge-soft" style="background:rgba(245,158,11,0.15);color:#b45309;border:1px solid rgba(245,158,11,0.3);">{{ ag.estado }}</span>
+          {% endif %}
+        </td>
+        <td><span class="pill-tag" style="font-size:0.75rem;">{{ ag.canal }}</span></td>
         <td class="table-actions">
           <a href="{% url 'editar_agendamiento' ag.id_agendamiento %}" class="btn-success-soft"><svg aria-hidden="true"><use href="#icon-edit"></use></svg>Editar</a>
           <a href="{% url 'eliminar_agendamiento' ag.id_agendamiento %}" class="btn-danger-soft" onclick="return confirm('¿Cancelar este agendamiento?');"><svg aria-hidden="true"><use href="#icon-trash"></use></svg>Eliminar</a>
@@ -60,7 +84,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="8" class="empty-row-cell">
+        <td colspan="10" class="empty-row-cell">
           <div class="empty-state-inline">
             <strong>Sin agendamientos registrados</strong>
             <span>Crea un agendamiento para activar la agenda operativa.</span>
