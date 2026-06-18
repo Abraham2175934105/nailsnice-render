@@ -94,6 +94,18 @@
                         <p class="value status success">{{ request.user.estado }}</p>
                     </div>
                     <div class="data-item">
+                        <p class="label">Dirección Principal</p>
+                        <p class="value">{{ direccion.linea1|default:'No registrada' }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Ciudad</p>
+                        <p class="value">{{ direccion.ciudad|default:'No registrada' }}</p>
+                    </div>
+                    <div class="data-item">
+                        <p class="label">Departamento</p>
+                        <p class="value">{{ direccion.departamento|default:'No registrada' }}</p>
+                    </div>
+                    <div class="data-item">
                         <p class="label">Último acceso</p>
                         <p class="value">
                             {% if security_info.last_login %}
@@ -176,6 +188,21 @@
                         <span>Teléfono</span>
                         <input type="tel" name="telefono" value="{{ request.user.telefono }}" required>
                         {% if field_errors.telefono %}<small class="error">{{ field_errors.telefono }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Dirección Principal</span>
+                        <input type="text" name="linea1" value="{{ direccion.linea1|default:'' }}" required>
+                        {% if field_errors.linea1 %}<small class="error">{{ field_errors.linea1 }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Ciudad</span>
+                        <input type="text" name="ciudad" value="{{ direccion.ciudad|default:'' }}" required>
+                        {% if field_errors.ciudad %}<small class="error">{{ field_errors.ciudad }}</small>{% endif %}
+                    </label>
+                    <label class="field">
+                        <span>Departamento</span>
+                        <input type="text" name="departamento" value="{{ direccion.departamento|default:'' }}" required>
+                        {% if field_errors.departamento %}<small class="error">{{ field_errors.departamento }}</small>{% endif %}
                     </label>
 
                     <label class="field full">

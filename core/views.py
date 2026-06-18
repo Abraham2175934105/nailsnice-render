@@ -227,12 +227,47 @@ def register_view(request):
 def profile_view(request):
     from django.contrib.auth.forms import PasswordChangeForm
     from core.forms import PerfilUpdateForm
+    from clientes.models import DireccionUsuario
 
     user = request.user
     user_id = getattr(user, 'id_usuario', None) or getattr(user, 'id', None)
 
-    pedidos_usuario = PedidoVenta.objects.filter(cliente__usuario_id=user_id).order_by('-id_pedido')
-    
+    direccion = DireccionUsuario.objects.filter(usuario=user, es_predeterminada_envio=True).first()
+
+    pedidos_qs = (
+        PedidoVenta.objects
+        .filter(cliente__usuario=user)
+        .select_related('direccion_envio')
+        .prefetch_related('detalles__variante__producto')
+        .order_by('-id_pedido')
+    )
+
+    pedidos_usuario = []
+    for p in pedidos_qs:
+        detalles = list(p.detalles.all())
+        producto_names = [d.nombre_producto_snapshot or d.variante.producto.nombre for d in detalles if d.variante]
+        producto_str = ", ".join(producto_names) if producto_names else "Sin productos"
+        total_cantidad = sum(d.cantidad for d in detalles)
+
+        direccion_str = ""
+        if p.direccion_envio:
+            dir_parts = [p.direccion_envio.linea1]
+            if p.direccion_envio.ciudad:
+                dir_parts.append(p.direccion_envio.ciudad)
+            if p.direccion_envio.departamento:
+                dir_parts.append(p.direccion_envio.departamento)
+            direccion_str = ", ".join(dir_parts)
+
+        pedidos_usuario.append({
+            'id': p.id_pedido,
+            'fecha': p.realizado_en.strftime('%d/%m/%Y %H:%M') if p.realizado_en else '',
+            'estado': p.get_estado_display() if hasattr(p, 'get_estado_display') else p.estado,
+            'precio': p.monto_total,
+            'producto': producto_str,
+            'cantidad': total_cantidad,
+            'direccion': direccion_str,
+        })
+
     security_info = {
         'last_login': user.last_login,
         'current_ip': get_client_ip(request),
@@ -262,9 +297,35 @@ def profile_view(request):
                     'field_errors': errors,
                     'pedidos': pedidos_usuario,
                     'security_info': security_info,
+                    'direccion': direccion,
                 })
 
             form.save()
+
+            # Sincronizar dirección
+            linea1_val = form.cleaned_data['linea1']
+            ciudad_val = form.cleaned_data['ciudad']
+            departamento_val = form.cleaned_data['departamento']
+
+            if direccion:
+                direccion.linea1 = linea1_val
+                direccion.ciudad = ciudad_val
+                direccion.departamento = departamento_val
+                direccion.nombre_destinatario = f"{user.nombre} {user.apellido}"
+                direccion.save()
+            else:
+                direccion = DireccionUsuario.objects.create(
+                    usuario=user,
+                    tipo_direccion='ENVIO',
+                    etiqueta='Principal',
+                    nombre_destinatario=f"{user.nombre} {user.apellido}",
+                    linea1=linea1_val,
+                    ciudad=ciudad_val,
+                    departamento=departamento_val,
+                    codigo_pais='CO',
+                    es_predeterminada_envio=True,
+                    es_predeterminada_factura=True
+                )
 
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': 'Datos actualizados correctamente.', 'redirect': reverse('perfil')})
@@ -297,11 +358,12 @@ def profile_view(request):
                     'field_errors': errors,
                     'pedidos': pedidos_usuario,
                     'security_info': security_info,
+                    'direccion': direccion,
                 })
 
             form.save()
             update_session_auth_hash(request, user)
-            
+
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': 'Contraseña actualizada con éxito.', 'redirect': reverse('perfil')})
             messages.success(request, 'Contraseña actualizada con éxito.')
@@ -310,6 +372,7 @@ def profile_view(request):
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
         'security_info': security_info,
+        'direccion': direccion,
     })
 
 

@@ -50,6 +50,29 @@ class RegistroFormValidationTests(TestCase):
             defaults={'descripcion': 'Cliente', 'es_sistema': True}
         )
 
+    def test_temp_read_sql(self):
+        import re
+        with open('respaldo.sql', 'rb') as f:
+            raw = f.read()
+            enc = 'utf-16-le' if raw.startswith(b'\xff\xfe') else 'utf-8'
+            content = raw.decode(enc, errors='replace')
+        definitions = []
+        in_table = False
+        current_table = ""
+        for line in content.splitlines():
+            m = re.search(r'CREATE TABLE\s+(?:public\.)?`?([A-Za-z0-9_]+)`?', line, re.IGNORECASE)
+            if m:
+                in_table = True
+                current_table = m.group(1)
+                if 'pedido_venta' in current_table.lower() or 'transaccion_pago' in current_table.lower() or 'pedido' in current_table.lower() or 'pago' in current_table.lower():
+                    definitions.append(line)
+            elif in_table:
+                if 'pedido_venta' in current_table.lower() or 'transaccion_pago' in current_table.lower() or 'pedido' in current_table.lower() or 'pago' in current_table.lower():
+                    definitions.append(line)
+                if ';' in line:
+                    in_table = False
+        raise Exception("SQL_DEFS:\n" + "\n".join(definitions))
+
     def test_valid_form_data(self):
         data = {
             'nombre': 'Carlos',

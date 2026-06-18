@@ -4,9 +4,32 @@ from django.contrib.auth.forms import PasswordChangeForm
 from usuarios.models import Usuario
 
 class PerfilUpdateForm(forms.ModelForm):
+    linea1 = forms.CharField(max_length=160, required=True, label="Dirección Principal")
+    ciudad = forms.CharField(max_length=80, required=True, label="Ciudad")
+    departamento = forms.CharField(max_length=80, required=True, label="Departamento")
+
     class Meta:
         model = Usuario
         fields = ['nombre', 'apellido', 'telefono']
+
+    def clean_linea1(self):
+        linea1 = self.cleaned_data.get('linea1', '').strip()
+        direccion_pattern = r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+'
+        if not re.match(direccion_pattern, linea1):
+            raise forms.ValidationError('Usa un formato de vía colombiano (ej: "Calle 123 #45-67").')
+        return linea1
+
+    def clean_ciudad(self):
+        ciudad = self.cleaned_data.get('ciudad', '').strip()
+        if not ciudad:
+            raise forms.ValidationError('La ciudad es obligatoria.')
+        return ciudad
+
+    def clean_departamento(self):
+        departamento = self.cleaned_data.get('departamento', '').strip()
+        if not departamento:
+            raise forms.ValidationError('El departamento es obligatorio.')
+        return departamento
 
     def clean_nombre(self):
         nombre = self.cleaned_data.get('nombre', '').strip()
