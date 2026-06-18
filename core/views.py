@@ -234,106 +234,147 @@ def profile_view(request):
 
     direccion = DireccionUsuario.objects.filter(usuario=user, es_predeterminada_envio=True).first()
 
+    # NOTA: 'transacciones' se excluye del prefetch_related deliberadamente.
+    # Un prefetch_related incluye TODAS las columnas de la tabla en una sola SQL
+    # batch. Si metodo_pago_tipo no existe en la BD remota, esa query batch lanza
+    # ProgrammingError FUERA del control del try/except del for loop.
+    # La consulta de transacciones se hace de forma aislada más abajo.
     pedidos_qs = (
         PedidoVenta.objects
         .filter(cliente__usuario=user)
         .select_related('direccion_envio')
-        .prefetch_related(
-            'detalles__variante__producto',
-            'transacciones',
-        )
+        .prefetch_related('detalles__variante__producto')
         .order_by('-id_pedido')
     )
+
+    # Helper: obtiene el metodo_pago_tipo de un pedido con SQL crudo y aislado.
+    # Si la columna no existe, devuelve '' sin propagar ningún error.
+    def _get_metodo_pago_safe(pedido_id):
+        from django.db import connection, ProgrammingError, OperationalError
+        try:
+            with connection.cursor() as cur:
+                # Intentar leer la columna nueva primero
+                cur.execute(
+                    'SELECT metodo_pago_tipo FROM transaccion_pago '
+                    'WHERE id_pedido = %s ORDER BY id_transaccion LIMIT 1',
+                    [pedido_id],
+                )
+                row = cur.fetchone()
+                return (row[0] or '') if row else ''
+        except (ProgrammingError, OperationalError):
+            # Columna no existe todavía en la BD → ignorar silenciosamente
+            try:
+                connection.connection.rollback()  # limpiar transacción abortada
+            except Exception:
+                pass
+            return ''
+        except Exception:
+            return ''
+
+    # Helper: formatea el tipo de pago como texto legible
+    def _fmt_metodo(tipo):
+        if tipo == 'TARJETA':
+            return '💳 Tarjeta'
+        if tipo == 'CONTRAENTREGA':
+            return '🏠 Contra entrega'
+        return tipo or '—'
 
     pedidos_usuario = []
     try:
         for p in pedidos_qs:
-            detalles = list(p.detalles.all())
-
-            # Construir lista de items con detalle completo
-            items_detalle = []
-            for d in detalles:
-                try:
-                    nombre = d.nombre_producto_snapshot or (d.variante.producto.nombre if d.variante else '—')
-                    variante_label = d.sku_snapshot or (d.variante.sku if d.variante else '')
-                    precio = float(d.precio_unitario)
-                    subtotal_val = float(d.total_linea) if d.total_linea is not None else round(precio * d.cantidad, 2)
-                    items_detalle.append({
-                        'nombre': nombre,
-                        'variante': variante_label,
-                        'cantidad': d.cantidad,
-                        'precio_unitario': precio,
-                        'subtotal': subtotal_val,
-                    })
-                except Exception:
-                    continue
-
-            producto_str = ", ".join(i['nombre'] for i in items_detalle) if items_detalle else "Sin productos"
-            total_cantidad = sum(d.cantidad for d in detalles)
-
-            # Método de pago real desde TransaccionPago
-            # Usamos getattr con default '' para que funcione aunque la columna
-            # aún no esté migrada (registros anteriores al campo metodo_pago_tipo).
-            metodo_pago = '—'
             try:
-                primera_tx = p.transacciones.first()
-                if primera_tx:
-                    tipo = getattr(primera_tx, 'metodo_pago_tipo', None) or ''
-                    if tipo == 'TARJETA':
-                        metodo_pago = '💳 Tarjeta'
-                    elif tipo == 'CONTRAENTREGA':
-                        metodo_pago = '🏠 Contra entrega'
-                    elif tipo:
-                        metodo_pago = tipo
-            except Exception:
-                pass  # Sin acceso a transacciones: mostrar guión
+                detalles = list(p.detalles.all())
 
-            # Dirección completa de envío
-            dir_obj = p.direccion_envio
-            if dir_obj:
-                dir_partes = [dir_obj.linea1]
-                if dir_obj.linea2:
-                    dir_partes.append(dir_obj.linea2)
-                if dir_obj.ciudad:
-                    dir_partes.append(dir_obj.ciudad)
-                if dir_obj.departamento:
-                    dir_partes.append(dir_obj.departamento)
-                direccion_str = ", ".join(filter(None, dir_partes))
-                direccion_completa = {
-                    'linea1': dir_obj.linea1 or '',
-                    'linea2': dir_obj.linea2 or '',
-                    'ciudad': dir_obj.ciudad or '',
-                    'departamento': dir_obj.departamento or '',
-                }
-            else:
-                direccion_str = ''
-                direccion_completa = {}
+                # ── Items del pedido ──────────────────────────────────────────
+                items_detalle = []
+                for d in detalles:
+                    try:
+                        nombre = (
+                            d.nombre_producto_snapshot
+                            or (d.variante.producto.nombre if d.variante else '—')
+                        )
+                        variante_label = (
+                            d.sku_snapshot
+                            or (d.variante.sku if d.variante else '')
+                        )
+                        precio = float(d.precio_unitario)
+                        subtotal_val = (
+                            float(d.total_linea)
+                            if d.total_linea is not None
+                            else round(precio * d.cantidad, 2)
+                        )
+                        items_detalle.append({
+                            'nombre': nombre,
+                            'variante': variante_label,
+                            'cantidad': d.cantidad,
+                            'precio_unitario': precio,
+                            'subtotal': subtotal_val,
+                        })
+                    except Exception:
+                        continue
 
-            pedidos_usuario.append({
-                'id': p.id_pedido,
-                'numero': p.numero_pedido or f'#{p.id_pedido}',
-                'fecha': p.realizado_en.strftime('%d/%m/%Y %H:%M') if p.realizado_en else '',
-                'estado': p.get_estado_display() if hasattr(p, 'get_estado_display') else p.estado,
-                'estado_raw': p.estado,
-                'precio': float(p.monto_total),
-                'producto': producto_str,
-                'cantidad': total_cantidad,
-                'direccion': direccion_str,
-                'metodo_pago': metodo_pago,
-                'items': items_detalle,
-                'direccion_completa': direccion_completa,
-            })
+                producto_str = (
+                    ', '.join(i['nombre'] for i in items_detalle)
+                    if items_detalle else 'Sin productos'
+                )
+                total_cantidad = sum(d.cantidad for d in detalles)
+
+                # ── Método de pago (consulta SQL aislada, a prueba de fallos) ─
+                tipo_raw = _get_metodo_pago_safe(p.id_pedido)
+                metodo_pago = _fmt_metodo(tipo_raw)
+
+                # ── Dirección de envío ────────────────────────────────────────
+                dir_obj = p.direccion_envio
+                if dir_obj:
+                    dir_partes = list(filter(None, [
+                        dir_obj.linea1,
+                        dir_obj.linea2 or '',
+                        dir_obj.ciudad or '',
+                        dir_obj.departamento or '',
+                    ]))
+                    direccion_str = ', '.join(dir_partes)
+                    direccion_completa = {
+                        'linea1':      dir_obj.linea1 or '',
+                        'linea2':      dir_obj.linea2 or '',
+                        'ciudad':      dir_obj.ciudad or '',
+                        'departamento': dir_obj.departamento or '',
+                    }
+                else:
+                    direccion_str = ''
+                    direccion_completa = {}
+
+                pedidos_usuario.append({
+                    'id':                p.id_pedido,
+                    'numero':            p.numero_pedido or f'#{p.id_pedido}',
+                    'fecha':             p.realizado_en.strftime('%d/%m/%Y %H:%M') if p.realizado_en else '',
+                    'estado':            p.get_estado_display() if hasattr(p, 'get_estado_display') else p.estado,
+                    'estado_raw':        p.estado,
+                    'precio':            float(p.monto_total),
+                    'producto':          producto_str,
+                    'cantidad':          total_cantidad,
+                    'direccion':         direccion_str,
+                    'metodo_pago':       metodo_pago,
+                    'items':             items_detalle,
+                    'direccion_completa': direccion_completa,
+                })
+            except Exception as _pedido_err:
+                # Un pedido individual falló → lo saltamos, no caemos todo.
+                import logging as _log
+                _log.getLogger('nailsnice').warning(
+                    'profile_view: pedido %s falló al parsearse: %s',
+                    getattr(p, 'id_pedido', '?'), _pedido_err,
+                )
+                continue
+
     except Exception as _profile_err:
-        # Si la BD aún no tiene la migración aplicada u ocurre cualquier
-        # error inesperado al construir los pedidos, mostramos lista vacía
-        # en lugar de un 500, y registramos el problema en el log.
-        import logging as _logging
-        _logging.getLogger('nailsnice').error(
-            'profile_view: error al cargar pedidos del usuario %s: %s',
-            getattr(user, 'correo', '?'),
-            _profile_err,
+        # El queryset principal falló (p. ej. tabla no existe, BD caída).
+        import logging as _log
+        _log.getLogger('nailsnice').error(
+            'profile_view: error crítico cargando pedidos de %s: %s',
+            getattr(user, 'correo', '?'), _profile_err,
         )
         pedidos_usuario = []
+
 
     security_info = {
         'last_login': user.last_login,
