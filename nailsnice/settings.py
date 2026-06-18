@@ -294,22 +294,58 @@ else:
         }
     }
 
-# --- Configuración de correo (reset de contraseña, notificaciones, etc.) ---
-# En producción configure EMAIL_HOST_USER y EMAIL_HOST_PASSWORD en las variables de entorno.
-# En desarrollo, sin esas variables, los correos se imprimen en la consola.
+# ---------------------------------------------------------------------------
+# Configuración de correo — Alta resiliencia para producción en Render
+# ---------------------------------------------------------------------------
+# Variables de entorno requeridas en producción:
+#   EMAIL_HOST_USER     → cuenta de correo (ej. soportenailsnice@gmail.com)
+#   EMAIL_HOST_PASSWORD → contraseña de app (App Password en Gmail)
+#
+# Variables opcionales con defaults razonables:
+#   EMAIL_HOST      → smtp.gmail.com  (o smtp.hostinger.com, etc.)
+#   EMAIL_PORT      → 465 por defecto (SSL directo, nunca capado por Render)
+#   EMAIL_USE_SSL   → true  (compatible con port 465)
+#   EMAIL_USE_TLS   → false (mutuamente excluyente con SSL)
+#
+# Si el puerto 465 estuviese bloqueado, cambia EMAIL_PORT=587 y EMAIL_USE_TLS=true
+# desde el panel de Render sin necesidad de redeploy.
+# ---------------------------------------------------------------------------
 if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-    EMAIL_USE_TLS = get_env_bool('EMAIL_USE_TLS', True)
-    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_BACKEND    = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST       = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_HOST_USER  = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-    EMAIL_TIMEOUT = 10  # segundos; evita que el proceso quede colgado si el SMTP no responde
-    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'NailsNice <{EMAIL_HOST_USER}>')
+
+    # Detección automática del modo SSL vs TLS según las env vars.
+    # Por defecto usamos puerto 465 + SSL (más compatible con Render).
+    _use_ssl = get_env_bool('EMAIL_USE_SSL', True)
+    _use_tls = get_env_bool('EMAIL_USE_TLS', False)
+
+    # Prevenir configuración inválida: SSL y TLS son mutuamente excluyentes.
+    if _use_ssl and _use_tls:
+        _use_tls = False  # SSL tiene prioridad
+
+    EMAIL_USE_SSL = _use_ssl
+    EMAIL_USE_TLS = _use_tls
+
+    # Puerto inteligente: 465 con SSL, 587 con TLS, sobrescribible por env var.
+    _default_port = 465 if _use_ssl else 587
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', str(_default_port)))
+
+    # Timeout corto para no bloquear el proceso web si el SMTP no responde.
+    EMAIL_TIMEOUT = 8
+
+    DEFAULT_FROM_EMAIL = os.environ.get(
+        'DEFAULT_FROM_EMAIL',
+        f'Nails Nice <{EMAIL_HOST_USER}>'
+    )
 else:
-    # Modo desarrollo: los correos se imprimen en la consola de manage.py runserver
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'NailsNice <soportenailsnice@gmail.com>')
+    # Modo desarrollo / sin credenciales: imprime en consola de runserver.
+    EMAIL_BACKEND      = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = os.environ.get(
+        'DEFAULT_FROM_EMAIL',
+        'Nails Nice <soportenailsnice@gmail.com>'
+    )
 
 # Logging básico orientado a producción: guarda errores 400/500 y excepciones en logs/app.log
 LOGGING = {

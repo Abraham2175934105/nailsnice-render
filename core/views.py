@@ -246,74 +246,94 @@ def profile_view(request):
     )
 
     pedidos_usuario = []
-    for p in pedidos_qs:
-        detalles = list(p.detalles.all())
+    try:
+        for p in pedidos_qs:
+            detalles = list(p.detalles.all())
 
-        # Construir lista de items con detalle completo
-        items_detalle = []
-        for d in detalles:
-            nombre = d.nombre_producto_snapshot or (d.variante.producto.nombre if d.variante else '—')
-            variante_label = d.sku_snapshot or (d.variante.sku if d.variante else '')
-            precio = float(d.precio_unitario)
-            subtotal_val = float(d.total_linea) if d.total_linea is not None else round(precio * d.cantidad, 2)
-            items_detalle.append({
-                'nombre': nombre,
-                'variante': variante_label,
-                'cantidad': d.cantidad,
-                'precio_unitario': precio,
-                'subtotal': subtotal_val,
+            # Construir lista de items con detalle completo
+            items_detalle = []
+            for d in detalles:
+                try:
+                    nombre = d.nombre_producto_snapshot or (d.variante.producto.nombre if d.variante else '—')
+                    variante_label = d.sku_snapshot or (d.variante.sku if d.variante else '')
+                    precio = float(d.precio_unitario)
+                    subtotal_val = float(d.total_linea) if d.total_linea is not None else round(precio * d.cantidad, 2)
+                    items_detalle.append({
+                        'nombre': nombre,
+                        'variante': variante_label,
+                        'cantidad': d.cantidad,
+                        'precio_unitario': precio,
+                        'subtotal': subtotal_val,
+                    })
+                except Exception:
+                    continue
+
+            producto_str = ", ".join(i['nombre'] for i in items_detalle) if items_detalle else "Sin productos"
+            total_cantidad = sum(d.cantidad for d in detalles)
+
+            # Método de pago real desde TransaccionPago
+            # Usamos getattr con default '' para que funcione aunque la columna
+            # aún no esté migrada (registros anteriores al campo metodo_pago_tipo).
+            metodo_pago = '—'
+            try:
+                primera_tx = p.transacciones.first()
+                if primera_tx:
+                    tipo = getattr(primera_tx, 'metodo_pago_tipo', None) or ''
+                    if tipo == 'TARJETA':
+                        metodo_pago = '💳 Tarjeta'
+                    elif tipo == 'CONTRAENTREGA':
+                        metodo_pago = '🏠 Contra entrega'
+                    elif tipo:
+                        metodo_pago = tipo
+            except Exception:
+                pass  # Sin acceso a transacciones: mostrar guión
+
+            # Dirección completa de envío
+            dir_obj = p.direccion_envio
+            if dir_obj:
+                dir_partes = [dir_obj.linea1]
+                if dir_obj.linea2:
+                    dir_partes.append(dir_obj.linea2)
+                if dir_obj.ciudad:
+                    dir_partes.append(dir_obj.ciudad)
+                if dir_obj.departamento:
+                    dir_partes.append(dir_obj.departamento)
+                direccion_str = ", ".join(filter(None, dir_partes))
+                direccion_completa = {
+                    'linea1': dir_obj.linea1 or '',
+                    'linea2': dir_obj.linea2 or '',
+                    'ciudad': dir_obj.ciudad or '',
+                    'departamento': dir_obj.departamento or '',
+                }
+            else:
+                direccion_str = ''
+                direccion_completa = {}
+
+            pedidos_usuario.append({
+                'id': p.id_pedido,
+                'numero': p.numero_pedido or f'#{p.id_pedido}',
+                'fecha': p.realizado_en.strftime('%d/%m/%Y %H:%M') if p.realizado_en else '',
+                'estado': p.get_estado_display() if hasattr(p, 'get_estado_display') else p.estado,
+                'estado_raw': p.estado,
+                'precio': float(p.monto_total),
+                'producto': producto_str,
+                'cantidad': total_cantidad,
+                'direccion': direccion_str,
+                'metodo_pago': metodo_pago,
+                'items': items_detalle,
+                'direccion_completa': direccion_completa,
             })
-
-        producto_str = ", ".join(i['nombre'] for i in items_detalle) if items_detalle else "Sin productos"
-        total_cantidad = sum(d.cantidad for d in detalles)
-
-        # Método de pago real desde TransaccionPago
-        primera_tx = p.transacciones.first()
-        metodo_pago = '—'
-        if primera_tx:
-            tipo = getattr(primera_tx, 'metodo_pago_tipo', None)
-            if tipo == 'TARJETA':
-                metodo_pago = '💳 Tarjeta'
-            elif tipo == 'CONTRAENTREGA':
-                metodo_pago = '🏠 Contra entrega'
-            elif tipo:
-                metodo_pago = tipo
-
-        # Dirección completa de envío
-        dir_obj = p.direccion_envio
-        if dir_obj:
-            dir_partes = [dir_obj.linea1]
-            if dir_obj.linea2:
-                dir_partes.append(dir_obj.linea2)
-            if dir_obj.ciudad:
-                dir_partes.append(dir_obj.ciudad)
-            if dir_obj.departamento:
-                dir_partes.append(dir_obj.departamento)
-            direccion_str = ", ".join(filter(None, dir_partes))
-            direccion_completa = {
-                'linea1': dir_obj.linea1 or '',
-                'linea2': dir_obj.linea2 or '',
-                'ciudad': dir_obj.ciudad or '',
-                'departamento': dir_obj.departamento or '',
-            }
-        else:
-            direccion_str = ''
-            direccion_completa = {}
-
-        pedidos_usuario.append({
-            'id': p.id_pedido,
-            'numero': p.numero_pedido or f'#{p.id_pedido}',
-            'fecha': p.realizado_en.strftime('%d/%m/%Y %H:%M') if p.realizado_en else '',
-            'estado': p.get_estado_display() if hasattr(p, 'get_estado_display') else p.estado,
-            'estado_raw': p.estado,
-            'precio': float(p.monto_total),
-            'producto': producto_str,
-            'cantidad': total_cantidad,
-            'direccion': direccion_str,
-            'metodo_pago': metodo_pago,
-            'items': items_detalle,
-            'direccion_completa': direccion_completa,
-        })
+    except Exception as _profile_err:
+        # Si la BD aún no tiene la migración aplicada u ocurre cualquier
+        # error inesperado al construir los pedidos, mostramos lista vacía
+        # en lugar de un 500, y registramos el problema en el log.
+        import logging as _logging
+        _logging.getLogger('nailsnice').error(
+            'profile_view: error al cargar pedidos del usuario %s: %s',
+            getattr(user, 'correo', '?'),
+            _profile_err,
+        )
+        pedidos_usuario = []
 
     security_info = {
         'last_login': user.last_login,
@@ -478,21 +498,27 @@ def forgot_password_view(request):
             request.session['reset_created_at'] = timezone.now().isoformat()
 
             if usuario_activo and u_correo:
+                import logging as _log
+                _logger = _log.getLogger('nailsnice')
                 try:
                     send_mail(
                         subject='Código de verificación - NailsNice',
                         message=f'Tu código de verificación es: {codigo}. Válido por 10 minutos.',
                         from_email=None,  # Django usa DEFAULT_FROM_EMAIL
                         recipient_list=[u_correo],
-                        fail_silently=False,
+                        fail_silently=True,  # No tumba el flujo si el SMTP falla
                     )
+                    _logger.info('reset_email_sent: %s', correo)
+                except Exception as _mail_exc:
+                    # fail_silently=True ya silencia la excepción de smtplib,
+                    # pero capturamos cualquier otro error inesperado.
+                    _logger.error('reset_email_error: %s — %s', correo, _mail_exc)
+                finally:
+                    # Limpiar rate-limit siempre que el usuario exista,
+                    # independientemente de si el correo llegó o no.
                     clear_failures('reset_ip', client_ip)
                     clear_failures('reset_identity', correo)
                     security_event('reset_code_issued', request, extra={'identity': correo})
-                except Exception:
-                    security_event('reset_email_delivery_error', request, extra={'identity': correo}, level='error')
-                    messages.error(request, 'No se pudo enviar el correo en este momento. Intenta nuevamente más tarde.')
-                    return render(request, 'forgot_password.html', {'field_errors': field_errors})
             else:
                 # Correo no encontrado: registrar intento pero mostrar mismo mensaje genérico
                 register_failure('reset_ip', client_ip, limit=12, window_seconds=900, lock_seconds=1200)

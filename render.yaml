@@ -3,5 +3,8 @@ services:
     name: nailsnice-web
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # releaseCommand se ejecuta DESPUÉS del build y ANTES de levantar uvicorn.
+    # Garantiza que todas las migraciones pendientes se apliquen automáticamente.
+    releaseCommand: python manage.py migrate --noinput
     startCommand: uvicorn nailsnice.asgi:application --host 0.0.0.0 --port $PORT
