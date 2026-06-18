@@ -164,6 +164,7 @@ def _get_user_shipping_address(user) -> dict:
         return {}
     return {
         'linea1': direccion.linea1,
+        'linea2': direccion.linea2 or '',
         'ciudad': direccion.ciudad,
         'departamento': direccion.departamento or '',
         'codigo_postal': direccion.codigo_postal or '',
@@ -758,44 +759,22 @@ def checkout_view(request):
 
     if request.method == 'POST':
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        metodo = request.POST.get('metodo_pago')
-        direccion_linea1 = (request.POST.get('direccion') or '').strip()
-        ciudad = (request.POST.get('ciudad') or '').strip()
-        departamento = (request.POST.get('departamento') or '').strip()
-        codigo_postal = (request.POST.get('codigo_postal') or '').strip()
-        nombre_destinatario = (request.POST.get('nombre_destinatario') or '').strip()
+        from .forms import CheckoutForm
+        form = CheckoutForm(request.POST)
+        if not form.is_valid():
+            error_msg = next(iter(form.errors.values()))[0]
+            if is_ajax:
+                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
+            messages.error(request, error_msg)
+            return redirect('checkout')
 
-        if not direccion_linea1 and direccion_prefill:
-            direccion_linea1 = direccion_prefill.get('linea1', '')
-            ciudad = direccion_prefill.get('ciudad', '')
-            departamento = direccion_prefill.get('departamento', '')
-            codigo_postal = direccion_prefill.get('codigo_postal', '')
-            nombre_destinatario = direccion_prefill.get('nombre_destinatario', '')
-
-        if metodo not in ['contraentrega', 'tarjeta']:
-            error_msg = 'Selecciona un método de pago.'
-            if is_ajax:
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            messages.error(request, error_msg)
-            return redirect('checkout')
-        if not direccion_linea1:
-            error_msg = 'La dirección de envío es obligatoria.'
-            if is_ajax:
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            messages.error(request, error_msg)
-            return redirect('checkout')
-        if not _is_valid_colombian_address(direccion_linea1):
-            error_msg = 'La dirección debe tener un formato de vía colombiano (ej: "Calle 123 #45-67").'
-            if is_ajax:
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            messages.error(request, error_msg)
-            return redirect('checkout')
-        if not ciudad:
-            error_msg = 'La ciudad es obligatoria.'
-            if is_ajax:
-                return JsonResponse({'ok': False, 'error': error_msg}, status=400)
-            messages.error(request, error_msg)
-            return redirect('checkout')
+        metodo = form.cleaned_data['metodo_pago']
+        direccion_linea1 = form.cleaned_data['linea1']
+        direccion_linea2 = form.cleaned_data['linea2']
+        ciudad = form.cleaned_data['ciudad']
+        departamento = form.cleaned_data['departamento']
+        nombre_destinatario = f"{request.user.nombre} {request.user.apellido}".strip() or request.user.correo
+        codigo_postal = ''
 
         if metodo == 'tarjeta':
             card_error = _validate_card_payment_payload(request.POST)
@@ -808,6 +787,7 @@ def checkout_view(request):
         try:
             direccion_data = {
                 'linea1': direccion_linea1,
+                'linea2': direccion_linea2,
                 'ciudad': ciudad,
                 'departamento': departamento,
                 'codigo_postal': codigo_postal,
@@ -824,6 +804,7 @@ def checkout_view(request):
 
         _sync_user_shipping_address(request.user, {
             'linea1': direccion_linea1,
+            'linea2': direccion_linea2,
             'ciudad': ciudad,
             'departamento': departamento,
             'codigo_postal': codigo_postal,

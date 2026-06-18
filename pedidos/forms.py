@@ -91,4 +91,49 @@ class PedidoVentaForm(PedidoVentaBaseForm):
 class EmpleadoPedidoForm(PedidoVentaBaseForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['cantidad'].widget.attrs.update({'min': '1', 'class': 'form-input'})
+        self.fields['cantidad'].widget.attrs.update({'min': '1', 'class': 'form-input'})
+
+
+class CheckoutForm(forms.Form):
+    linea1 = forms.CharField(
+        max_length=160,
+        required=True,
+        label='Dirección Principal *',
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: Calle 123 #45-67', 'class': 'form-input'})
+    )
+    linea2 = forms.CharField(
+        max_length=160,
+        required=False,
+        label='Información Adicional',
+        widget=forms.TextInput(attrs={'placeholder': 'Apto, bloque, barrio', 'class': 'form-input'})
+    )
+    ciudad = forms.CharField(
+        max_length=80,
+        required=True,
+        label='Ciudad *',
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: Bogotá', 'class': 'form-input'})
+    )
+    departamento = forms.CharField(
+        max_length=80,
+        required=False,
+        label='Departamento',
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: Cundinamarca', 'class': 'form-input'})
+    )
+    metodo_pago = forms.ChoiceField(
+        choices=[('contraentrega', 'Contraentrega'), ('tarjeta', 'Tarjeta')],
+        required=True,
+        widget=forms.RadioSelect()
+    )
+
+    def clean_linea1(self):
+        linea1 = self.cleaned_data.get('linea1', '').strip()
+        direccion_pattern = r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+'
+        if not re.match(direccion_pattern, linea1):
+            raise forms.ValidationError('Usa un formato de vía colombiano (ej: "Calle 123 #45-67").')
+        return linea1
+
+    def clean_ciudad(self):
+        ciudad = self.cleaned_data.get('ciudad', '').strip()
+        if not ciudad:
+            raise forms.ValidationError('La ciudad es obligatoria.')
+        return ciudad

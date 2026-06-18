@@ -122,22 +122,63 @@
                         </div>
                     </div>
 
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                        <label class="field-label" for="direccion" style="margin:0;">Dirección de envío</label>
-                        {% if direccion_prefill %}
-                            <button type="button" id="toggle-direccion-edit" class="btn-ghost" style="padding:6px 12px; font-size:0.85rem;">Cambiar dirección</button>
-                        {% endif %}
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                        <label class="field-label" style="margin:0;">Dirección de envío</label>
                     </div>
-                    <input
-                        id="direccion"
-                        name="direccion"
-                        type="text"
-                        placeholder="Calle, número, complemento"
-                        value="{{ direccion_prefill|default_if_none:'' }}"
-                        {% if direccion_prefill %}readonly{% endif %}
-                        required
-                    >
-                    <p class="cart-muted">Formato recomendado: Calle/Carrera/Avenida + número (ej: Calle 123 #45-67).</p>
+
+                    {% if direccion_prefill.linea1 %}
+                        <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer; font-weight:500;">
+                            <input type="checkbox" id="usar-direccion-guardada" name="usar_direccion_guardada" checked>
+                            <span>Usar mi dirección de envío guardada</span>
+                        </label>
+                    {% endif %}
+
+                    <div class="address-fields-group">
+                        <div style="margin-bottom:16px;">
+                            <label class="field-label" for="linea1">Dirección Principal (Calle, Carrera, Número) *</label>
+                            <input
+                                id="linea1"
+                                name="linea1"
+                                type="text"
+                                placeholder="Ej: Calle 123 #45-67"
+                                class="form-input"
+                                required
+                            >
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label class="field-label" for="linea2">Información Adicional (Apto, Bloque, Barrio) - Opcional</label>
+                            <input
+                                id="linea2"
+                                name="linea2"
+                                type="text"
+                                placeholder="Ej: Apto 402, Torre B"
+                                class="form-input"
+                            >
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                            <div>
+                                <label class="field-label" for="ciudad">Ciudad *</label>
+                                <input
+                                    id="ciudad"
+                                    name="ciudad"
+                                    type="text"
+                                    placeholder="Ej: Bogotá"
+                                    class="form-input"
+                                    required
+                                >
+                            </div>
+                            <div>
+                                <label class="field-label" for="departamento">Departamento</label>
+                                <input
+                                    id="departamento"
+                                    name="departamento"
+                                    type="text"
+                                    placeholder="Ej: Cundinamarca"
+                                    class="form-input"
+                                >
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="panel-header" style="margin-top:24px;">
                         <p class="page-eyebrow">Pago</p>
@@ -234,6 +275,16 @@
         </div>
     </div>
 
+    {% if direccion_prefill %}
+    <script id="direccion-prefill-data" type="application/json">
+        {
+            "linea1": "{{ direccion_prefill.linea1|escapejs }}",
+            "linea2": "{{ direccion_prefill.linea2|default:''|escapejs }}",
+            "ciudad": "{{ direccion_prefill.ciudad|escapejs }}",
+            "departamento": "{{ direccion_prefill.departamento|default:''|escapejs }}"
+        }
+    </script>
+    {% endif %}
     {{ cart|json_script:"cart-data" }}
     <script src="{% static 'js/cart-ui.js' %}"></script>
     <script>
@@ -244,8 +295,11 @@
             };
 
             const form = document.querySelector('form.panel');
-            const direccionInput = document.getElementById('direccion');
-            const toggleDireccionBtn = document.getElementById('toggle-direccion-edit');
+            const checkboxGuardada = document.getElementById('usar-direccion-guardada');
+            const fieldLinea1 = document.getElementById('linea1');
+            const fieldLinea2 = document.getElementById('linea2');
+            const fieldCiudad = document.getElementById('ciudad');
+            const fieldDepartamento = document.getElementById('departamento');
             const metodoRadios = document.querySelectorAll('input[name="metodo_pago"]');
             const cardFields = document.getElementById('card-payment-fields');
             const cardHolder = document.getElementById('card_holder');
@@ -319,24 +373,52 @@
                 return null;
             };
 
-            if (direccionInput && toggleDireccionBtn) {
-                const initialAddress = (direccionInput.value || '').trim();
-                const syncButtonText = () => {
-                    toggleDireccionBtn.textContent = direccionInput.readOnly ? 'Cambiar dirección' : 'Usar dirección guardada';
-                };
+            const fillFromSaved = () => {
+                const dataEl = document.getElementById('direccion-prefill-data');
+                if (dataEl) {
+                    const saved = JSON.parse(dataEl.textContent);
+                    fieldLinea1.value = saved.linea1 || '';
+                    fieldLinea2.value = saved.linea2 || '';
+                    fieldCiudad.value = saved.ciudad || '';
+                    fieldDepartamento.value = saved.departamento || '';
+                    
+                    fieldLinea1.readOnly = true;
+                    fieldLinea2.readOnly = true;
+                    fieldCiudad.readOnly = true;
+                    fieldDepartamento.readOnly = true;
+                }
+            };
 
-                syncButtonText();
-                toggleDireccionBtn.addEventListener('click', () => {
-                    if (direccionInput.readOnly) {
-                        direccionInput.readOnly = false;
-                        direccionInput.focus();
-                        direccionInput.select();
+            const clearFields = () => {
+                fieldLinea1.value = '';
+                fieldLinea2.value = '';
+                fieldCiudad.value = '';
+                fieldDepartamento.value = '';
+                
+                fieldLinea1.readOnly = false;
+                fieldLinea2.readOnly = false;
+                fieldCiudad.readOnly = false;
+                fieldDepartamento.readOnly = false;
+            };
+
+            if (checkboxGuardada) {
+                checkboxGuardada.addEventListener('change', () => {
+                    if (checkboxGuardada.checked) {
+                        fillFromSaved();
                     } else {
-                        direccionInput.value = initialAddress;
-                        direccionInput.readOnly = true;
+                        clearFields();
                     }
-                    syncButtonText();
                 });
+                if (checkboxGuardada.checked) {
+                    fillFromSaved();
+                }
+            } else {
+                if (fieldLinea1) {
+                    fieldLinea1.readOnly = false;
+                    fieldLinea2.readOnly = false;
+                    fieldCiudad.readOnly = false;
+                    fieldDepartamento.readOnly = false;
+                }
             }
 
             if (cardNumber) {
