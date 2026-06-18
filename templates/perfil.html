@@ -272,9 +272,10 @@
                             data-numero="{{ p.numero }}"
                             data-fecha="{{ p.fecha }}"
                             data-estado="{{ p.estado }}"
+                            data-estado-raw="{{ p.estado_raw }}"
                             data-total="{{ p.precio|floatformat:0 }}"
                             data-metodo="{{ p.metodo_pago }}"
-                            data-items="{{ p.items_json|default:'[]'|escapejs }}"
+                            data-items="{{ p.items_json|default:'[]' }}"
                             data-direccion-linea1="{{ p.direccion_completa.linea1|default:'' }}"
                             data-direccion-linea2="{{ p.direccion_completa.linea2|default:'' }}"
                             data-direccion-ciudad="{{ p.direccion_completa.ciudad|default:'' }}"
@@ -305,12 +306,12 @@
 
     <div class="modal" id="modal-pedido">
         <div class="modal-backdrop" data-close="true"></div>
-        <div class="modal-content modal-content--wide" role="dialog" aria-modal="true" aria-labelledby="modal-pedido-title">
+        <div class="modal-content modal-content--wide" role="dialog" aria-modal="true" aria-labelledby="d-numero">
             <button class="modal-close" data-close="true" aria-label="Cerrar">×</button>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
                 <div>
                     <p style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin:0;">Detalle del pedido</p>
-                    <h3 id="modal-pedido-title" style="margin:0;font-size:1.15rem;" id="d-numero"></h3>
+                    <h3 id="d-numero" style="margin:0;font-size:1.15rem;"></h3>
                 </div>
                 <div style="text-align:right;">
                     <p style="margin:0;font-size:.8rem;opacity:.65;" id="d-fecha"></p>
