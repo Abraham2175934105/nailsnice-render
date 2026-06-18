@@ -150,148 +150,75 @@ def register_view(request):
         return redirect('index')
         
     if request.method == 'POST':
-        nombre = (request.POST.get('nombre') or '').strip()
-        apellido = (request.POST.get('apellido') or '').strip()
-        direccion = (request.POST.get('direccion') or '').strip()
-        telefono = (request.POST.get('telefono') or '').strip()
-        correo = (request.POST.get('correo') or '').strip().lower()
-        contrasena = request.POST.get('contrasena') or ''
-        
-        errores = False
-        field_errors = {}
+        from core.forms import RegistroForm
+        from clientes.models import Cliente, DireccionUsuario
 
-        name_pattern = r'^[A-Za-z\s]+'
-
-        if not nombre:
-            field_errors['nombre'] = 'El nombre es obligatorio.'
-            errores = True
-        elif not re.fullmatch(name_pattern, nombre):
-            field_errors['nombre'] = 'El nombre solo puede contener letras.'
-            errores = True
-
-        if not apellido:
-            field_errors['apellido'] = 'El apellido es obligatorio.'
-            errores = True
-        elif not re.fullmatch(name_pattern, apellido):
-            field_errors['apellido'] = 'El apellido solo puede contener letras.'
-            errores = True
+        form = RegistroForm(request.POST)
+        if form.is_valid():
+            correo = form.cleaned_data['correo']
+            nombre = form.cleaned_data['nombre']
+            apellido = form.cleaned_data['apellido']
+            telefono = form.cleaned_data['telefono']
+            direccion = form.cleaned_data['direccion']
+            contrasena = form.cleaned_data['contrasena']
             
-        if not re.fullmatch(r'\d{10,11}', telefono or ''):
-            field_errors['telefono'] = 'El teléfono debe tener entre 10 y 11 dígitos numéricos.'
-            errores = True
-        else:
-            if Usuario.objects.filter(telefono=telefono).exists():
-                field_errors['telefono'] = 'El teléfono ya se encuentra registrado.'
-                errores = True
-        
-        if not correo:
-            field_errors['correo'] = 'El correo electrónico es obligatorio.'
-            errores = True
-        else:
-            match = re.match(r'^([^@]+)@([^@]+\.[^@]+)$', correo)
-            if not match:
-                field_errors['correo'] = 'El formato del correo electrónico no es válido.'
-                errores = True
-            else:
-                local_part = match.group(1)
-                if len(local_part) < 6:
-                    field_errors['correo'] = 'El correo debe tener al menos 6 caracteres antes del dominio.'
-                    errores = True
-
-            if Usuario.objects.filter(correo=correo).exists():
-                field_errors['correo'] = 'El correo ya está registrado.'
-                errores = True
-
-        if not direccion:
-            field_errors['direccion'] = 'La dirección es obligatoria.'
-            errores = True
-
-        if not contrasena:
-            field_errors['contrasena'] = 'La contraseña es obligatoria.'
-            errores = True
-        else:
-            if len(contrasena) < 8 or len(contrasena) > 20:
-                field_errors['contrasena'] = 'La contraseña debe tener entre 8 y 20 caracteres.'
-                errores = True
-            if not re.search(r'[A-Z]', contrasena):
-                field_errors['contrasena'] = 'La contraseña debe incluir al menos una letra mayúscula.'
-                errores = True
-            if not re.search(r'[a-z]', contrasena):
-                field_errors['contrasena'] = 'La contraseña debe incluir al menos una letra minúscula.'
-                errores = True
-            if not re.search(r'\d', contrasena):
-                field_errors['contrasena'] = 'La contraseña debe incluir al menos un número.'
-                errores = True
-            if not re.search(r'[^A-Za-z0-9]', contrasena):
-                field_errors['contrasena'] = 'La contraseña debe incluir al menos un carácter especial.'
+            rol_cliente, _ = RolAcceso.objects.get_or_create(
+                codigo='CLIENTE',
+                defaults={'nombre': 'Cliente', 'descripcion': 'Cliente', 'es_sistema': True},
+            )
             
-        if errores:
+            nuevo_usuario = Usuario(
+                correo=correo,
+                nombre=nombre,
+                apellido=apellido,
+                telefono=telefono,
+                estado='ACTIVO'
+            )
+            nuevo_usuario.set_password(contrasena)
+            nuevo_usuario.save()
+
+            # Create the Client profile
+            Cliente.objects.create(
+                usuario=nuevo_usuario,
+                acepta_fidelizacion=True
+            )
+
+            # Create default shipping address for the user
+            DireccionUsuario.objects.create(
+                usuario=nuevo_usuario,
+                tipo_direccion='ENVIO',
+                etiqueta='Principal',
+                nombre_destinatario=f"{nombre} {apellido}",
+                linea1=direccion,
+                ciudad='Bogotá',
+                codigo_pais='CO',
+                es_predeterminada_envio=True,
+                es_predeterminada_factura=True
+            )
+
+            UsuarioRol.objects.update_or_create(
+                usuario=nuevo_usuario,
+                defaults={'rol': rol_cliente},
+            )
+            
+            messages.success(request, 'Usuario registrado correctamente. Ahora puedes iniciar sesión.')
+            return redirect('login')
+        else:
+            field_errors = {field: error_list[0] for field, error_list in form.errors.items()}
             return render(request, 'registro.html', {'field_errors': field_errors})
             
-        rol_cliente, _ = RolAcceso.objects.get_or_create(
-            codigo='CLIENTE',
-            defaults={'nombre': 'Cliente', 'descripcion': 'Cliente', 'es_sistema': True},
-        )
-        
-        nuevo_usuario = Usuario(
-            correo=correo,
-            nombre=nombre,
-            apellido=apellido,
-            telefono=telefono
-        )
-        nuevo_usuario.set_password(contrasena)
-        nuevo_usuario.save()
-
-        UsuarioRol.objects.update_or_create(
-            usuario=nuevo_usuario,
-            defaults={'rol': rol_cliente},
-        )
-        
-        messages.success(request, 'Usuario registrado correctamente. Ahora puedes iniciar sesión.')
-        return redirect('login')
-        
     return render(request, 'registro.html')
 
 
 @login_required
 def profile_view(request):
+    from django.contrib.auth.forms import PasswordChangeForm
+    from core.forms import PerfilUpdateForm
+
     user = request.user
     user_id = getattr(user, 'id_usuario', None) or getattr(user, 'id', None)
 
-    def _validate_user_fields(nombre, apellido, telefono):
-        errors = {}
-        name_pattern = r'^[A-Za-z\s]+'
-
-        if not nombre:
-            errors['nombre'] = 'El nombre es obligatorio.'
-        elif not re.fullmatch(name_pattern, nombre):
-            errors['nombre'] = 'Solo letras y espacios permitidos.'
-
-        if not apellido:
-            errors['apellido'] = 'El apellido es obligatorio.'
-        elif not re.fullmatch(name_pattern, apellido):
-            errors['apellido'] = 'Solo letras y espacios permitidos.'
-
-        if not re.fullmatch(r'\d{10,11}', telefono or ''):
-            errors['telefono'] = 'El teléfono debe tener entre 10 y 11 dígitos numéricos.'
-
-        return errors
-
-    def _validate_password_rules(password):
-        if len(password) < 8 or len(password) > 20:
-            return 'La contraseña debe tener entre 8 y 20 caracteres.'
-        if not re.search(r'[A-Z]', password):
-            return 'Debe incluir al menos una letra mayúscula.'
-        if not re.search(r'[a-z]', password):
-            return 'Debe incluir al menos una letra minúscula.'
-        if not re.search(r'\d', password):
-            return 'Debe incluir al menos un número.'
-        if not re.search(r'[^A-Za-z0-9]', password):
-            return 'Debe incluir al menos un carácter especial.'
-        return None
-
     pedidos_usuario = PedidoVenta.objects.filter(cliente__usuario_id=user_id).order_by('-id_pedido')
-    cliente_db = Cliente.objects.filter(usuario_id=user_id).first()
     
     security_info = {
         'last_login': user.last_login,
@@ -304,19 +231,12 @@ def profile_view(request):
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         action = request.POST.get('action')
         if action == 'update_profile':
-            nombre = (request.POST.get('nombre') or '').strip()
-            apellido = (request.POST.get('apellido') or '').strip()
-            telefono = (request.POST.get('telefono') or '').strip()
-            direccion = (request.POST.get('direccion') or '').strip()
+            form = PerfilUpdateForm(request.POST, instance=user)
             password_actual = request.POST.get('password_actual') or ''
 
-            errors = _validate_user_fields(nombre, apellido, telefono)
-
-            direccion_pattern = r'(?i)^(calle|cll|carrera|cra|cr|avenida|av|avda|transversal|tv|diagonal|dg)\s+\d+'
-            if not direccion:
-                errors['direccion'] = 'La dirección es obligatoria.'
-            elif not re.match(direccion_pattern, direccion):
-                errors['direccion'] = 'Usa un formato de vía colombiano (ej: "Calle 123 #45-67").'
+            errors = {}
+            if not form.is_valid():
+                errors = {field: error_list[0] for field, error_list in form.errors.items()}
 
             if not password_actual or not user.check_password(password_actual):
                 errors['password_actual'] = 'Debes confirmar con tu contraseña actual.'
@@ -328,19 +248,10 @@ def profile_view(request):
                 return render(request, 'perfil.html', {
                     'field_errors': errors,
                     'pedidos': pedidos_usuario,
-                    'cliente_direccion': getattr(cliente_db, 'direccion', '') if hasattr(cliente_db, 'direccion') else '',
                     'security_info': security_info,
                 })
 
-            setattr(user, 'nombre', nombre)
-            setattr(user, 'apellido', apellido)
-            setattr(user, 'telefono', telefono)
-            user.save()
-
-            if cliente_db is not None:
-                if hasattr(cliente_db, 'direccion'):
-                    setattr(cliente_db, 'direccion', direccion)
-                    cliente_db.save()
+            form.save()
 
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': 'Datos actualizados correctamente.', 'redirect': reverse('perfil')})
@@ -348,36 +259,36 @@ def profile_view(request):
             return redirect('perfil')
 
         if action == 'change_password':
-            actual = request.POST.get('actual') or ''
-            nueva = request.POST.get('nueva') or ''
-            confirmar = request.POST.get('confirmar') or ''
+            # Map POST parameters to native PasswordChangeForm names
+            post_data = {
+                'old_password': request.POST.get('actual'),
+                'new_password1': request.POST.get('nueva'),
+                'new_password2': request.POST.get('confirmar'),
+            }
+            form = PasswordChangeForm(user=user, data=post_data)
 
-            errors = {}
-            if not user.check_password(actual):
-                errors['actual'] = 'La contraseña actual no es correcta.'
-            if not nueva or not confirmar:
-                errors['nueva'] = 'Debes ingresar y confirmar la nueva contraseña.'
-            elif nueva != confirmar:
-                errors['nueva'] = 'Las contraseñas no coinciden.'
-            else:
-                rule_error = _validate_password_rules(nueva)
-                if rule_error:
-                    errors['nueva'] = rule_error
+            if not form.is_valid():
+                errors = {}
+                for field, error_list in form.errors.items():
+                    if field == 'old_password':
+                        errors['actual'] = error_list[0]
+                    elif field in ('new_password1', 'new_password2'):
+                        errors['nueva'] = error_list[0]
+                    else:
+                        errors[field] = error_list[0]
 
-            if errors:
                 if is_ajax:
                     first_error = next(iter(errors.values())) if errors else 'Error al validar datos.'
                     return JsonResponse({'ok': False, 'error': first_error, 'errors': errors}, status=400)
                 return render(request, 'perfil.html', {
                     'field_errors': errors,
                     'pedidos': pedidos_usuario,
-                    'cliente_direccion': getattr(cliente_db, 'direccion', '') if hasattr(cliente_db, 'direccion') else '',
                     'security_info': security_info,
                 })
 
-            user.set_password(nueva)
-            user.save()
+            form.save()
             update_session_auth_hash(request, user)
+            
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': 'Contraseña actualizada con éxito.', 'redirect': reverse('perfil')})
             messages.success(request, 'Contraseña actualizada con éxito.')
@@ -385,7 +296,6 @@ def profile_view(request):
 
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
-        'cliente_direccion': getattr(cliente_db, 'direccion', '') if hasattr(cliente_db, 'direccion') else '',
         'security_info': security_info,
     })
 

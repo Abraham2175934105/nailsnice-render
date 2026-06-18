@@ -91,7 +91,7 @@
                     </div>
                     <div class="data-item">
                         <p class="label">Estado</p>
-                        <p class="value status success">{{ request.user.estado_usuario }}</p>
+                        <p class="value status success">{{ request.user.estado }}</p>
                     </div>
                     <div class="data-item">
                         <p class="label">Último acceso</p>
@@ -177,11 +177,7 @@
                         <input type="tel" name="telefono" value="{{ request.user.telefono }}" required>
                         {% if field_errors.telefono %}<small class="error">{{ field_errors.telefono }}</small>{% endif %}
                     </label>
-                    <label class="field">
-                        <span>Dirección</span>
-                        <input type="text" name="direccion" placeholder="Ej: Calle 123 #45-67" value="{{ cliente_direccion|default_if_none:'' }}">
-                        {% if field_errors.direccion %}<small class="error">{{ field_errors.direccion }}</small>{% endif %}
-                    </label>
+
                     <label class="field full">
                         <span>Contraseña actual (requerida para guardar)</span>
                         <input type="password" name="password_actual" required>

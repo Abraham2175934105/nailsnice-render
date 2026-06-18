@@ -38,3 +38,129 @@ class ProfilePasswordTests(TestCase):
 		self.assertEqual(resp.status_code, 200)
 		self.user.refresh_from_db()
 		self.assertTrue(self.user.check_password('Pwd12345!'))
+
+
+from core.forms import RegistroForm
+
+class RegistroFormValidationTests(TestCase):
+    def setUp(self):
+        from usuarios.models import Rol
+        self.rol_cliente, _ = Rol.objects.get_or_create(
+            nombre=Rol.CLIENTE,
+            defaults={'descripcion': 'Cliente', 'es_sistema': True}
+        )
+
+    def test_valid_form_data(self):
+        data = {
+            'nombre': 'Carlos',
+            'apellido': 'Gomez',
+            'telefono': '3123456789',
+            'direccion': 'Calle 45 #12-34',
+            'correo': 'carlos.gomez@test.com',
+            'contrasena': 'Segura123!'
+        }
+        form = RegistroForm(data=data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_invalid_name_multiple_words(self):
+        data = {
+            'nombre': 'Carlos Alberto',
+            'apellido': 'Gomez',
+            'telefono': '3123456789',
+            'direccion': 'Calle 45 #12-34',
+            'correo': 'carlos.gomez@test.com',
+            'contrasena': 'Segura123!'
+        }
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('nombre', form.errors)
+
+    def test_invalid_surname_special_chars(self):
+        data = {
+            'nombre': 'Carlos',
+            'apellido': 'Gomez123',
+            'telefono': '3123456789',
+            'direccion': 'Calle 45 #12-34',
+            'correo': 'carlos.gomez@test.com',
+            'contrasena': 'Segura123!'
+        }
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('apellido', form.errors)
+
+    def test_unique_email_and_phone(self):
+        get_user_model().objects.create_user(
+            email='carlos.gomez@test.com',
+            password='Password123!',
+            nombre1='Carlos',
+            apellido1='Gomez',
+            telefono='3123456789'
+        )
+        
+        # Test repeat email
+        data_repeat_email = {
+            'nombre': 'Maria',
+            'apellido': 'Perez',
+            'telefono': '3129999999',
+            'direccion': 'Calle 45 #12-34',
+            'correo': 'Carlos.Gomez@test.com',
+            'contrasena': 'Segura123!'
+        }
+        form = RegistroForm(data=data_repeat_email)
+        self.assertFalse(form.is_valid())
+        self.assertIn('correo', form.errors)
+        self.assertEqual(form.errors['correo'][0], 'El correo ya está registrado.')
+
+        # Test repeat phone
+        data_repeat_phone = {
+            'nombre': 'Maria',
+            'apellido': 'Perez',
+            'telefono': '3123456789',
+            'direccion': 'Calle 45 #12-34',
+            'correo': 'maria.perez@test.com',
+            'contrasena': 'Segura123!'
+        }
+        form = RegistroForm(data=data_repeat_phone)
+        self.assertFalse(form.is_valid())
+        self.assertIn('telefono', form.errors)
+        self.assertEqual(form.errors['telefono'][0], 'Este teléfono ya está registrado.')
+
+    def test_password_strength_validations(self):
+        base_data = {
+            'nombre': 'Carlos',
+            'apellido': 'Gomez',
+            'telefono': '3123456789',
+            'direccion': 'Calle 45 #12-34',
+            'correo': 'carlos.gomez@test.com',
+        }
+        
+        # Short password
+        data = base_data.copy()
+        data['contrasena'] = 'Seg1!'
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('contrasena', form.errors)
+
+        # No uppercase
+        data['contrasena'] = 'segura123!'
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('contrasena', form.errors)
+
+        # No lowercase
+        data['contrasena'] = 'SEGURA123!'
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('contrasena', form.errors)
+
+        # No number
+        data['contrasena'] = 'Segurall!'
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('contrasena', form.errors)
+
+        # No special character
+        data['contrasena'] = 'Segura1234'
+        form = RegistroForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('contrasena', form.errors)
