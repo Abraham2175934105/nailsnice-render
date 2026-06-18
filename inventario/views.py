@@ -11,7 +11,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from core.auth import admin_required
 from core.pdf_reports import build_crud_pdf_response
-from productos.models import VarianteProducto, Producto
+from productos.models import VarianteProducto, Producto, ImagenProducto
 from .forms import VarianteProductoForm, SaldoInventarioForm, ProductoMaquillajeForm, MovimientoInventarioForm, ItemMovimientoForm
 from .models import Bodega, SaldoInventario, ProductoMaquillaje, MovimientoInventario, TipoMovimientoInventario
 from .services import save_producto_form, soft_delete_producto, registrar_movimiento
@@ -209,23 +209,48 @@ def lista_inventario(request):
 @admin_required
 def crear_producto(request):
     _ensure_default_bodega()
-    if request.method == 'POST':
-        variante_form = VarianteProductoForm(request.POST)
-        saldo_form = SaldoInventarioForm(request.POST)
-        if variante_form.is_valid() and saldo_form.is_valid():
-            with transaction.atomic():
-                variante = variante_form.save()
-                saldo = saldo_form.save(commit=False)
-                saldo.variante = variante
-                saldo.save()
-            return redirect('lista_inventario')
+    using_saldos = not ProductoMaquillaje.objects.exists()
+    
+    if not using_saldos:
+        if request.method == 'POST':
+            form = ProductoMaquillajeForm(request.POST, request.FILES)
+            if form.is_valid():
+                save_producto_form(form, user=request.user)
+                return redirect('lista_inventario')
+        else:
+            form = ProductoMaquillajeForm()
+        return render(request, 'inventario/formulario.html', {
+            'form': form,
+        })
     else:
-        variante_form = VarianteProductoForm()
-        saldo_form = SaldoInventarioForm()
-    return render(request, 'inventario/formulario.html', {
-        'form_variante': variante_form,
-        'form_saldo': saldo_form,
-    })
+        if request.method == 'POST':
+            variante_form = VarianteProductoForm(request.POST, request.FILES)
+            saldo_form = SaldoInventarioForm(request.POST)
+            if variante_form.is_valid() and saldo_form.is_valid():
+                with transaction.atomic():
+                    variante = variante_form.save()
+                    saldo = saldo_form.save(commit=False)
+                    saldo.variante = variante
+                    saldo.save()
+                    
+                    imagen = variante_form.cleaned_data.get('imagen')
+                    if imagen:
+                        from django.core.files.storage import default_storage
+                        path = default_storage.save(f'productos/{imagen.name}', imagen)
+                        ImagenProducto.objects.create(
+                            producto=variante.producto,
+                            variante=variante,
+                            ruta_almacenamiento=path,
+                            es_principal=True
+                        )
+                return redirect('lista_inventario')
+        else:
+            variante_form = VarianteProductoForm()
+            saldo_form = SaldoInventarioForm()
+        return render(request, 'inventario/formulario.html', {
+            'form_variante': variante_form,
+            'form_saldo': saldo_form,
+        })
 
 
 @admin_required
@@ -250,7 +275,7 @@ def editar_producto(request, id):
 
     saldo = SaldoInventario.objects.filter(variante=variante).first()
     if request.method == 'POST':
-        variante_form = VarianteProductoForm(request.POST, instance=variante)
+        variante_form = VarianteProductoForm(request.POST, request.FILES, instance=variante)
         saldo_form = SaldoInventarioForm(request.POST, instance=saldo)
         if variante_form.is_valid() and saldo_form.is_valid():
             with transaction.atomic():
@@ -258,14 +283,31 @@ def editar_producto(request, id):
                 saldo = saldo_form.save(commit=False)
                 saldo.variante = variante
                 saldo.save()
+                
+                imagen = variante_form.cleaned_data.get('imagen')
+                if imagen:
+                    # Inactivate/Delete previous images
+                    ImagenProducto.objects.filter(variante=variante).delete()
+                    
+                    from django.core.files.storage import default_storage
+                    path = default_storage.save(f'productos/{imagen.name}', imagen)
+                    ImagenProducto.objects.create(
+                        producto=variante.producto,
+                        variante=variante,
+                        ruta_almacenamiento=path,
+                        es_principal=True
+                    )
             return redirect('lista_inventario')
     else:
         variante_form = VarianteProductoForm(instance=variante)
         saldo_form = SaldoInventarioForm(instance=saldo)
+    
+    current_image = ImagenProducto.objects.filter(variante=variante).first()
     return render(request, 'inventario/formulario.html', {
         'form_variante': variante_form,
         'form_saldo': saldo_form,
         'variante': variante,
+        'current_image': current_image,
     })
 
 

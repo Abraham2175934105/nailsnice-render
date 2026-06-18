@@ -6,6 +6,12 @@ from .models import Bodega, SaldoInventario, TipoMovimientoInventario, Movimient
 
 
 class VarianteProductoForm(forms.ModelForm):
+    imagen = forms.FileField(
+        required=False, 
+        label="Imagen del Producto",
+        widget=forms.FileInput(attrs={'class': 'form-input'})
+    )
+
     class Meta:
         model = VarianteProducto
         fields = [
@@ -19,9 +25,13 @@ class VarianteProductoForm(forms.ModelForm):
             'activo',
         ]
         widgets = {
-            'precio': forms.NumberInput(attrs={'min': '0', 'step': '0.01'}),
-            'costo': forms.NumberInput(attrs={'min': '0', 'step': '0.01'}),
-            'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': '0.01'}),
+            'producto': forms.Select(attrs={'class': 'form-select'}),
+            'sku': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: SKU-001'}),
+            'codigo_barras': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Opcional'}),
+            'nombre_variante': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: Labial Rojo'}),
+            'precio': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
+            'costo': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
+            'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
         }
         labels = {
             'producto': 'Producto',
@@ -44,9 +54,10 @@ class SaldoInventarioForm(forms.ModelForm):
         model = SaldoInventario
         fields = ['bodega', 'cantidad_existencia', 'cantidad_reservada', 'nivel_reorden']
         widgets = {
-            'cantidad_existencia': forms.NumberInput(attrs={'min': '0'}),
-            'cantidad_reservada': forms.NumberInput(attrs={'min': '0'}),
-            'nivel_reorden': forms.NumberInput(attrs={'min': '0'}),
+            'bodega': forms.Select(attrs={'class': 'form-select'}),
+            'cantidad_existencia': forms.NumberInput(attrs={'min': '0', 'class': 'form-input'}),
+            'cantidad_reservada': forms.NumberInput(attrs={'min': '0', 'class': 'form-input'}),
+            'nivel_reorden': forms.NumberInput(attrs={'min': '0', 'class': 'form-input'}),
         }
         labels = {
             'bodega': 'Bodega',

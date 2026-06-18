@@ -7,8 +7,8 @@
 <div class="glass-panel fade-in-up crud-form-panel">
   <div class="modal-header modal-header-centered">
     <div class="u-text-center u-w-full">
-      <h3>Producto</h3>
-      <p class="section-subtitle">Datos básicos, stock y multimedia.</p>
+      <h3>{% if form %}Producto Legacy{% else %}Producto{% endif %}</h3>
+      <p class="section-subtitle">{% if form %}Actualiza los datos del producto legacy.{% else %}Datos básicos, stock y multimedia de la variante.{% endif %}</p>
     </div>
   </div>
 
@@ -18,13 +18,17 @@
     {% if form %}
       <!-- Formulario Legacy (ProductoMaquillaje) -->
       {% for field in form %}
-        {% if field.name == 'imagen' and producto.imagen %}
-          <div class="u-grid-full u-text-center" style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 12px;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-primary);">Foto Actual del Producto</label>
-            <img src="{{ producto.imagen.url }}" class="img-thumbnail" style="max-width: 150px; display: block; margin: 0 auto 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 2px solid var(--accent-color, #e0e0e0);">
-          </div>
+        {% if field.name == 'imagen' %}
+          <!-- Preview above the image file upload field -->
+          {% if producto.imagen %}
+            <div class="u-grid-full u-text-center" style="margin-bottom: 1.5rem; padding: 1.2rem; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);">
+              <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Foto Actual</label>
+              <img src="{{ producto.imagen.url }}" class="img-thumbnail" style="max-width: 150px; display: block; margin: 0 auto 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 2px solid var(--accent-color, #ff4081);">
+            </div>
+          {% endif %}
         {% endif %}
-        <div class="field {% if field.name == 'descripcion' %}u-grid-full{% endif %}">
+        
+        <div class="field {% if field.name == 'descripcion' or field.name == 'imagen' or field.name == 'nombre' %}u-grid-full{% endif %}">
           <label for="{{ field.id_for_label }}">{{ field.label }}</label>
           {{ field }}
           {% if field.errors %}
@@ -32,73 +36,100 @@
           {% endif %}
         </div>
       {% endfor %}
+      
     {% else %}
-      <!-- Formulario Moderno (VarianteProducto) -->
-      <div class="field">
-        <label for="{{ form_variante.producto.id_for_label }}">Producto</label>
+      <!-- Formulario Moderno (VarianteProducto + SaldoInventario) -->
+      
+      <!-- Preview above the image file upload field -->
+      {% if current_image %}
+        <div class="u-grid-full u-text-center" style="margin-bottom: 1.5rem; padding: 1.2rem; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);">
+          <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Foto Actual</label>
+          <img src="/media/{{ current_image.ruta_almacenamiento }}" class="img-thumbnail" style="max-width: 150px; display: block; margin: 0 auto 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 2px solid var(--accent-color, #ff4081);">
+        </div>
+      {% endif %}
+
+      <div class="field u-grid-full">
+        <label for="{{ form_variante.producto.id_for_label }}">Producto Base</label>
         {{ form_variante.producto }}
         {% if form_variante.producto.errors %}<span class="badge-chip">{{ form_variante.producto.errors }}</span>{% endif %}
       </div>
+
+      <div class="field">
+        <label for="{{ form_variante.nombre_variante.id_for_label }}">Nombre de la Variante</label>
+        {{ form_variante.nombre_variante }}
+        {% if form_variante.nombre_variante.errors %}<span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>{% endif %}
+      </div>
+
       <div class="field">
         <label for="{{ form_variante.sku.id_for_label }}">SKU</label>
         {{ form_variante.sku }}
         {% if form_variante.sku.errors %}<span class="badge-chip">{{ form_variante.sku.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_variante.codigo_barras.id_for_label }}">Código de barras</label>
+        <label for="{{ form_variante.codigo_barras.id_for_label }}">Código de Barras</label>
         {{ form_variante.codigo_barras }}
         {% if form_variante.codigo_barras.errors %}<span class="badge-chip">{{ form_variante.codigo_barras.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_variante.nombre_variante.id_for_label }}">Nombre de variante</label>
-        {{ form_variante.nombre_variante }}
-        {% if form_variante.nombre_variante.errors %}<span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>{% endif %}
-      </div>
-      <div class="field">
-        <label for="{{ form_variante.precio.id_for_label }}">Precio</label>
-        {{ form_variante.precio }}
-        {% if form_variante.precio.errors %}<span class="badge-chip">{{ form_variante.precio.errors }}</span>{% endif %}
-      </div>
-      <div class="field">
-        <label for="{{ form_variante.costo.id_for_label }}">Costo</label>
-        {{ form_variante.costo }}
-        {% if form_variante.costo.errors %}<span class="badge-chip">{{ form_variante.costo.errors }}</span>{% endif %}
-      </div>
-      <div class="field">
-        <label for="{{ form_variante.peso_gramos.id_for_label }}">Peso (g)</label>
+        <label for="{{ form_variante.peso_gramos.id_for_label }}">Peso (gramos)</label>
         {{ form_variante.peso_gramos }}
         {% if form_variante.peso_gramos.errors %}<span class="badge-chip">{{ form_variante.peso_gramos.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_variante.activo.id_for_label }}">Activo</label>
-        {{ form_variante.activo }}
-        {% if form_variante.activo.errors %}<span class="badge-chip">{{ form_variante.activo.errors }}</span>{% endif %}
+        <label for="{{ form_variante.precio.id_for_label }}">Precio de Venta</label>
+        {{ form_variante.precio }}
+        {% if form_variante.precio.errors %}<span class="badge-chip">{{ form_variante.precio.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_saldo.bodega.id_for_label }}">Bodega</label>
+        <label for="{{ form_variante.costo.id_for_label }}">Costo de Compra</label>
+        {{ form_variante.costo }}
+        {% if form_variante.costo.errors %}<span class="badge-chip">{{ form_variante.costo.errors }}</span>{% endif %}
+      </div>
+
+      <div class="field">
+        <label for="{{ form_saldo.bodega.id_for_label }}">Bodega de Almacenamiento</label>
         {{ form_saldo.bodega }}
         {% if form_saldo.bodega.errors %}<span class="badge-chip">{{ form_saldo.bodega.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">Stock</label>
+        <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">Cantidad en Stock</label>
         {{ form_saldo.cantidad_existencia }}
         {% if form_saldo.cantidad_existencia.errors %}<span class="badge-chip">{{ form_saldo.cantidad_existencia.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">Reservado</label>
+        <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">Cantidad Reservada</label>
         {{ form_saldo.cantidad_reservada }}
         {% if form_saldo.cantidad_reservada.errors %}<span class="badge-chip">{{ form_saldo.cantidad_reservada.errors }}</span>{% endif %}
       </div>
+
       <div class="field">
-        <label for="{{ form_saldo.nivel_reorden.id_for_label }}">Nivel reorden</label>
+        <label for="{{ form_saldo.nivel_reorden.id_for_label }}">Nivel de Reorden</label>
         {{ form_saldo.nivel_reorden }}
         {% if form_saldo.nivel_reorden.errors %}<span class="badge-chip">{{ form_saldo.nivel_reorden.errors }}</span>{% endif %}
       </div>
+
+      <div class="field u-grid-full">
+        <label for="{{ form_variante.imagen.id_for_label }}">Imagen del Producto</label>
+        {{ form_variante.imagen }}
+        {% if form_variante.imagen.errors %}<span class="badge-chip">{{ form_variante.imagen.errors }}</span>{% endif %}
+      </div>
+
+      <div class="field u-grid-full" style="flex-direction: row; align-items: center; gap: 8px;">
+        {{ form_variante.activo }}
+        <label for="{{ form_variante.activo.id_for_label }}" style="margin: 0; cursor: pointer;">Este producto se encuentra activo y visible en el catálogo</label>
+        {% if form_variante.activo.errors %}<span class="badge-chip">{{ form_variante.activo.errors }}</span>{% endif %}
+      </div>
     {% endif %}
 
-    <div class="form-actions form-actions-center u-grid-full">
+    <div class="form-actions form-actions-center u-grid-full" style="margin-top: 2rem;">
       <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>
-      <button type="submit" class="btn-pill btn-primary">Guardar</button>
+      <button type="submit" class="btn-pill btn-primary">Guardar Producto</button>
     </div>
   </form>
 </div>
