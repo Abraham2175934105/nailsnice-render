@@ -52,7 +52,20 @@ def _ensure_direccion(cliente, direccion_data, *, marcar_default=False):
 
 
 def _get_tipo_movimiento_salida():
-    return TipoMovimientoInventario.objects.filter(codigo='SALIDA_VENTA').first()
+    from django.db.models import Max
+    obj = TipoMovimientoInventario.objects.filter(codigo='SALIDA_VENTA').first()
+    if not obj:
+        max_id = TipoMovimientoInventario.objects.aggregate(max_id=Max('id_tipo_movimiento'))['max_id']
+        next_id = (max_id or 0) + 1
+        obj, _ = TipoMovimientoInventario.objects.get_or_create(
+            codigo='SALIDA_VENTA',
+            defaults={
+                'id_tipo_movimiento': next_id,
+                'descripcion': 'Salida por Venta',
+                'direccion': -1,
+            }
+        )
+    return obj
 
 
 def create_transaccion(pedido: PedidoVenta, metodo: str, usuario) -> TransaccionPago:

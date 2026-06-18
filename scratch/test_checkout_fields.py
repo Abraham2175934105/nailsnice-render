@@ -92,6 +92,9 @@ def run_tests():
     print("Prueba de GET de Checkout Exitosa.")
     
     # 4. POST Checkout con dirección inválida
+    from inventario.models import TipoMovimientoInventario
+    TipoMovimientoInventario.objects.filter(codigo='SALIDA_VENTA').delete()
+
     post_data_invalid = {
         'linea1': 'Mi casa 123', # Formato inválido
         'linea2': '',
@@ -145,7 +148,8 @@ def run_tests():
     assert dir_updated.linea2 == 'Torre C Apto 402'
     assert dir_updated.ciudad == 'Medellin'
     assert dir_updated.departamento == 'Antioquia'
-    
+    assert TipoMovimientoInventario.objects.filter(codigo='SALIDA_VENTA').exists()
+    print("Tipo de movimiento SALIDA_VENTA auto-creado exitosamente en base de datos.")
     print("Prueba de POST y sincronización de Checkout Exitosa.")
     
     # Limpieza final
