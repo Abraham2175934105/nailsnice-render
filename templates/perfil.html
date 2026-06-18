@@ -252,7 +252,7 @@
                 {% if pedidos %}
                 <div class="table">
                     <div class="table-head">
-                        <span>ID</span>
+                        <span>Pedido</span>
                         <span>Fecha</span>
                         <span>Estado</span>
                         <span>Total</span>
@@ -260,11 +260,26 @@
                     </div>
                     {% for p in pedidos %}
                     <div class="table-row">
-                        <span>#{{ p.id }}</span>
+                        <span><strong>{{ p.numero }}</strong></span>
                         <span>{{ p.fecha }}</span>
-                        <span class="badge">{{ p.estado|default:'Pendiente' }}</span>
-                        <span>${{ p.precio|default:'0' }}</span>
-                        <button type="button" class="link" data-toggle="pedido" data-id="{{ p.id }}" data-producto="{{ p.producto }}" data-cantidad="{{ p.cantidad }}" data-precio="{{ p.precio }}" data-direccion="{{ p.direccion }}">Ver detalles</button>
+                        <span class="badge badge-{{ p.estado_raw|lower }}">{{ p.estado|default:'Pendiente' }}</span>
+                        <span><strong>${{ p.precio|floatformat:0 }}</strong></span>
+                        <button
+                            type="button"
+                            class="link"
+                            data-toggle="pedido"
+                            data-id="{{ p.id }}"
+                            data-numero="{{ p.numero }}"
+                            data-fecha="{{ p.fecha }}"
+                            data-estado="{{ p.estado }}"
+                            data-total="{{ p.precio|floatformat:0 }}"
+                            data-metodo="{{ p.metodo_pago }}"
+                            data-items='{{ p.items|default:"[]" }}'
+                            data-direccion-linea1="{{ p.direccion_completa.linea1|default:'' }}"
+                            data-direccion-linea2="{{ p.direccion_completa.linea2|default:'' }}"
+                            data-direccion-ciudad="{{ p.direccion_completa.ciudad|default:'' }}"
+                            data-direccion-dpto="{{ p.direccion_completa.departamento|default:'' }}"
+                        >Ver detalles</button>
                     </div>
                     {% endfor %}
                 </div>
@@ -290,16 +305,57 @@
 
     <div class="modal" id="modal-pedido">
         <div class="modal-backdrop" data-close="true"></div>
-        <div class="modal-content" role="dialog" aria-modal="true">
+        <div class="modal-content modal-content--wide" role="dialog" aria-modal="true" aria-labelledby="modal-pedido-title">
             <button class="modal-close" data-close="true" aria-label="Cerrar">×</button>
-            <h3>Detalle del pedido</h3>
-            <div class="pedido-detail">
-                <p><strong>Producto:</strong> <span id="d-producto"></span></p>
-                <p><strong>Cantidad:</strong> <span id="d-cantidad"></span></p>
-                <p><strong>Precio:</strong> $<span id="d-precio"></span></p>
-                <p><strong>Envío a:</strong> <span id="d-direccion"></span></p>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+                <div>
+                    <p style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin:0;">Detalle del pedido</p>
+                    <h3 id="modal-pedido-title" style="margin:0;font-size:1.15rem;" id="d-numero"></h3>
+                </div>
+                <div style="text-align:right;">
+                    <p style="margin:0;font-size:.8rem;opacity:.65;" id="d-fecha"></p>
+                    <span class="badge" id="d-estado" style="margin-top:.25rem;display:inline-block;"></span>
+                </div>
             </div>
-            <div class="modal-actions">
+
+            {{# Tabla de productos #}}
+            <div style="overflow-x:auto;margin-bottom:1rem;">
+                <table style="width:100%;border-collapse:collapse;font-size:.85rem;" id="d-items-table">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--color-border,#e5e7eb);">
+                            <th style="text-align:left;padding:.45rem .6rem;font-weight:600;">Producto</th>
+                            <th style="text-align:left;padding:.45rem .6rem;font-weight:600;">Variante / SKU</th>
+                            <th style="text-align:center;padding:.45rem .6rem;font-weight:600;">Cant.</th>
+                            <th style="text-align:right;padding:.45rem .6rem;font-weight:600;">Precio unit.</th>
+                            <th style="text-align:right;padding:.45rem .6rem;font-weight:600;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="d-items-body">
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top:2px solid var(--color-border,#e5e7eb);">
+                            <td colspan="4" style="text-align:right;padding:.55rem .6rem;font-weight:700;">Total</td>
+                            <td style="text-align:right;padding:.55rem .6rem;font-weight:700;font-size:1rem;color:var(--color-primary,#be185d);" id="d-total"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {{# Metadatos del pedido #}}
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;padding:.75rem;background:var(--color-surface,#f9fafb);border-radius:.5rem;font-size:.82rem;">
+                <div>
+                    <p style="margin:0;opacity:.6;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;">Método de pago</p>
+                    <p style="margin:.2rem 0 0;font-weight:600;" id="d-metodo"></p>
+                </div>
+                <div>
+                    <p style="margin:0;opacity:.6;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;">Dirección de entrega</p>
+                    <p style="margin:.2rem 0 0;font-weight:600;" id="d-dir-linea1"></p>
+                    <p style="margin:.1rem 0 0;opacity:.7;" id="d-dir-linea2"></p>
+                    <p style="margin:.1rem 0 0;opacity:.7;" id="d-dir-ciudad"></p>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top:1rem;">
                 <button class="btn-primary" data-close="true">Cerrar</button>
             </div>
         </div>
@@ -471,11 +527,51 @@
                 });
             }
 
+            const fmt = (n) => '$' + Number(n).toLocaleString('es-CO', {minimumFractionDigits:0, maximumFractionDigits:0});
+
             const fillPedido = (btn) => {
-                document.getElementById('d-producto').textContent = btn.dataset.producto || '';
-                document.getElementById('d-cantidad').textContent = btn.dataset.cantidad || '';
-                document.getElementById('d-precio').textContent = btn.dataset.precio || '';
-                document.getElementById('d-direccion').textContent = btn.dataset.direccion || '';
+                // Cabecera
+                document.getElementById('d-numero').textContent = 'Pedido ' + (btn.dataset.numero || btn.dataset.id);
+                document.getElementById('d-fecha').textContent = btn.dataset.fecha || '';
+                const estadoEl = document.getElementById('d-estado');
+                estadoEl.textContent = btn.dataset.estado || '';
+                estadoEl.className = 'badge badge-' + (btn.dataset.estadoRaw || '').toLowerCase();
+
+                // Tabla de items
+                const tbody = document.getElementById('d-items-body');
+                tbody.innerHTML = '';
+                let items = [];
+                try { items = JSON.parse(btn.dataset.items || '[]'); } catch(e) {}
+
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;opacity:.6;">Sin productos registrados</td></tr>';
+                } else {
+                    items.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '1px solid var(--color-border,#e5e7eb)';
+                        tr.innerHTML = `
+                            <td style="padding:.4rem .6rem;">${item.nombre || '—'}</td>
+                            <td style="padding:.4rem .6rem;opacity:.7;">${item.variante || '—'}</td>
+                            <td style="text-align:center;padding:.4rem .6rem;">${item.cantidad}</td>
+                            <td style="text-align:right;padding:.4rem .6rem;">${fmt(item.precio_unitario)}</td>
+                            <td style="text-align:right;padding:.4rem .6rem;font-weight:600;">${fmt(item.subtotal)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                document.getElementById('d-total').textContent = fmt(btn.dataset.total || 0);
+                document.getElementById('d-metodo').textContent = btn.dataset.metodo || '—';
+
+                // Dirección
+                const l1 = btn.dataset.direccionLinea1 || '';
+                const l2 = btn.dataset.direccionLinea2 || '';
+                const ciudad = btn.dataset.direccionCiudad || '';
+                const dpto = btn.dataset.direccionDpto || '';
+                document.getElementById('d-dir-linea1').textContent = l1 || 'No registrada';
+                document.getElementById('d-dir-linea2').textContent = l2;
+                document.getElementById('d-dir-ciudad').textContent = [ciudad, dpto].filter(Boolean).join(', ');
+
                 modalPedido.classList.add('is-open');
             };
 

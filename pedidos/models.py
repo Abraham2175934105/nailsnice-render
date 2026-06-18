@@ -213,6 +213,10 @@ class TransaccionPago(models.Model):
         related_name='transacciones',
     )
     id_transaccion_proveedor = models.CharField(max_length=120, null=True, blank=True)
+    # Campo de texto para almacenar el método de pago seleccionado en checkout
+    # (ej. 'TARJETA', 'CONTRAENTREGA'). El FK metodo_pago puede quedar nulo si
+    # no se ha vinculado un objeto MetodoPagoCliente en la BD.
+    metodo_pago_tipo = models.CharField(max_length=40, null=True, blank=True, verbose_name='Tipo de pago')
     estado = models.CharField(max_length=20)
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     codigo_moneda = models.CharField(max_length=3, default='COP')

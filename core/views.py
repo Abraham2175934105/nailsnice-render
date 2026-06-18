@@ -238,34 +238,81 @@ def profile_view(request):
         PedidoVenta.objects
         .filter(cliente__usuario=user)
         .select_related('direccion_envio')
-        .prefetch_related('detalles__variante__producto')
+        .prefetch_related(
+            'detalles__variante__producto',
+            'transacciones',
+        )
         .order_by('-id_pedido')
     )
 
     pedidos_usuario = []
     for p in pedidos_qs:
         detalles = list(p.detalles.all())
-        producto_names = [d.nombre_producto_snapshot or d.variante.producto.nombre for d in detalles if d.variante]
-        producto_str = ", ".join(producto_names) if producto_names else "Sin productos"
+
+        # Construir lista de items con detalle completo
+        items_detalle = []
+        for d in detalles:
+            nombre = d.nombre_producto_snapshot or (d.variante.producto.nombre if d.variante else '—')
+            variante_label = d.sku_snapshot or (d.variante.sku if d.variante else '')
+            precio = float(d.precio_unitario)
+            subtotal_val = float(d.total_linea) if d.total_linea is not None else round(precio * d.cantidad, 2)
+            items_detalle.append({
+                'nombre': nombre,
+                'variante': variante_label,
+                'cantidad': d.cantidad,
+                'precio_unitario': precio,
+                'subtotal': subtotal_val,
+            })
+
+        producto_str = ", ".join(i['nombre'] for i in items_detalle) if items_detalle else "Sin productos"
         total_cantidad = sum(d.cantidad for d in detalles)
 
-        direccion_str = ""
-        if p.direccion_envio:
-            dir_parts = [p.direccion_envio.linea1]
-            if p.direccion_envio.ciudad:
-                dir_parts.append(p.direccion_envio.ciudad)
-            if p.direccion_envio.departamento:
-                dir_parts.append(p.direccion_envio.departamento)
-            direccion_str = ", ".join(dir_parts)
+        # Método de pago real desde TransaccionPago
+        primera_tx = p.transacciones.first()
+        metodo_pago = '—'
+        if primera_tx:
+            tipo = getattr(primera_tx, 'metodo_pago_tipo', None)
+            if tipo == 'TARJETA':
+                metodo_pago = '💳 Tarjeta'
+            elif tipo == 'CONTRAENTREGA':
+                metodo_pago = '🏠 Contra entrega'
+            elif tipo:
+                metodo_pago = tipo
+
+        # Dirección completa de envío
+        dir_obj = p.direccion_envio
+        if dir_obj:
+            dir_partes = [dir_obj.linea1]
+            if dir_obj.linea2:
+                dir_partes.append(dir_obj.linea2)
+            if dir_obj.ciudad:
+                dir_partes.append(dir_obj.ciudad)
+            if dir_obj.departamento:
+                dir_partes.append(dir_obj.departamento)
+            direccion_str = ", ".join(filter(None, dir_partes))
+            direccion_completa = {
+                'linea1': dir_obj.linea1 or '',
+                'linea2': dir_obj.linea2 or '',
+                'ciudad': dir_obj.ciudad or '',
+                'departamento': dir_obj.departamento or '',
+            }
+        else:
+            direccion_str = ''
+            direccion_completa = {}
 
         pedidos_usuario.append({
             'id': p.id_pedido,
+            'numero': p.numero_pedido or f'#{p.id_pedido}',
             'fecha': p.realizado_en.strftime('%d/%m/%Y %H:%M') if p.realizado_en else '',
             'estado': p.get_estado_display() if hasattr(p, 'get_estado_display') else p.estado,
-            'precio': p.monto_total,
+            'estado_raw': p.estado,
+            'precio': float(p.monto_total),
             'producto': producto_str,
             'cantidad': total_cantidad,
             'direccion': direccion_str,
+            'metodo_pago': metodo_pago,
+            'items': items_detalle,
+            'direccion_completa': direccion_completa,
         })
 
     security_info = {
@@ -381,80 +428,78 @@ def _generate_reset_code(length: int = 6) -> str:
 
 
 def forgot_password_view(request):
+    """
+    Vista de recuperación de contraseña exclusivamente por correo electrónico.
+    Por seguridad siempre muestra el mismo mensaje de éxito (evita user enumeration).
+    """
     field_errors = {}
 
     if request.method == 'POST':
-        metodo = request.POST.get('metodo')
-        valor = (request.POST.get('identificador') or '').strip()
+        # El formulario siempre envía metodo='email' (campo hidden)
+        correo = (request.POST.get('identificador') or '').strip().lower()
         client_ip = get_client_ip(request)
-        identity_key = valor.lower() if metodo == 'email' else valor
 
-        if is_locked('reset_ip', client_ip) or (identity_key and is_locked('reset_identity', identity_key)):
+        # Rate limiting por IP y por identidad
+        if is_locked('reset_ip', client_ip) or (correo and is_locked('reset_identity', correo)):
             field_errors['identificador'] = AUTH_RATE_LIMIT_ERROR
-            security_event('reset_locked_attempt', request, extra={'identity': identity_key}, level='warning')
+            security_event('reset_locked_attempt', request, extra={'identity': correo}, level='warning')
             return render(request, 'forgot_password.html', {'field_errors': field_errors})
 
-        if metodo not in ['email', 'sms']:
-            field_errors['metodo'] = 'Debes seleccionar un método de recuperación.'
-        elif not valor:
-            field_errors['identificador'] = 'Ingresa tu correo o teléfono.'
+        # Validación básica
+        if not correo:
+            field_errors['identificador'] = 'Debes ingresar tu correo electrónico.'
+        elif '@' not in correo or '.' not in correo.split('@')[-1]:
+            field_errors['identificador'] = 'Ingresa un correo electrónico válido.'
 
         if not field_errors:
-            usuario = None
-            if metodo == 'email':
-                usuario = Usuario.objects.filter(correo__iexact=valor).first()
-            else:
-                usuario = Usuario.objects.filter(telefono=valor).first()
+            usuario = Usuario.objects.filter(correo__iexact=correo).first()
 
             usuario_activo = bool(
                 usuario is not None
                 and getattr(usuario, 'is_active', True)
-                and str(getattr(usuario, 'estado', 'Activo')).upper() == 'ACTIVO'
+                and str(getattr(usuario, 'estado', 'ACTIVO')).upper() == 'ACTIVO'
             )
 
             codigo = _generate_reset_code()
-            
-            if usuario is not None and usuario_activo:
+
+            if usuario_activo:
                 u_id = getattr(usuario, 'id_usuario', None) or getattr(usuario, 'id', -1)
-                u_telefono = getattr(usuario, 'telefono', '')
-                u_correo = getattr(usuario, 'correo', '')
+                u_correo = getattr(usuario, 'correo', correo)
             else:
                 u_id = -1
-                u_telefono = ''
                 u_correo = ''
 
+            # Guardar estado de recuperación en sesión
             request.session['reset_user_id'] = u_id
-            request.session['reset_method'] = metodo
+            request.session['reset_method'] = 'email'
             request.session['reset_code'] = codigo
             request.session['reset_attempts'] = 0
             request.session['reset_decoy'] = not usuario_activo
             request.session['reset_created_at'] = timezone.now().isoformat()
 
-            if usuario_activo and metodo == 'email' and u_correo:
+            if usuario_activo and u_correo:
                 try:
                     send_mail(
                         subject='Código de verificación - NailsNice',
-                        message=f'Tu código de verificación es: {codigo}',
-                        from_email=None,
+                        message=f'Tu código de verificación es: {codigo}. Válido por 10 minutos.',
+                        from_email=None,  # Django usa DEFAULT_FROM_EMAIL
                         recipient_list=[u_correo],
                         fail_silently=False,
                     )
+                    clear_failures('reset_ip', client_ip)
+                    clear_failures('reset_identity', correo)
+                    security_event('reset_code_issued', request, extra={'identity': correo})
                 except Exception:
-                    security_event('reset_email_delivery_error', request, extra={'identity': identity_key}, level='error')
-                    messages.error(request, 'No se pudo procesar la solicitud en este momento. Intenta nuevamente.')
+                    security_event('reset_email_delivery_error', request, extra={'identity': correo}, level='error')
+                    messages.error(request, 'No se pudo enviar el correo en este momento. Intenta nuevamente más tarde.')
                     return render(request, 'forgot_password.html', {'field_errors': field_errors})
-            elif usuario_activo:
-                print(f"[NailsNice] SMS a {u_telefono} - Código de verificación: {codigo}")
-
-            if usuario_activo:
-                clear_failures('reset_ip', client_ip)
-                clear_failures('reset_identity', identity_key)
-                security_event('reset_code_issued', request, extra={'identity': identity_key})
             else:
+                # Correo no encontrado: registrar intento pero mostrar mismo mensaje genérico
                 register_failure('reset_ip', client_ip, limit=12, window_seconds=900, lock_seconds=1200)
-                register_failure('reset_identity', identity_key, limit=8, window_seconds=900, lock_seconds=1200)
-                security_event('reset_requested_unknown_identity', request, extra={'identity': identity_key}, level='warning')
+                register_failure('reset_identity', correo, limit=8, window_seconds=900, lock_seconds=1200)
+                security_event('reset_requested_unknown_identity', request, extra={'identity': correo}, level='warning')
 
+            # Siempre mostrar el mismo mensaje para evitar user enumeration
             messages.success(request, RESET_GENERIC_SUCCESS)
             return redirect('verify_reset_code')
 

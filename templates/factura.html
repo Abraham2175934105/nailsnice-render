@@ -138,19 +138,37 @@
                     <div>
                         <p class="page-eyebrow">Método de pago</p>
                         {% with trans=pedido.transacciones.first %}
-                        <p class="tile-title">{% if trans %}{{ trans.metodo_pago|default:'No registrado' }}{% else %}No registrado{% endif %}</p>
-                        <p class="cart-muted">Estado: {% if trans %}{{ trans.estado }}{% else %}{{ pedido.get_estado_display }}{% endif %}</p>
+                        {% if trans and trans.metodo_pago_tipo %}
+                            {% if trans.metodo_pago_tipo == 'TARJETA' %}
+                                <p class="tile-title">💳 Tarjeta de crédito/débito</p>
+                            {% elif trans.metodo_pago_tipo == 'CONTRAENTREGA' %}
+                                <p class="tile-title">🏠 Pago contra entrega</p>
+                            {% else %}
+                                <p class="tile-title">{{ trans.metodo_pago_tipo }}</p>
+                            {% endif %}
+                            <p class="cart-muted">Estado: {{ trans.estado }}</p>
+                        {% else %}
+                            <p class="tile-title">—</p>
+                            <p class="cart-muted">Estado: {{ pedido.get_estado_display }}</p>
+                        {% endif %}
                         {% endwith %}
                     </div>
                     <div>
-                        <p class="page-eyebrow">Dirección</p>
-                        <p class="tile-title">{{ pedido.direccion_envio.linea1|default:pedido.direccion_envio }}</p>
-                        <p class="cart-muted">Verifica antes de despachar.</p>
+                        <p class="page-eyebrow">Dirección de entrega</p>
+                        {% if pedido.direccion_envio %}
+                            <p class="tile-title">{{ pedido.direccion_envio.linea1 }}</p>
+                            <p class="cart-muted">
+                                {{ pedido.direccion_envio.ciudad|default:'' }}{% if pedido.direccion_envio.departamento %}, {{ pedido.direccion_envio.departamento }}{% endif %}
+                            </p>
+                        {% else %}
+                            <p class="tile-title">No registrada</p>
+                            <p class="cart-muted">Verifica antes de despachar.</p>
+                        {% endif %}
                     </div>
                     <div>
                         <p class="page-eyebrow">Entrega estimada</p>
-                        <p class="tile-title">1 - 3 días</p>
-                        <p class="cart-muted">Te notificaremos cambios por correo.</p>
+                        <p class="tile-title">1 - 3 días hábiles</p>
+                        <p class="cart-muted">Te notificaremos por correo.</p>
                     </div>
                 </div>
 

@@ -71,10 +71,16 @@ def _get_tipo_movimiento_salida():
 def create_transaccion(pedido: PedidoVenta, metodo: str, usuario) -> TransaccionPago:
     """Crea la transacción asociada al pedido según el método de pago."""
     proveedor = None
-    if metodo == 'tarjeta':
+    if metodo in ('tarjeta', 'TARJETA'):
         proveedor = ProveedorPago.objects.filter(codigo='STRIPE').first()
 
-    estado_tx = 'CAPTURADA' if metodo == 'contraentrega' else 'INICIADA'
+    estado_tx = 'CAPTURADA' if metodo in ('contraentrega', 'CONTRAENTREGA') else 'INICIADA'
+
+    # Normalizar el metodo a mayúsculas para almacenamiento consistente
+    metodo_normalizado = {
+        'tarjeta': 'TARJETA',
+        'contraentrega': 'CONTRAENTREGA',
+    }.get(metodo.lower(), metodo.upper())
 
     tx = TransaccionPago.objects.create(
         pedido=pedido,
@@ -82,6 +88,7 @@ def create_transaccion(pedido: PedidoVenta, metodo: str, usuario) -> Transaccion
         estado=estado_tx,
         monto=pedido.monto_total,
         codigo_moneda='COP',
+        metodo_pago_tipo=metodo_normalizado,
     )
     return tx
 

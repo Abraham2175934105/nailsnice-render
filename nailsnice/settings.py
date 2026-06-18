@@ -295,7 +295,8 @@ else:
     }
 
 # --- Configuración de correo (reset de contraseña, notificaciones, etc.) ---
-# Por defecto usamos consola en DEBUG. En producción configure EMAIL_HOST_USER y EMAIL_HOST_PASSWORD
+# En producción configure EMAIL_HOST_USER y EMAIL_HOST_PASSWORD en las variables de entorno.
+# En desarrollo, sin esas variables, los correos se imprimen en la consola.
 if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
@@ -303,11 +304,12 @@ if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
     EMAIL_USE_TLS = get_env_bool('EMAIL_USE_TLS', True)
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+    EMAIL_TIMEOUT = 10  # segundos; evita que el proceso quede colgado si el SMTP no responde
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'NailsNice <{EMAIL_HOST_USER}>')
 else:
-    # comodín para desarrollo y cuando no se hayan configurado variables
+    # Modo desarrollo: los correos se imprimen en la consola de manage.py runserver
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'soportenailsnice@gmail.com')
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'NailsNice <soportenailsnice@gmail.com>')
 
 # Logging básico orientado a producción: guarda errores 400/500 y excepciones en logs/app.log
 LOGGING = {
