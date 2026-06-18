@@ -134,12 +134,7 @@ WSGI_APPLICATION = 'nailsnice.wsgi.application'
 
 # DATABASES will be configured below using dj-database-url after DEBUG is set.
 
-# Use SQLite automatically for tests to avoid external DB dependency during CI/local runs.
-if 'test' in sys.argv:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+# DATABASES for test run are configured dynamically below.
 
 
 # Password validation

@@ -300,7 +300,7 @@ class CheckoutFunctionalTest(TestCase):
         self._set_cart()
         resp = self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         self.assertEqual(resp.status_code, 302)
@@ -311,7 +311,7 @@ class CheckoutFunctionalTest(TestCase):
         self._set_cart()
         resp = self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123',
+            'linea1': 'Calle 123',
             'ciudad': 'Bogota',
         })
         self.assertEqual(resp.status_code, 302)
@@ -364,7 +364,7 @@ class CheckoutFunctionalTest(TestCase):
         self._set_cart(1)
         resp = self.client.post(reverse('checkout'), {
             'metodo_pago': 'tarjeta',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
             'card_holder': 'Juan Perez',
             'card_number': '4111 1111 1111 1112',
@@ -379,7 +379,7 @@ class CheckoutFunctionalTest(TestCase):
         self._set_cart(1)
         resp = self.client.post(reverse('checkout'), {
             'metodo_pago': 'tarjeta',
-            'direccion': 'Carrera 55 #12-30',
+            'linea1': 'Carrera 55 #12-30',
             'ciudad': 'Bogota',
             'card_holder': 'Juan Perez',
             'card_number': '4111 1111 1111 1111',
@@ -539,7 +539,7 @@ class CheckoutIntegrationTest(TestCase):
     def test_checkout_crea_pedido_en_bd(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         self.assertEqual(PedidoVenta.objects.count(), 1)
@@ -547,7 +547,7 @@ class CheckoutIntegrationTest(TestCase):
     def test_checkout_calcula_total_correcto(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         pedido = PedidoVenta.objects.first()
@@ -556,7 +556,7 @@ class CheckoutIntegrationTest(TestCase):
     def test_checkout_crea_detalle_pedido(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         self.assertEqual(DetallePedidoVenta.objects.count(), 1)
@@ -567,7 +567,7 @@ class CheckoutIntegrationTest(TestCase):
     def test_checkout_descuenta_stock(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         self.assertTrue(ItemMovimientoInventario.objects.filter(variante=self.variante).exists())
@@ -575,7 +575,7 @@ class CheckoutIntegrationTest(TestCase):
     def test_checkout_limpia_carrito(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         self.assertFalse(self.client.session.get('cart'))
@@ -583,7 +583,7 @@ class CheckoutIntegrationTest(TestCase):
     def test_checkout_registra_audit_log(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 123 #45-67',
+            'linea1': 'Calle 123 #45-67',
             'ciudad': 'Bogota',
         })
         pedido = PedidoVenta.objects.first()
@@ -609,7 +609,7 @@ class CheckoutDireccionIntegrationTest(TestCase):
     def test_checkout_persiste_direccion_en_cliente(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Avenida 12 #33-44',
+            'linea1': 'Avenida 12 #33-44',
             'ciudad': 'Bogota',
         })
         direccion = DireccionUsuario.objects.filter(usuario=self.user, es_predeterminada_envio=True).first()
@@ -619,7 +619,7 @@ class CheckoutDireccionIntegrationTest(TestCase):
     def test_checkout_persiste_direccion_en_legacy(self):
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Avenida 12 #33-44',
+            'linea1': 'Avenida 12 #33-44',
             'ciudad': 'Bogota',
         })
         direccion = DireccionUsuario.objects.filter(usuario=self.user, es_predeterminada_envio=True).first()
@@ -639,7 +639,7 @@ class CheckoutDireccionIntegrationTest(TestCase):
         )
         self.client.post(reverse('checkout'), {
             'metodo_pago': 'contraentrega',
-            'direccion': 'Calle 20 #10-10',
+            'linea1': 'Calle 20 #10-10',
             'ciudad': 'Bogota',
         })
         direccion = DireccionUsuario.objects.filter(usuario=self.user, es_predeterminada_envio=True).first()

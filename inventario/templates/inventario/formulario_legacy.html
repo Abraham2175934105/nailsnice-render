@@ -14,8 +14,15 @@
 
   <form method="POST" enctype="multipart/form-data" class="form-grid">
     {% csrf_token %}
+    {% if producto.imagen %}
+    <div class="u-grid-full u-text-center" style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 12px;">
+      <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-primary);">Foto Actual del Producto</label>
+      <img src="{{ producto.imagen.url }}" class="img-thumbnail" style="max-width: 150px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 2px solid var(--accent-color, #e0e0e0);">
+    </div>
+    {% endif %}
+
     {% for field in form %}
-      <div class="field">
+      <div class="field {% if field.name == 'descripcion' %}u-grid-full{% endif %}">
         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
         {% if field.errors %}

@@ -594,6 +594,7 @@ class ProductoViewSet(AuditViewSetMixin, viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
     permission_classes = [AllowAny]
     audit_prefix = 'productos.producto'
+    http_method_names = ['get', 'head', 'options']
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):

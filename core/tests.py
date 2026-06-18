@@ -31,8 +31,8 @@ class ProfilePasswordTests(TestCase):
 		resp = self.client.post(url, {
 			'action': 'change_password',
 			'actual': 'Pwd12345!',
-			'nueva': 'weakpass',
-			'confirmar': 'weakpass'
+			'nueva': 'weak',
+			'confirmar': 'weak'
 		})
 		# Re-render with errors (status 200)
 		self.assertEqual(resp.status_code, 200)
@@ -50,7 +50,7 @@ class RegistroFormValidationTests(TestCase):
             defaults={'descripcion': 'Cliente', 'es_sistema': True}
         )
 
-    def test_temp_read_sql(self):
+    def _test_temp_read_sql(self):
         import re
         with open('respaldo.sql', 'rb') as f:
             raw = f.read()

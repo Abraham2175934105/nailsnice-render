@@ -388,20 +388,14 @@ def editar_pedido(request, id):
         if form.is_valid():
             nuevo_estado = form.cleaned_data['estado']
             if pedido.estado != nuevo_estado:
-                HistorialEstadoPedido.objects.create(
-                    pedido=pedido,
-                    estado=nuevo_estado,
-                    cambiado_por=request.user,
-                    nota='Cambio de estado desde panel',
-                )
-            pedido.estado = nuevo_estado
+                from .services import cambiar_estado_pedido
+                cambiar_estado_pedido(pedido, nuevo_estado, request.user, 'Cambio de estado desde panel')
             if pedido.direccion_envio:
                 pedido.direccion_envio.linea1 = form.cleaned_data['direccion_linea1']
                 pedido.direccion_envio.ciudad = form.cleaned_data['ciudad']
                 pedido.direccion_envio.departamento = form.cleaned_data.get('departamento') or None
                 pedido.direccion_envio.nombre_destinatario = form.cleaned_data.get('nombre_destinatario') or pedido.direccion_envio.nombre_destinatario
                 pedido.direccion_envio.save()
-            pedido.save(update_fields=['estado', 'actualizado_en'])
             return redirect('lista_pedidos')
     else:
         form = PedidoVentaForm(initial=initial)
@@ -521,20 +515,14 @@ def empleado_editar_pedido(request, id):
         if form.is_valid():
             nuevo_estado = form.cleaned_data['estado']
             if pedido.estado != nuevo_estado:
-                HistorialEstadoPedido.objects.create(
-                    pedido=pedido,
-                    estado=nuevo_estado,
-                    cambiado_por=request.user,
-                    nota='Cambio de estado desde panel',
-                )
-            pedido.estado = nuevo_estado
+                from .services import cambiar_estado_pedido
+                cambiar_estado_pedido(pedido, nuevo_estado, request.user, 'Cambio de estado desde panel')
             if pedido.direccion_envio:
                 pedido.direccion_envio.linea1 = form.cleaned_data['direccion_linea1']
                 pedido.direccion_envio.ciudad = form.cleaned_data['ciudad']
                 pedido.direccion_envio.departamento = form.cleaned_data.get('departamento') or None
                 pedido.direccion_envio.nombre_destinatario = form.cleaned_data.get('nombre_destinatario') or pedido.direccion_envio.nombre_destinatario
                 pedido.direccion_envio.save()
-            pedido.save(update_fields=['estado', 'actualizado_en'])
             messages.success(request, 'Pedido actualizado correctamente.')
             return redirect('empleado_pedidos')
         messages.error(request, 'Corrige los errores del formulario para actualizar el pedido.')
@@ -795,6 +783,11 @@ def checkout_view(request):
             }
             pedido = create_pedido_from_cart(request.user, items, direccion_data, metodo)
             create_transaccion(pedido, metodo, request.user)
+            
+            if metodo.lower() == 'contraentrega':
+                from .services import descontar_stock_pedido
+                descontar_stock_pedido(pedido, request.user)
+                
         except ValidationError as exc:
             error_msg = '; '.join(v[0] for v in exc.message_dict.values()) if hasattr(exc, 'message_dict') else str(exc)
             if is_ajax:
