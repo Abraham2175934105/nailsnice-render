@@ -845,6 +845,15 @@ def dashboard_view(request):
     start_datetime = datetime.combine(start_date, datetime.min.time())
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
+    try:
+        from servicios.models import Agendamiento
+        citas_pendientes_hoy = Agendamiento.objects.filter(
+            inicia_en__date=hoy,
+            estado='PENDIENTE'
+        ).count()
+    except Exception:
+        citas_pendientes_hoy = 0
+
     total_pedidos = PedidoVenta.objects.filter(
         realizado_en__range=(start_datetime, end_datetime)
     ).count()
@@ -907,13 +916,28 @@ def dashboard_view(request):
         stock__lte=low_stock_threshold
     ).values(
         'stock', 
-        nombre=F('variante__producto__nombre')
+        nombre=F('variante__producto__nombre'),
+        marca=F('variante__producto__marca__nombre')
     )
     low_stock_count = productos_bajo_stock.count()
 
     ultimos_pedidos = PedidoVenta.objects.filter(
         realizado_en__range=(start_datetime, end_datetime)
     ).select_related('cliente__usuario').order_by('-realizado_en')[:5]
+
+    # Ingresos ultimos 7 dias
+    siete_dias_atras = datetime.combine(hoy - timedelta(days=7), datetime.min.time())
+    from django.db.models.functions import TruncDay
+    ventas_7_dias = PedidoVenta.objects.filter(
+        realizado_en__range=(siete_dias_atras, end_datetime)
+    ).annotate(
+        dia=TruncDay('realizado_en')
+    ).values('dia').annotate(
+        total_ventas=Sum('monto_total')
+    ).order_by('dia')
+
+    dias_labels = [v['dia'].strftime('%d %b') for v in ventas_7_dias if v['dia'] is not None]
+    dias_sales = [float(v['total_ventas']) for v in ventas_7_dias if v['total_ventas'] is not None]
 
     charts_payload = {
         'monthly_labels': monthly_labels,
@@ -923,7 +947,9 @@ def dashboard_view(request):
         'top_qty': top_qty,
         'top_sales': top_sales,
         'stock_names': stock_names,
-        'stock_qty': stock_qty
+        'stock_qty': stock_qty,
+        'dias_labels': dias_labels,
+        'dias_sales': dias_sales
     }
 
     context = {
@@ -933,6 +959,7 @@ def dashboard_view(request):
         'ingresos': ingresos,
         'total_clientes': total_clientes,
         'total_productos': total_productos,
+        'citas_pendientes_hoy': citas_pendientes_hoy,
         'low_stock_count': low_stock_count,
         'low_stock_threshold': low_stock_threshold,
         'productos_bajo_stock': productos_bajo_stock,

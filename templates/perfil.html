@@ -53,11 +53,11 @@
         <aside class="sidebar">
             <div class="sidebar-title">Mi espacio</div>
             <nav>
-                <a href="#mis-datos" data-target="mis-datos" class="sidebar-link active"><span class="sidebar-link__icon">👤</span><span>Mis datos</span></a>
-                <a href="#mis-agendamientos" data-target="mis-agendamientos" class="sidebar-link"><span class="sidebar-link__icon">📅</span><span>Mis citas</span></a>
-                <a href="#editar-datos" data-target="editar-datos" class="sidebar-link"><span class="sidebar-link__icon">📝</span><span>Editar datos</span></a>
-                <a href="#cambiar-pass" data-target="cambiar-pass" class="sidebar-link"><span class="sidebar-link__icon">🔒</span><span>Cambiar contraseña</span></a>
-                <a href="#mis-pedidos" data-target="mis-pedidos" class="sidebar-link"><span class="sidebar-link__icon">🛍️</span><span>Mis pedidos</span></a>
+                <a href="#mis-datos" data-target="mis-datos" class="sidebar-link active"><span class="sidebar-link__icon"><i class="fas fa-user"></i></span><span>Mis datos</span></a>
+                <a href="#mis-agendamientos" data-target="mis-agendamientos" class="sidebar-link"><span class="sidebar-link__icon"><i class="fas fa-calendar-alt"></i></span><span>Mis citas</span></a>
+                <a href="#editar-datos" data-target="editar-datos" class="sidebar-link"><span class="sidebar-link__icon"><i class="fas fa-pen"></i></span><span>Editar datos</span></a>
+                <a href="#cambiar-pass" data-target="cambiar-pass" class="sidebar-link"><span class="sidebar-link__icon"><i class="fas fa-lock"></i></span><span>Cambiar contraseña</span></a>
+                <a href="#mis-pedidos" data-target="mis-pedidos" class="sidebar-link"><span class="sidebar-link__icon"><i class="fas fa-shopping-bag"></i></span><span>Mis pedidos</span></a>
             </nav>
         </aside>
 
@@ -161,6 +161,81 @@
                         </p>
                     {% endif %}
                 </div>
+            </section>
+
+            <section id="mis-agendamientos" class="panel">
+                <div class="panel-head" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <p class="eyebrow">Historial</p>
+                        <h2>Mis agendamientos</h2>
+                    </div>
+                    <a href="{% url 'cliente_crear_agendamiento' %}" class="btn-primary" style="padding: 10px 20px; border-radius: 50px; background: linear-gradient(135deg, #1a0a14, #2d0f22); color: white; text-decoration: none; font-weight: 600;">
+                        <i class="fas fa-plus"></i> Nueva Cita
+                    </a>
+                </div>
+
+                {% if not agendamientos %}
+                <div class="empty-state">
+                    <div class="empty-state__icon">📅</div>
+                    <p class="empty-state__text">Aún no tienes citas agendadas.</p>
+                </div>
+                {% else %}
+                <div class="agendamientos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+                    {% for cita in agendamientos %}
+                    <div class="glass-card" style="background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border-radius: 20px; border: 1px solid rgba(244,92,150,0.15); padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; transition: transform 0.3s ease;">
+                        {% if cita.is_locked %}
+                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #e74c3c;"></div>
+                        {% elif cita.is_past or cita.is_done %}
+                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #95a5a6;"></div>
+                        {% else %}
+                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #2ecc71;"></div>
+                        {% endif %}
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div>
+                                    <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 0; color: #2d0f22; font-weight: 700;">{{ cita.servicio }}</h3>
+                                    <p style="font-size: 0.85rem; color: #8A2B59; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        <i class="fas fa-user-tie" style="margin-right: 4px;"></i> {{ cita.especialista }}
+                                    </p>
+                                </div>
+                                <span style="font-size: 0.7rem; padding: 6px 12px; border-radius: 20px; font-weight: 700; {% if cita.estado_raw == 'PENDIENTE' or cita.estado_raw == 'CONFIRMADO' %}background: rgba(46,204,113,0.1); color: #27ae60;{% elif cita.estado_raw == 'COMPLETADO' %}background: rgba(52,152,219,0.1); color: #2980b9;{% else %}background: rgba(149,165,166,0.1); color: #7f8c8d;{% endif %}">
+                                    {{ cita.estado }}
+                                </span>
+                            </div>
+                            
+                            <div style="margin-top: 1.5rem; font-size: 0.95rem; color: #4a4a4a; background: #fff; padding: 1rem; border-radius: 12px; border: 1px solid rgba(0,0,0,0.03);">
+                                <p style="margin-bottom: 0.5rem; display: flex; align-items: center;"><i class="far fa-calendar-alt" style="color: #c05c82; width: 20px; margin-right: 8px;"></i> {{ cita.fecha|date:"l, d \d\e F Y" }}</p>
+                                <p style="margin-bottom: 0; display: flex; align-items: center;"><i class="far fa-clock" style="color: #c05c82; width: 20px; margin-right: 8px;"></i> {{ cita.fecha|date:"h:i A" }}</p>
+                            </div>
+                            
+                            {% if cita.notas %}
+                            <div style="margin-top: 1rem; padding: 12px; background: rgba(244,92,150,0.03); border-radius: 12px; font-size: 0.85rem; color: #666; font-style: italic; border-left: 3px solid #c05c82;">
+                                "{{ cita.notas }}"
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                            {% if cita.can_edit %}
+                                <button type="button" class="btn" style="flex: 1; border-radius: 50px; padding: 8px; font-size: 0.85rem; border: 1px solid #c05c82; color: #c05c82; background: transparent; font-weight: 600; cursor: pointer;" onclick="openReagendarModal('{{ cita.id }}', '{{ cita.servicio_id }}', '{{ cita.empleado_id }}', '{{ cita.inicia_en_iso }}', '{{ cita.notas|escapejs }}')">Reagendar</button>
+                                <button type="button" class="btn" style="flex: 1; border-radius: 50px; padding: 8px; font-size: 0.85rem; border: 1px solid #e74c3c; color: #e74c3c; background: transparent; font-weight: 600; cursor: pointer;" onclick="cancelarCita('{{ cita.id }}')">Cancelar</button>
+                            {% else %}
+                                {% if cita.is_locked %}
+                                    <div style="width: 100%; padding: 10px; background: rgba(231,76,60,0.05); color: #c0392b; border-radius: 12px; text-align: center; font-size: 0.8rem; font-weight: 600;">
+                                        <i class="fas fa-lock" style="margin-right: 4px;"></i> Bloqueado (<15 min). Escribe al WhatsApp.
+                                    </div>
+                                {% else %}
+                                    <div style="width: 100%; padding: 10px; background: rgba(149,165,166,0.1); color: #7f8c8d; border-radius: 12px; text-align: center; font-size: 0.8rem; font-weight: 600;">
+                                        <i class="fas fa-history" style="margin-right: 4px;"></i> Histórico (Cita finalizada)
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </section>
 
             <section id="editar-datos" class="panel">
