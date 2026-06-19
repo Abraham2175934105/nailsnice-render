@@ -4,7 +4,7 @@ from django import forms
 from django.utils import timezone
 
 from clientes.models import Cliente
-from usuarios.models import Empleado
+from usuarios.models import Empleado, Usuario
 from .models import Agendamiento, Servicio, CategoriaServicio, TipoServicio, EmpleadoServicio
 
 
