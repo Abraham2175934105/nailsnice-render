@@ -10,12 +10,13 @@ from rest_framework import viewsets
 
 from core.audit import AuditViewSetMixin
 from core.auth import admin_required, employee_required
+from django.contrib.auth.decorators import login_required
 from core.permissions import IsAdminOrReadOnly
 from core.pdf_reports import build_crud_pdf_response
 from clientes.models import Cliente
 from usuarios.models import Empleado
 from .forms import (
-    AgendamientoForm, EmpleadoAgendamientoForm, 
+    AgendamientoForm, EmpleadoAgendamientoForm, ClienteAgendamientoForm,
     ServicioForm, CategoriaServicioForm, TipoServicioForm, EmpleadoServicioForm
 )
 from .models import (
@@ -197,6 +198,36 @@ def lista_agendamientos(request):
         'export_pages': export_pages,
     })
 
+
+# ========== AGENDAMIENTOS CLIENTE ==========
+
+def _get_or_create_client_for_user(user):
+    cliente, _ = Cliente.objects.get_or_create(usuario=user)
+    return cliente
+
+@login_required
+def cliente_crear_agendamiento(request):
+    cliente = _get_or_create_client_for_user(request.user)
+    if request.method == 'POST':
+        form = ClienteAgendamientoForm(request.POST)
+        form.instance.cliente = cliente
+        form.instance.estado = 'PENDIENTE'
+        form.instance.canal = 'WEB'
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Tu cita ha sido agendada con éxito! Te esperamos.')
+            return redirect('/')
+        messages.error(request, 'Por favor corrige los errores del formulario.')
+    else:
+        form = ClienteAgendamientoForm()
+
+    return render(request, 'agendamientos/agendar_cliente.html', {
+        'form': form,
+        'user': request.user,
+    })
+
+
+# ========== AGENDAMIENTOS ADMIN ==========
 
 @admin_required
 def crear_agendamiento(request):

@@ -87,6 +87,34 @@ class EmpleadoAgendamientoForm(AgendamientoForm):
         self.fields['notas'].widget.attrs.update({'maxlength': '300', 'placeholder': 'Observaciones adicionales (opcional)'})
 
 
+# ========== FORMULARIO PARA CLIENTES ==========
+
+class ClienteAgendamientoForm(forms.ModelForm):
+    class Meta:
+        model = Agendamiento
+        fields = ['servicio', 'inicia_en', 'notas']
+        widgets = {
+            'servicio': forms.Select(attrs={'class': 'form-select', 'required': True}),
+            'inicia_en': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-input', 'required': True}),
+            'notas': forms.Textarea(attrs={'rows': 3, 'class': 'form-input', 'placeholder': 'Observaciones adicionales (opcional)'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
+        self.fields['inicia_en'].label = "Fecha y Hora de la Cita"
+
+    def clean(self):
+        cleaned = super().clean()
+        inicia_en = cleaned.get('inicia_en')
+        servicio = cleaned.get('servicio')
+
+        if inicia_en and servicio:
+            if inicia_en < timezone.now():
+                self.add_error('inicia_en', 'La cita no puede ser en el pasado.')
+        return cleaned
+
+
 # ========== FORMULARIOS PARA SERVICIOS ==========
 
 class TipoServicioForm(forms.ModelForm):

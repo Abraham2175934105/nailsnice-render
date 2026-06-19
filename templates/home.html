@@ -20,10 +20,7 @@
         animation: brandShimmer 4s ease-in-out infinite;
         transition: letter-spacing 0.3s ease;
       }
-      .logo h1:hover {
-        letter-spacing: 1px;
-        animation: brandShimmer 1.5s ease-in-out infinite;
-      }
+      .logo h1:hover { animation: brandShimmer 1.5s ease-in-out infinite; }
       @keyframes brandShimmer {
         0%   { background-position: 0% center; }
         50%  { background-position: 100% center; }
@@ -371,23 +368,25 @@
             </div>
         </section>
 
-        <section class="cta">
-            <div class="container">
-                <h2 class="reveal">¿Lista para Lucir unas Uñas Perfectas?</h2>
-                <p class="reveal">Agenda tu cita hoy mismo y descubre por qué somos los mejores en cuidado de uñas.</p>
-                {% if request.user.is_authenticated %}
-                    <a href="{% url 'crear_agendamiento' %}" class="btn-primary reveal">Agendar Cita</a>
-                {% else %}
-                    {# Redirige a WhatsApp si no hay sesión — el usuario puede también agendar después de iniciar sesión #}
-                    <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20Profesional%20Beauty%20%F0%9F%92%85"
-                       target="_blank" rel="noopener"
-                       class="btn-primary reveal"
-                       id="btn-agendar-cita">
-                        📅 Agendar por WhatsApp
+        <section class="cta" style="background: linear-gradient(135deg, #1a0a14, #2d0f22); border-top: 1px solid rgba(255,64,129,0.2); padding: 4rem 1.5rem;">
+            <div class="container" style="text-align: center;">
+                <h2 class="reveal" style="font-family: 'Playfair Display', serif; color: #fff; font-size: 2.2rem; margin-bottom: 1rem;">¿Lista para Lucir unas Uñas Perfectas?</h2>
+                <p class="reveal" style="color: #e0d0d8; font-size: 1.1rem; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    Agenda tu cita hoy mismo. Elige la opción que más te acomode: reserva rápidamente en nuestra plataforma o escríbenos directo.
+                </p>
+                <div class="cta-buttons reveal" style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
+                    <a href="{% url 'cliente_crear_agendamiento' %}" class="btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255,64,129,0.3);">
+                        📅 Agendar en Plataforma
                     </a>
-                    <p class="reveal" style="font-size:0.82rem; margin-top:0.5rem; opacity:0.7;">
-                        ¿Ya tienes cuenta? <a href="{% url 'login' %}" style="color:inherit; text-decoration:underline;">Inicia sesión</a> para agendar directamente en el sistema.
-                    </p>
+                    <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%20Profesional%20Beauty%20%F0%9F%92%85"
+                       target="_blank" rel="noopener" class="btn-secondary" style="padding: 1rem 2rem; font-size: 1.1rem; border-color: #25D366; color: #25D366; background: rgba(37, 211, 102, 0.05);">
+                        💬 Agendar por WhatsApp
+                    </a>
+                </div>
+                {% if not request.user.is_authenticated %}
+                <p class="reveal" style="font-size: 0.85rem; color: #b09aa8; margin-top: 1.5rem;">
+                    Para agendar en la plataforma, <a href="{% url 'login' %}?next={% url 'cliente_crear_agendamiento' %}" style="color: #ff80ab; text-decoration: underline;">inicia sesión</a> o crea una cuenta.
+                </p>
                 {% endif %}
             </div>
         </section>

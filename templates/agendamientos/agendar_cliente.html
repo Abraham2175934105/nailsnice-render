@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Agendar Cita | Profesional Beauty{% endblock %}
+
+{% block content %}
+<main class="page-container" style="padding: 4rem 1.5rem; max-width: 800px; margin: 0 auto; min-height: 80vh;">
+    <div class="glass-panel" style="padding: 3rem; border-radius: 1rem; border-top: 1px solid rgba(255,64,129,0.2); background: rgba(26,10,20,0.8); backdrop-filter: blur(10px);">
+        <div style="text-align: center; margin-bottom: 2.5rem;">
+            <h2 style="font-family: 'Playfair Display', serif; color: #ff80ab; font-size: 2.2rem; margin-bottom: 0.5rem;">Agendar tu Cita</h2>
+            <p style="color: #b09aa8; font-size: 1rem;">Completa los detalles a continuación y reserva tu momento especial.</p>
+        </div>
+        
+        <form method="POST">
+            {% csrf_token %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="field">
+                    <label style="color: #e0d0d8; margin-bottom: 0.5rem; display: block;">Nombre Completo</label>
+                    <input type="text" value="{{ user.nombre }} {{ user.apellido }}" readonly style="width: 100%; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: #fff; opacity: 0.7; cursor: not-allowed;">
+                </div>
+                <div class="field">
+                    <label style="color: #e0d0d8; margin-bottom: 0.5rem; display: block;">Correo Electrónico</label>
+                    <input type="email" value="{{ user.correo }}" readonly style="width: 100%; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: #fff; opacity: 0.7; cursor: not-allowed;">
+                </div>
+            </div>
+
+            <div class="field" style="margin-bottom: 1.5rem;">
+                <label for="{{ form.servicio.id_for_label }}" style="color: #e0d0d8; margin-bottom: 0.5rem; display: block;">Servicio a Agendar</label>
+                {{ form.servicio }}
+                {% if form.servicio.errors %}<span style="color:#e05070; font-size:0.85rem; display: block; margin-top: 0.5rem;">{{ form.servicio.errors }}</span>{% endif %}
+            </div>
+
+            <div class="field" style="margin-bottom: 1.5rem;">
+                <label for="{{ form.inicia_en.id_for_label }}" style="color: #e0d0d8; margin-bottom: 0.5rem; display: block;">Fecha y Hora de la Cita</label>
+                {{ form.inicia_en }}
+                {% if form.inicia_en.errors %}<span style="color:#e05070; font-size:0.85rem; display: block; margin-top: 0.5rem;">{{ form.inicia_en.errors }}</span>{% endif %}
+            </div>
+
+            <div class="field" style="margin-bottom: 2.5rem;">
+                <label for="{{ form.notas.id_for_label }}" style="color: #e0d0d8; margin-bottom: 0.5rem; display: block;">Notas o Preferencias (Opcional)</label>
+                {{ form.notas }}
+                {% if form.notas.errors %}<span style="color:#e05070; font-size:0.85rem; display: block; margin-top: 0.5rem;">{{ form.notas.errors }}</span>{% endif %}
+            </div>
+
+            <div style="text-align: center;">
+                <button type="submit" class="btn-primary" style="padding: 1rem 3rem; font-size: 1.1rem; width: 100%; box-shadow: 0 4px 15px rgba(255,64,129,0.3);">Confirmar Cita</button>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}

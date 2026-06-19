@@ -14,6 +14,9 @@ router.register(r'historial-agendamientos', views.HistorialEstadoAgendamientoVie
 urlpatterns = [
     path('api/', include(router.urls)),
     
+    # CLIENTE - Agendamiento Público
+    path('agendar/', views.cliente_crear_agendamiento, name='cliente_crear_agendamiento'),
+    
     # ADMIN - Agendamientos
     path('agendamientos/', views.lista_agendamientos, name='lista_agendamientos'),
     path('agendamientos/crear/', views.crear_agendamiento, name='crear_agendamiento'),
