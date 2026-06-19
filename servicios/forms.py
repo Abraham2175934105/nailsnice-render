@@ -90,11 +90,17 @@ class EmpleadoAgendamientoForm(AgendamientoForm):
 # ========== FORMULARIO PARA CLIENTES ==========
 
 class ClienteAgendamientoForm(forms.ModelForm):
+    # Campo personalizado que apunta a Usuario en vez de Empleado (para que la interfaz lo llene)
+    empleado = forms.ModelChoiceField(
+        queryset=Usuario.objects.none(),  # Se llena en __init__
+        widget=forms.Select(attrs={'class': 'form-select', 'required': True}),
+        label='Especialista a elegir'
+    )
+
     class Meta:
         model = Agendamiento
         fields = ['empleado', 'servicio', 'inicia_en', 'notas']
         widgets = {
-            'empleado': forms.Select(attrs={'class': 'form-select', 'required': True}),
             'servicio': forms.Select(attrs={'class': 'form-select', 'required': True}),
             'inicia_en': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-input', 'required': True}),
             'notas': forms.Textarea(attrs={'rows': 3, 'class': 'form-input', 'placeholder': 'Observaciones adicionales (opcional)'}),
@@ -103,16 +109,28 @@ class ClienteAgendamientoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
-        self.fields['empleado'].queryset = Empleado.objects.filter(activo=True).select_related('usuario').order_by('usuario__nombre')
+        # Filtramos los usuarios que tienen el rol de "Empleado"
+        self.fields['empleado'].queryset = Usuario.objects.filter(
+            estado='ACTIVO', 
+            roles_asignados__id_rol__nombre='Empleado'
+        ).order_by('nombre')
         self.fields['inicia_en'].label = "Fecha y Hora de la Cita"
 
     def clean(self):
         cleaned = super().clean()
         inicia_en = cleaned.get('inicia_en')
         servicio = cleaned.get('servicio')
-        empleado = cleaned.get('empleado')
+        usuario_empleado = cleaned.get('empleado')  # Esto ahora es una instancia de Usuario
 
-        if inicia_en and servicio and empleado:
+        if inicia_en and servicio and usuario_empleado:
+            # Resolución dinámica del perfil físico del Empleado (lo auto-crea si no existe)
+            perfil_empleado, created = Empleado.objects.get_or_create(
+                usuario=usuario_empleado,
+                defaults={'codigo_empleado': f'EMP-{usuario_empleado.id_usuario}', 'activo': True}
+            )
+            # Reemplazar la instancia de Usuario por la instancia de Empleado para que el modelo Agendamiento no falle
+            cleaned['empleado'] = perfil_empleado
+
             # 1. Bloqueo de fechas pasadas estricto
             if inicia_en < timezone.now():
                 self.add_error('inicia_en', 'La cita no puede ser programada en el pasado. Selecciona una hora futura válida.')
@@ -124,7 +142,7 @@ class ClienteAgendamientoForm(forms.ModelForm):
 
             # 3. Lógica de disponibilidad (Cruces de horario)
             conflictos = Agendamiento.objects.filter(
-                empleado=empleado,
+                empleado=perfil_empleado,
                 estado__in={'PENDIENTE', 'CONFIRMADO', 'EN_PROCESO'},
                 inicia_en__lt=termina_en,
                 termina_en__gt=inicia_en,
@@ -132,7 +150,6 @@ class ClienteAgendamientoForm(forms.ModelForm):
 
             if conflictos.exists():
                 conflicto = conflictos.last()
-                # Calcular siguiente hora disponible basada en el conflicto
                 local_time = timezone.localtime(conflicto.termina_en)
                 msg = f'El especialista seleccionado está ocupado en ese horario. Estará libre a partir de las {local_time.strftime("%I:%M %p")}.'
                 self.add_error('inicia_en', msg)

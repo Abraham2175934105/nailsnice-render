@@ -1,4 +1,4 @@
-﻿from django.views.generic import ListView, CreateView, UpdateView
+from django.views.generic import ListView, CreateView, UpdateView
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -38,8 +38,27 @@ class UsuarioListView(LoginRequiredMixin, ListView):
     context_object_name = 'usuarios'
     
     def get_queryset(self):
-        # Retorna todos los usuarios mapeados desde la BD 3FN
-        return Usuario.objects.all().prefetch_related('roles_asignados__id_rol')
+        # Retorna todos los usuarios mapeados desde la BD 3FN con sus roles
+        return Usuario.objects.all().prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        usuarios = list(context['usuarios'])
+        
+        # Clasificar usuarios basados en sus roles (usando list comprehensions eficientes)
+        context['administradores'] = [
+            u for u in usuarios 
+            if any(r.id_rol.nombre == 'Administrador' for r in u.roles_asignados.all())
+        ]
+        context['empleados'] = [
+            u for u in usuarios 
+            if any(r.id_rol.nombre == 'Empleado' for r in u.roles_asignados.all())
+        ]
+        context['clientes'] = [
+            u for u in usuarios 
+            if any(r.id_rol.nombre == 'Cliente' for r in u.roles_asignados.all()) or not u.roles_asignados.exists()
+        ]
+        return context
 
 
 class UsuarioCreateView(LoginRequiredMixin, CreateView):

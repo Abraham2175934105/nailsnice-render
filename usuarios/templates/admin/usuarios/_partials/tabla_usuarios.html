@@ -1,0 +1,60 @@
+<div class="card border-0 shadow-sm mb-5" style="border-radius: 20px; overflow: hidden;">
+    <div class="card-header bg-white py-3 border-0 mt-2 px-4 d-flex align-items-center gap-3">
+        <h5 class="m-0" style="font-family: 'Playfair Display', serif; color: #5A2440; font-weight: 600;">{{ titulo }}</h5>
+        <span class="badge rounded-pill" style="background-color: {{ badge_color }}; color: {{ badge_text }}; font-weight: 500;">
+            {{ usuarios_list|length }} Registros
+        </span>
+    </div>
+    <div class="card-body px-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" style="border-color: #F8EDF1;">
+                <thead style="background-color: #FAF4F6; color: #8A2B59;">
+                    <tr>
+                        <th class="py-3 px-3" style="border-radius: 10px 0 0 10px; font-weight: 600;">Nombre Completo</th>
+                        <th class="py-3" style="font-weight: 600;">Correo Electrónico</th>
+                        <th class="py-3" style="font-weight: 600;">Teléfono</th>
+                        <th class="py-3" style="font-weight: 600;">Estado</th>
+                        <th class="py-3 px-3 text-end" style="border-radius: 0 10px 10px 0; font-weight: 600;">Acciones UI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios_list %}
+                    <tr style="transition: all 0.2s;">
+                        <td class="py-3 px-3"><strong>{{ u.nombre }} {{ u.apellido }}</strong></td>
+                        <td>{{ u.correo }}</td>
+                        <td>{{ u.telefono|default:"—" }}</td>
+                        <td>
+                            {% if u.estado == 'ACTIVO' %}
+                                <span class="badge px-3 py-2 text-white" style="background-color: #61B15A; border-radius: 30px; font-weight: 500;">Activo</span>
+                            {% else %}
+                                <span class="badge px-3 py-2 text-white" style="background-color: #E76F51; border-radius: 30px; font-weight: 500;">Bloqueado</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-end">
+                            <div class="d-inline-flex gap-2">
+                                <a href="{% url 'usuarios:usuario_edit' u.id_usuario %}" class="btn btn-sm px-3" style="background-color: #FAF4F6; color: #8A2B59; border-radius: 30px; border: 1px solid #EAD9E0;">
+                                    <i class="fas fa-edit me-1"></i> Editar
+                                </a>
+                                
+                                {% if u.estado == 'ACTIVO' %}
+                                    <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn btn-sm px-3 text-white" style="background-color: #D9534F; border-radius: 30px;">
+                                        <i class="fas fa-user-slash me-1"></i> Bloquear
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn btn-sm px-3 text-white" style="background-color: #4BB543; border-radius: 30px;">
+                                        <i class="fas fa-user-check me-1"></i> Activar
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">No se encontraron usuarios en esta categoría.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
