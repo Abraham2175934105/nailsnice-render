@@ -92,8 +92,9 @@ class EmpleadoAgendamientoForm(AgendamientoForm):
 class ClienteAgendamientoForm(forms.ModelForm):
     class Meta:
         model = Agendamiento
-        fields = ['servicio', 'inicia_en', 'notas']
+        fields = ['empleado', 'servicio', 'inicia_en', 'notas']
         widgets = {
+            'empleado': forms.Select(attrs={'class': 'form-select', 'required': True}),
             'servicio': forms.Select(attrs={'class': 'form-select', 'required': True}),
             'inicia_en': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-input', 'required': True}),
             'notas': forms.Textarea(attrs={'rows': 3, 'class': 'form-input', 'placeholder': 'Observaciones adicionales (opcional)'}),
@@ -102,16 +103,40 @@ class ClienteAgendamientoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
+        self.fields['empleado'].queryset = Empleado.objects.filter(activo=True).select_related('usuario').order_by('usuario__nombre')
         self.fields['inicia_en'].label = "Fecha y Hora de la Cita"
 
     def clean(self):
         cleaned = super().clean()
         inicia_en = cleaned.get('inicia_en')
         servicio = cleaned.get('servicio')
+        empleado = cleaned.get('empleado')
 
-        if inicia_en and servicio:
+        if inicia_en and servicio and empleado:
+            # 1. Bloqueo de fechas pasadas estricto
             if inicia_en < timezone.now():
-                self.add_error('inicia_en', 'La cita no puede ser en el pasado.')
+                self.add_error('inicia_en', 'La cita no puede ser programada en el pasado. Selecciona una hora futura válida.')
+                return cleaned
+
+            # 2. Calcular la duración (usar duración del servicio)
+            termina_en = inicia_en + timedelta(minutes=servicio.duracion_minutos)
+            cleaned['termina_en'] = termina_en
+
+            # 3. Lógica de disponibilidad (Cruces de horario)
+            conflictos = Agendamiento.objects.filter(
+                empleado=empleado,
+                estado__in={'PENDIENTE', 'CONFIRMADO', 'EN_PROCESO'},
+                inicia_en__lt=termina_en,
+                termina_en__gt=inicia_en,
+            ).order_by('termina_en')
+
+            if conflictos.exists():
+                conflicto = conflictos.last()
+                # Calcular siguiente hora disponible basada en el conflicto
+                local_time = timezone.localtime(conflicto.termina_en)
+                msg = f'El especialista seleccionado está ocupado en ese horario. Estará libre a partir de las {local_time.strftime("%I:%M %p")}.'
+                self.add_error('inicia_en', msg)
+
         return cleaned
 
 
