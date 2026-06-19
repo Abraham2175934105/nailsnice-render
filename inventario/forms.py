@@ -54,9 +54,9 @@ class VarianteProductoForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': 'Ej: Rojo, 50ml, Talla M… (deja vacío si no aplica)',
             }),
-            'precio': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
-            'costo': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
-            'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
+            'precio': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
+            'costo': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
+            'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
         }
         labels = {
             'producto': 'Producto (catálogo)',
@@ -170,9 +170,13 @@ class InventarioForm(forms.ModelForm):
             'descripcion',
             'marca',
             'proveedor',
+            'color',
             'imagen',
             'is_active',
         ]
+        widgets = {
+            'precio': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
+        }
 
     def clean_fecha_ingreso(self):
         fecha = self.cleaned_data.get('fecha_ingreso')
@@ -215,12 +219,3 @@ class InventarioForm(forms.ModelForm):
         if not desc:
             raise ValidationError('La descripción es requerida.')
         return desc
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        imagen = self.cleaned_data.get('imagen')
-        if imagen:
-            instance.imagen = getattr(imagen, 'name', str(imagen))
-        if commit:
-            instance.save()
-        return instance

@@ -202,15 +202,17 @@ def lista_agendamientos(request):
 # ========== AGENDAMIENTOS CLIENTE ==========
 
 def _get_or_create_client_for_user(user):
-    cliente, _ = Cliente.objects.get_or_create(usuario=user)
-    return cliente
+    if not hasattr(user, 'is_authenticated') or not user.is_authenticated:
+        return None
+    try:
+        cliente, _ = Cliente.objects.get_or_create(usuario=user)
+        return cliente
+    except Exception:
+        return None
 
 @login_required
 def cliente_crear_agendamiento(request):
-    try:
-        cliente = _get_or_create_client_for_user(request.user)
-    except Exception as e:
-        cliente = None
+    cliente = _get_or_create_client_for_user(request.user)
         
     if request.method == 'POST':
         form = ClienteAgendamientoForm(request.POST)
@@ -230,11 +232,14 @@ def cliente_crear_agendamiento(request):
         form = ClienteAgendamientoForm()
 
     # Prevenir 500 si falta el usuario o tiene atributos nulos
-    user_data = {
-        'nombre': getattr(request.user, 'nombre', ''),
-        'apellido': getattr(request.user, 'apellido', ''),
-        'correo': getattr(request.user, 'correo', getattr(request.user, 'email', '')),
-    }
+    try:
+        user_data = {
+            'nombre': request.user.nombre if hasattr(request.user, 'nombre') else '',
+            'apellido': request.user.apellido if hasattr(request.user, 'apellido') else '',
+            'correo': request.user.correo if hasattr(request.user, 'correo') else getattr(request.user, 'email', ''),
+        }
+    except Exception:
+        user_data = {'nombre': '', 'apellido': '', 'correo': ''}
 
     return render(request, 'agendamientos/agendar_cliente.html', {
         'form': form,
