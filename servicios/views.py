@@ -224,7 +224,9 @@ def cliente_crear_agendamiento(request):
             if not cliente:
                 messages.error(request, 'Error: Perfil de cliente no disponible. Por favor contacta soporte.')
                 return redirect('/')
-            form.save()
+            cita = form.save(commit=False)
+            cita.cliente = cliente
+            cita.save()
             messages.success(request, '¡Tu cita ha sido agendada con éxito! Te esperamos.')
             return redirect('/')
         messages.error(request, 'Por favor corrige los errores del formulario.')
@@ -468,73 +470,6 @@ def eliminar_servicio(request, id):
     return redirect('lista_servicios')
 
 
-# ========== EMPLEADO-SERVICIO ASIGNACIÓN ==========
-
-@admin_required
-def lista_empleado_servicios(request):
-    asignaciones_qs = EmpleadoServicio.objects.select_related('empleado__usuario', 'servicio')
-    
-    search = (request.GET.get('q') or '').strip()
-    if search:
-        asignaciones_qs = asignaciones_qs.filter(
-            Q(empleado__usuario__correo__icontains=search) |
-            Q(empleado__usuario__nombre__icontains=search) |
-            Q(servicio__nombre__icontains=search)
-        )
-    
-    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
-    paginator = Paginator(asignaciones_qs, page_size)
-    page_obj = paginator.get_page(request.GET.get('page'))
-    
-    return render(request, 'servicios/lista_empleado_servicios.html', {
-        'page_obj': page_obj,
-        'asignaciones': page_obj.object_list,
-        'search': search,
-    })
-
-
-@admin_required
-def crear_empleado_servicio(request):
-    if request.method == 'POST':
-        form = EmpleadoServicioForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Servicio asignado al empleado.')
-            return redirect('lista_empleado_servicios')
-        messages.error(request, 'Error en la asignación.')
-    else:
-        form = EmpleadoServicioForm()
-    
-    return render(request, 'servicios/formulario_empleado_servicio.html', {
-        'form': form,
-        'titulo': 'Asignar Servicio a Empleado',
-    })
-
-
-@admin_required
-def editar_empleado_servicio(request, id):
-    asignacion = get_object_or_404(EmpleadoServicio, pk=id)
-    if request.method == 'POST':
-        form = EmpleadoServicioForm(request.POST, instance=asignacion)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Asignación actualizada.')
-            return redirect('lista_empleado_servicios')
-    else:
-        form = EmpleadoServicioForm(instance=asignacion)
-    
-    return render(request, 'servicios/formulario_empleado_servicio.html', {
-        'form': form,
-        'titulo': 'Editar Asignación',
-    })
-
-
-@admin_required
-def eliminar_empleado_servicio(request, id):
-    asignacion = get_object_or_404(EmpleadoServicio, pk=id)
-    asignacion.delete()
-    messages.info(request, 'Asignación eliminada.')
-    return redirect('lista_empleado_servicios')
 
 
 @admin_required

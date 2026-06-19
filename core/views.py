@@ -406,38 +406,35 @@ def profile_view(request):
 
     try:
         from servicios.models import Agendamiento
-        from clientes.models import Cliente
-        cliente_perfil = Cliente.objects.filter(usuario=user).first()
+        agendamientos_qs = Agendamiento.objects.filter(cliente__usuario=user).select_related('servicio', 'empleado__usuario').order_by('-inicia_en')
         agendamientos = []
-        if cliente_perfil:
-            agendamientos_qs = Agendamiento.objects.filter(cliente=cliente_perfil).select_related('servicio', 'empleado__usuario').order_by('-inicia_en')
-            now = timezone.now()
-            for ag in agendamientos_qs:
-                is_past = ag.inicia_en < now
-                is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
-                time_diff = (ag.inicia_en - now).total_seconds()
-                is_locked = time_diff <= 900 and not is_past
+        now = timezone.now()
+        for ag in agendamientos_qs:
+            is_past = ag.inicia_en < now
+            is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
+            time_diff = (ag.inicia_en - now).total_seconds()
+            is_locked = time_diff <= 900 and not is_past
+            
+            especialista_str = 'Sin asignar'
+            if ag.empleado and ag.empleado.usuario:
+                especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
                 
-                especialista_str = 'Sin asignar'
-                if ag.empleado and ag.empleado.usuario:
-                    especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
-                    
-                agendamientos.append({
-                    'id': ag.pk,
-                    'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
-                    'servicio_id': ag.servicio.pk if ag.servicio else '',
-                    'especialista': especialista_str,
-                    'empleado_id': ag.empleado.usuario.pk if ag.empleado and ag.empleado.usuario else '',
-                    'fecha': ag.inicia_en,
-                    'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
-                    'estado_raw': ag.estado,
-                    'is_past': is_past,
-                    'is_done': is_done,
-                    'is_locked': is_locked,
-                    'can_edit': not is_past and not is_done and not is_locked,
-                    'inicia_en_iso': timezone.localtime(ag.inicia_en).strftime('%Y-%m-%dT%H:%M') if ag.inicia_en else '',
-                    'notas': ag.notas or '',
-                })
+            agendamientos.append({
+                'id': ag.pk,
+                'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
+                'servicio_id': ag.servicio.pk if ag.servicio else '',
+                'especialista': especialista_str,
+                'empleado_id': ag.empleado.usuario.pk if ag.empleado and ag.empleado.usuario else '',
+                'fecha': ag.inicia_en,
+                'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
+                'estado_raw': ag.estado,
+                'is_past': is_past,
+                'is_done': is_done,
+                'is_locked': is_locked,
+                'can_edit': not is_past and not is_done and not is_locked,
+                'inicia_en_iso': timezone.localtime(ag.inicia_en).strftime('%Y-%m-%dT%H:%M') if ag.inicia_en else '',
+                'notas': ag.notas or '',
+            })
     except Exception as e:
         agendamientos = []
 

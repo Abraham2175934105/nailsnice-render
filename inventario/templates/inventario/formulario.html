@@ -86,27 +86,34 @@
         {% endif %}
       </div>
 
-      <!-- Campo de Producto (catálogo) — solo visible en CREACIÓN para seleccionar el Producto padre -->
-      {% if not is_editing %}
-      <div class="field u-grid-full">
-        <label for="{{ form_variante.producto.id_for_label }}">
-          Producto del catálogo
+      <!-- Categoría / Subcategoría -->
+      <div class="field">
+        <label for="{{ form_variante.subcategoria.id_for_label }}">
+          {{ form_variante.subcategoria.label }}
           <span class="field-required" title="Obligatorio">*</span>
         </label>
-        {{ form_variante.producto }}
-        <small class="form-hint">
-          Selecciona a qué producto del catálogo pertenece esta variante. Si el producto aún no existe en el catálogo, créalo primero desde <a href="{% url 'catalogos_admin' %}" target="_blank">Catálogos</a>.
-        </small>
-        {% if form_variante.producto.errors %}
-          <span class="badge-chip">{{ form_variante.producto.errors }}</span>
+        {{ form_variante.subcategoria }}
+        {% if form_variante.subcategoria.help_text %}
+          <small class="form-hint">{{ form_variante.subcategoria.help_text }}</small>
+        {% endif %}
+        {% if form_variante.subcategoria.errors %}
+          <span class="badge-chip">{{ form_variante.subcategoria.errors }}</span>
         {% endif %}
       </div>
-      {% else %}
-      <!-- En edición mostramos el nombre del producto como info (no editable aquí) -->
-      <div class="field u-grid-full" style="display:none;">
-        {{ form_variante.producto }}
+
+      <!-- Marca -->
+      <div class="field">
+        <label for="{{ form_variante.marca.id_for_label }}">
+          {{ form_variante.marca.label }}
+        </label>
+        {{ form_variante.marca }}
+        {% if form_variante.marca.help_text %}
+          <small class="form-hint">{{ form_variante.marca.help_text }}</small>
+        {% endif %}
+        {% if form_variante.marca.errors %}
+          <span class="badge-chip">{{ form_variante.marca.errors }}</span>
+        {% endif %}
       </div>
-      {% endif %}
 
       <!-- Nombre de Variante / Presentación -->
       <div class="field u-grid-full">

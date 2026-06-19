@@ -4,6 +4,14 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from rest_framework import viewsets
+import io
+import pandas as pd
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import HttpResponse
+from core.auth import admin_required
+from core.pdf_reports import build_crud_pdf_response
+
 
 # Mixins y Permisos heredados del núcleo del proyecto
 from core.audit import AuditViewSetMixin
@@ -29,39 +37,265 @@ from django.views.decorators.csrf import csrf_exempt
 # 1. VISTAS PARA INTERFAZ GRÁFICA (UI SERVER-RENDERED - TEMPLATES .HTML)
 # =========================================================================
 
-class AdministradorListView(LoginRequiredMixin, ListView):
-    model = Usuario
-    template_name = 'admin/usuarios/admin_list.html'
-    context_object_name = 'usuarios_list'
+ADMIN_COLUMNS = [
+    ('nombre', 'Nombre'),
+    ('apellido', 'Apellido'),
+    ('correo', 'Correo'),
+    ('telefono', 'Teléfono'),
+    ('estado', 'Estado'),
+    ('creado_en', 'Fecha Registro'),
+]
+ADMIN_DEFAULT_COLUMNS = ['nombre', 'apellido', 'correo', 'telefono', 'estado']
+
+EMPLEADO_COLUMNS = [
+    ('nombre', 'Nombre'),
+    ('apellido', 'Apellido'),
+    ('correo', 'Correo'),
+    ('telefono', 'Teléfono'),
+    ('estado', 'Estado'),
+    ('codigo_empleado', 'Código Empleado'),
+    ('cargo', 'Cargo'),
+    ('fecha_contratacion', 'Fecha Contratación'),
+    ('creado_en', 'Fecha Registro'),
+]
+EMPLEADO_DEFAULT_COLUMNS = ['nombre', 'apellido', 'correo', 'telefono', 'estado', 'cargo']
+
+PAGE_MIN = 10
+PAGE_MAX = 30
+
+def _clamp_page_size(raw_value: str):
+    try:
+        value = int(raw_value)
+    except Exception:
+        value = PAGE_MIN
+    return max(PAGE_MIN, min(PAGE_MAX, value))
+
+def _build_admin_rows(queryset, selected):
+    config = {
+        'nombre': ('Nombre', lambda u: u.nombre),
+        'apellido': ('Apellido', lambda u: u.apellido),
+        'correo': ('Correo', lambda u: u.correo),
+        'telefono': ('Teléfono', lambda u: u.telefono or 'No registrado'),
+        'estado': ('Estado', lambda u: u.estado),
+        'creado_en': ('Fecha Registro', lambda u: u.creado_en),
+    }
+    keys = [k for k in selected if k in config] or ADMIN_DEFAULT_COLUMNS
+    rows = []
+    for user in queryset:
+        row = {}
+        for key in keys:
+            label, fn = config[key]
+            row[label] = fn(user)
+        rows.append(row)
+    return rows
+
+def _export_admins(request, queryset, columns, fmt: str):
+    rows = _build_admin_rows(queryset, columns)
+    df = pd.DataFrame(rows)
+    filename = f"administradores.{fmt}"
+    if fmt == 'csv':
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False)
+        return HttpResponse(buffer.getvalue(), content_type='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    if fmt == 'xlsx':
+        buffer = io.BytesIO()
+        df.to_excel(buffer, index=False)
+        buffer.seek(0)
+        return HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    if fmt == 'pdf':
+        return build_crud_pdf_response(
+            request=request,
+            report_title='Reporte de Administradores',
+            rows=rows,
+            filename=filename,
+        )
+    return None
+
+@admin_required
+def admin_list(request):
+    usuarios_qs = Usuario.objects.filter(
+        roles_asignados__id_rol__nombre='Administrador'
+    ).prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
     
-    def get_queryset(self):
-        return Usuario.objects.filter(
-            roles_asignados__id_rol__nombre='Administrador'
-        ).prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titulo_crud'] = "Equipo Administrativo"
-        context['badge_color'] = "#F8D7DA"
-        context['badge_text'] = "#721C24"
-        return context
-
-class EmpleadoUIListView(LoginRequiredMixin, ListView):
-    model = Usuario
-    template_name = 'admin/usuarios/empleado_list.html'
-    context_object_name = 'usuarios_list'
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        usuarios_qs = usuarios_qs.filter(
+            Q(nombre__icontains=search)
+            | Q(apellido__icontains=search)
+            | Q(correo__icontains=search)
+            | Q(telefono__icontains=search)
+        )
+        
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(usuarios_qs, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
-    def get_queryset(self):
-        return Usuario.objects.filter(
-            roles_asignados__id_rol__nombre='Empleado'
-        ).prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
+    selected_columns = [c for c in request.GET.getlist('columns') if c in dict(ADMIN_COLUMNS)] or ADMIN_DEFAULT_COLUMNS
+    export_scope = (request.GET.get('export_scope') or 'page').lower()
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+        
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+    
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
+    
+    export_fmt = (request.GET.get('export') or '').lower()
+    if export_fmt in {'csv', 'xlsx', 'pdf'}:
+        if export_scope == 'all':
+            export_source = usuarios_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
+        response = _export_admins(request, export_source, selected_columns, export_fmt)
+        if response:
+            return response
+            
+    return render(request, 'admin/usuarios/admin_list.html', {
+        'page_obj': page_obj,
+        'usuarios_list': page_obj.object_list,
+        'titulo_crud': "Equipo Administrativo",
+        'badge_color': "#F8D7DA",
+        'badge_text': "#721C24",
+        'total_registros': paginator.count,
+        'search': search,
+        'page_size': page_size,
+        'columns_options': ADMIN_COLUMNS,
+        'selected_columns': selected_columns,
+        'export_scope': export_scope,
+        'export_page': export_page,
+        'export_pages': export_pages,
+    })
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['titulo_crud'] = "Especialistas y Operativos"
-        context['badge_color'] = "#D1ECF1"
-        context['badge_text'] = "#0C5460"
-        return context
+def _build_empleado_rows(queryset, selected):
+    config = {
+        'nombre': ('Nombre', lambda u: u.nombre),
+        'apellido': ('Apellido', lambda u: u.apellido),
+        'correo': ('Correo', lambda u: u.correo),
+        'telefono': ('Teléfono', lambda u: u.telefono or 'No registrado'),
+        'estado': ('Estado', lambda u: u.estado),
+        'codigo_empleado': ('Código Empleado', lambda u: u.empleado.codigo_empleado if hasattr(u, 'empleado') and u.empleado else '—'),
+        'cargo': ('Cargo', lambda u: u.empleado.cargo if hasattr(u, 'empleado') and u.empleado else '—'),
+        'fecha_contratacion': ('Fecha Contratación', lambda u: u.empleado.fecha_contratacion.strftime('%d/%m/%Y') if hasattr(u, 'empleado') and u.empleado and u.empleado.fecha_contratacion else '—'),
+        'creado_en': ('Fecha Registro', lambda u: u.creado_en),
+    }
+    keys = [k for k in selected if k in config] or EMPLEADO_DEFAULT_COLUMNS
+    rows = []
+    for user in queryset:
+        row = {}
+        for key in keys:
+            label, fn = config[key]
+            row[label] = fn(user)
+        rows.append(row)
+    return rows
+
+def _export_empleados(request, queryset, columns, fmt: str):
+    rows = _build_empleado_rows(queryset, columns)
+    df = pd.DataFrame(rows)
+    filename = f"empleados.{fmt}"
+    if fmt == 'csv':
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False)
+        return HttpResponse(buffer.getvalue(), content_type='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    if fmt == 'xlsx':
+        buffer = io.BytesIO()
+        df.to_excel(buffer, index=False)
+        buffer.seek(0)
+        return HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    if fmt == 'pdf':
+        return build_crud_pdf_response(
+            request=request,
+            report_title='Reporte de Empleados',
+            rows=rows,
+            filename=filename,
+        )
+    return None
+
+@admin_required
+def empleado_list(request):
+    usuarios_qs = Usuario.objects.filter(
+        roles_asignados__id_rol__nombre='Empleado'
+    ).select_related('empleado').prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
+    
+    search = (request.GET.get('q') or '').strip()
+    if search:
+        usuarios_qs = usuarios_qs.filter(
+            Q(nombre__icontains=search)
+            | Q(apellido__icontains=search)
+            | Q(correo__icontains=search)
+            | Q(telefono__icontains=search)
+        )
+        
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(usuarios_qs, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    selected_columns = [c for c in request.GET.getlist('columns') if c in dict(EMPLEADO_COLUMNS)] or EMPLEADO_DEFAULT_COLUMNS
+    export_scope = (request.GET.get('export_scope') or 'page').lower()
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+        
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+    
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
+    
+    export_fmt = (request.GET.get('export') or '').lower()
+    if export_fmt in {'csv', 'xlsx', 'pdf'}:
+        if export_scope == 'all':
+            export_source = usuarios_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
+        response = _export_empleados(request, export_source, selected_columns, export_fmt)
+        if response:
+            return response
+            
+    return render(request, 'admin/usuarios/empleado_list.html', {
+        'page_obj': page_obj,
+        'usuarios_list': page_obj.object_list,
+        'titulo_crud': "Especialistas y Operativos",
+        'badge_color': "#D1ECF1",
+        'badge_text': "#0C5460",
+        'total_registros': paginator.count,
+        'search': search,
+        'page_size': page_size,
+        'columns_options': EMPLEADO_COLUMNS,
+        'selected_columns': selected_columns,
+        'export_scope': export_scope,
+        'export_page': export_page,
+        'export_pages': export_pages,
+    })
 
 
 class UsuarioCreateView(LoginRequiredMixin, CreateView):

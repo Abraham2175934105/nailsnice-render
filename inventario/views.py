@@ -229,14 +229,29 @@ def crear_producto(request):
             if variante_form.is_valid() and saldo_form.is_valid():
                 with transaction.atomic():
                     variante = variante_form.save(commit=False)
-                    # Actualizar nombre y descripción del Producto padre
                     nombre_producto = variante_form.cleaned_data.get('nombre_producto', '').strip()
                     descripcion = variante_form.cleaned_data.get('descripcion', '').strip()
-                    if nombre_producto and variante.producto_id:
-                        Producto.objects.filter(pk=variante.producto_id).update(
-                            nombre=nombre_producto,
-                            descripcion_corta=descripcion or None,
-                        )
+                    subcategoria = variante_form.cleaned_data.get('subcategoria')
+                    marca = variante_form.cleaned_data.get('marca')
+                    
+                    if not nombre_producto:
+                        nombre_producto = f"Producto {variante.sku}"
+                        
+                    from django.utils.text import slugify
+                    import uuid
+                    slug_base = slugify(nombre_producto)
+                    slug = f"{slug_base}-{str(uuid.uuid4())[:8]}"
+
+                    from productos.models import Producto
+                    producto = Producto.objects.create(
+                        nombre=nombre_producto,
+                        subcategoria=subcategoria,
+                        marca=marca,
+                        descripcion_corta=descripcion,
+                        slug=slug,
+                        creado_por=request.user
+                    )
+                    variante.producto = producto
                     variante.save()
                     variante_form.save_m2m()
                     saldo = saldo_form.save(commit=False)

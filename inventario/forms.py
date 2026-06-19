@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from productos.models import VarianteProducto, Producto
+from productos.models import VarianteProducto, Producto, SubcategoriaCatalogo, MarcaCatalogo
 from .models import Bodega, SaldoInventario, TipoMovimientoInventario, MovimientoInventario
 
 
@@ -27,6 +27,20 @@ class VarianteProductoForm(forms.ModelForm):
         }),
         help_text="Descripción que aparece en la página de detalle del catálogo.",
     )
+    subcategoria = forms.ModelChoiceField(
+        queryset=SubcategoriaCatalogo.objects.filter(activo=True).select_related('categoria').order_by('categoria__nombre', 'nombre'),
+        required=True,
+        label="Categoría / Subcategoría",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text="Categoría del catálogo a la que pertenece el producto.",
+    )
+    marca = forms.ModelChoiceField(
+        queryset=MarcaCatalogo.objects.filter(activo=True).order_by('nombre'),
+        required=False,
+        label="Marca",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text="Marca del producto (opcional).",
+    )
     imagen = forms.FileField(
         required=False,
         label="Imagen del Producto",
@@ -36,7 +50,6 @@ class VarianteProductoForm(forms.ModelForm):
     class Meta:
         model = VarianteProducto
         fields = [
-            'producto',
             'sku',
             'codigo_barras',
             'nombre_variante',
@@ -46,8 +59,6 @@ class VarianteProductoForm(forms.ModelForm):
             'activo',
         ]
         widgets = {
-            # El select queda oculto; se usa sólo en creación, en edición se sustituye por nombre_producto.
-            'producto': forms.Select(attrs={'class': 'form-select'}),
             'sku': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: SKU-001'}),
             'codigo_barras': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Opcional'}),
             'nombre_variante': forms.TextInput(attrs={
@@ -59,10 +70,9 @@ class VarianteProductoForm(forms.ModelForm):
             'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
         }
         labels = {
-            'producto': 'Producto (catálogo)',
             'sku': 'SKU',
             'codigo_barras': 'Código de barras',
-            'nombre_variante': 'Variante / Presentación',
+            'nombre_variante': 'Color / Variante / Presentación',
             'precio': 'Precio de venta',
             'costo': 'Costo de compra',
             'peso_gramos': 'Peso (g)',
@@ -71,7 +81,6 @@ class VarianteProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['producto'].queryset = Producto.objects.select_related('subcategoria').order_by('nombre')
         # Pre-poblar los campos extra desde el Producto relacionado (modo edición)
         instance = kwargs.get('instance')
         if instance and instance.pk and hasattr(instance, 'producto') and instance.producto_id:
@@ -81,6 +90,8 @@ class VarianteProductoForm(forms.ModelForm):
                 self.fields['descripcion'].initial = (
                     prod.descripcion_corta or prod.descripcion_larga or ''
                 )
+                self.fields['subcategoria'].initial = prod.subcategoria
+                self.fields['marca'].initial = prod.marca
             except Exception:
                 pass
 

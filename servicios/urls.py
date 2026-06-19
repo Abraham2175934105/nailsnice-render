@@ -30,12 +30,7 @@ urlpatterns = [
     path('servicios/editar/<int:id>/', views.editar_servicio, name='editar_servicio'),
     path('servicios/eliminar/<int:id>/', views.eliminar_servicio, name='eliminar_servicio'),
     
-    # ADMIN - Asignación Empleado-Servicio
-    path('empleado-servicios/', views.lista_empleado_servicios, name='lista_empleado_servicios'),
-    path('empleado-servicios/crear/', views.crear_empleado_servicio, name='crear_empleado_servicio'),
-    path('empleado-servicios/editar/<int:id>/', views.editar_empleado_servicio, name='editar_empleado_servicio'),
-    path('empleado-servicios/eliminar/<int:id>/', views.eliminar_empleado_servicio, name='eliminar_empleado_servicio'),
-    
+
     # EMPLEADO - Agendamientos
     path('empleado/agendamientos/', views.empleado_lista_agendamientos, name='empleado_agendamientos'),
     path('empleado/agendamientos/crear/', views.empleado_crear_agendamiento, name='empleado_crear_agendamiento'),

@@ -1,7 +1,7 @@
 <div class="table-card glass-panel u-mb-14">
   <div class="chart-head" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(244, 92, 150, 0.15); padding-bottom: 12px; margin-bottom: 12px;">
     <h3 style="margin: 0; font-family: 'Playfair Display', serif; color: #2c091d; font-weight: 700;">{{ titulo }}</h3>
-    <span class="mini-badge" style="background: rgba(244, 92, 150, 0.1); color: #f45c96; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">{{ usuarios_list|length }} Registros</span>
+    <span class="mini-badge" style="background: rgba(244, 92, 150, 0.1); color: #f45c96; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">{% if total_registros is not None %}{{ total_registros }}{% else %}{{ usuarios_list|length }}{% endif %} Registros</span>
   </div>
 
   <div style="overflow-x:auto;">

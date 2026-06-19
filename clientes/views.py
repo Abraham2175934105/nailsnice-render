@@ -1,6 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+import io
+import pandas as pd
+from django.core.paginator import Paginator
+from django.http import HttpResponse
+from core.pdf_reports import build_crud_pdf_response
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -110,17 +115,77 @@ class MetodoPagoClienteViewSet(
 # Vistas web — Templates HTML
 # ===========================================================================
 
+CLIENTE_COLUMNS = [
+    ('nombre', 'Nombre'),
+    ('apellido', 'Apellido'),
+    ('correo', 'Correo'),
+    ('telefono', 'Teléfono'),
+    ('fidelizacion', 'Fidelización'),
+    ('creado_en', 'Fecha Registro'),
+]
+CLIENTE_DEFAULT_COLUMNS = ['nombre', 'apellido', 'correo', 'telefono', 'fidelizacion', 'creado_en']
+PAGE_MIN = 10
+PAGE_MAX = 30
+
+def _clamp_page_size(raw_value: str):
+    try:
+        value = int(raw_value)
+    except Exception:
+        value = PAGE_MIN
+    return max(PAGE_MIN, min(PAGE_MAX, value))
+
+def _build_cliente_rows(queryset, selected):
+    config = {
+        'nombre': ('Nombre', lambda c: c.usuario.nombre),
+        'apellido': ('Apellido', lambda c: c.usuario.apellido),
+        'correo': ('Correo', lambda c: c.usuario.correo),
+        'telefono': ('Teléfono', lambda c: c.usuario.telefono or 'No registrado'),
+        'fidelizacion': ('Fidelización', lambda c: 'Activa' if c.acepta_fidelizacion else 'Inactiva'),
+        'creado_en': ('Fecha Registro', lambda c: c.creado_en),
+    }
+    keys = [k for k in selected if k in config] or CLIENTE_DEFAULT_COLUMNS
+    rows = []
+    for cliente in queryset:
+        row = {}
+        for key in keys:
+            label, fn = config[key]
+            row[label] = fn(cliente)
+        rows.append(row)
+    return rows
+
+def _export_clientes(request, queryset, columns, fmt: str):
+    rows = _build_cliente_rows(queryset, columns)
+    df = pd.DataFrame(rows)
+    filename = f"clientes.{fmt}"
+    if fmt == 'csv':
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False)
+        return HttpResponse(buffer.getvalue(), content_type='text/csv', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    if fmt == 'xlsx':
+        buffer = io.BytesIO()
+        df.to_excel(buffer, index=False)
+        buffer.seek(0)
+        return HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+    if fmt == 'pdf':
+        return build_crud_pdf_response(
+            request=request,
+            report_title='Reporte de Clientes',
+            rows=rows,
+            filename=filename,
+        )
+    return None
+
 @login_required
 def cliente_list(request):
     """Lista de todos los clientes con búsqueda y filtros."""
-    clientes = Cliente.objects.filter(
+    clientes_qs = Cliente.objects.filter(
         usuario__roles_asignados__id_rol__nombre='Cliente'
     ).select_related('usuario').all()
 
     search = (request.GET.get('q') or '').strip()
     if search:
         from django.db.models import Q
-        clientes = clientes.filter(
+        clientes_qs = clientes_qs.filter(
             Q(usuario__correo__icontains=search)
             | Q(usuario__nombre__icontains=search)
             | Q(usuario__apellido__icontains=search)
@@ -129,23 +194,72 @@ def cliente_list(request):
 
     fidelizacion = (request.GET.get('fidelizacion') or '').strip().lower()
     if fidelizacion == 'activa':
-        clientes = clientes.filter(acepta_fidelizacion=True)
+        clientes_qs = clientes_qs.filter(acepta_fidelizacion=True)
     elif fidelizacion == 'inactiva':
-        clientes = clientes.filter(acepta_fidelizacion=False)
+        clientes_qs = clientes_qs.filter(acepta_fidelizacion=False)
 
     orden = (request.GET.get('orden') or 'recientes').strip().lower()
     if orden == 'nombre_asc':
-        clientes = clientes.order_by('usuario__nombre', 'usuario__apellido')
+        clientes_qs = clientes_qs.order_by('usuario__nombre', 'usuario__apellido')
     elif orden == 'nombre_desc':
-        clientes = clientes.order_by('-usuario__nombre', '-usuario__apellido')
+        clientes_qs = clientes_qs.order_by('-usuario__nombre', '-usuario__apellido')
     else:
-        clientes = clientes.order_by('-creado_en')
+        clientes_qs = clientes_qs.order_by('-creado_en')
+
+    # Pagination
+    page_size = _clamp_page_size(request.GET.get('page_size', PAGE_MIN))
+    paginator = Paginator(clientes_qs, page_size)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    selected_columns = [c for c in request.GET.getlist('columns') if c in dict(CLIENTE_COLUMNS)] or CLIENTE_DEFAULT_COLUMNS
+    export_scope = (request.GET.get('export_scope') or 'page').lower()
+    if export_scope not in {'page', 'pages', 'all'}:
+        export_scope = 'page'
+
+    try:
+        export_page = int(request.GET.get('export_page') or page_obj.number)
+    except (TypeError, ValueError):
+        export_page = page_obj.number
+    export_page = max(1, min(export_page, paginator.num_pages or 1))
+
+    export_pages = []
+    for raw_page in request.GET.getlist('export_pages'):
+        try:
+            page_num = int(raw_page)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= page_num <= (paginator.num_pages or 1):
+            export_pages.append(page_num)
+    export_pages = sorted(set(export_pages)) or [export_page]
+
+    export_fmt = (request.GET.get('export') or '').lower()
+    if export_fmt in {'csv', 'xlsx', 'pdf'}:
+        if export_scope == 'all':
+            export_source = clientes_qs
+        elif export_scope == 'pages':
+            export_source = []
+            for page_num in export_pages:
+                export_source.extend(list(paginator.get_page(page_num).object_list))
+        else:
+            export_source = paginator.get_page(export_page).object_list
+        response = _export_clientes(request, export_source, selected_columns, export_fmt)
+        if response:
+            return response
 
     return render(request, 'clientes/cliente_list.html', {
-        'clientes': clientes,
+        'page_obj': page_obj,
+        'clientes': page_obj.object_list,
         'search': search,
         'fidelizacion_selected': fidelizacion,
         'orden_selected': orden,
+        'page_size': page_size,
+        'columns_options': CLIENTE_COLUMNS,
+        'selected_columns': selected_columns,
+        'export_scope': export_scope,
+        'export_page': export_page,
+        'export_pages': export_pages,
+        'total_registros': paginator.count,
     })
 
 

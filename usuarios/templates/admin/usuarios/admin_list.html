@@ -4,7 +4,9 @@
 
 {% block page_actions %}
 <div class="page-actions">
-  {% include 'partials/export_button.html' %}
+  <button type="button" class="btn-export-trigger" data-export-trigger>
+    <svg aria-hidden="true"><use href="#icon-export"></use></svg>Exportar
+  </button>
   <a href="{% url 'usuarios:usuario_create' %}?rol=Administrador" class="btn-pill btn-primary">
     <svg aria-hidden="true"><use href="#icon-plus"></use></svg>Registrar
   </a>
@@ -13,8 +15,171 @@
 
 {% block content %}
 <div class="container-fluid mt-4 px-4" style="font-family: 'Poppins', sans-serif; color: #4A4A4A;">
+  <form method="get" class="glass-panel u-p-16 u-mb-14">
+    <div class="search-bar">
+      <input type="search" name="q" placeholder="Buscar por nombre, correo o teléfono..." value="{{ search|default:'' }}">
+      <label class="filter-label">Por página
+        <select name="page_size" onchange="this.form.submit()">
+          <option value="10" {% if page_size == 10 %}selected{% endif %}>10</option>
+          <option value="15" {% if page_size == 15 %}selected{% endif %}>15</option>
+          <option value="20" {% if page_size == 20 %}selected{% endif %}>20</option>
+          <option value="25" {% if page_size == 25 %}selected{% endif %}>25</option>
+          <option value="30" {% if page_size == 30 %}selected{% endif %}>30</option>
+        </select>
+      </label>
+      <button class="btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-search"></use></svg>Buscar</button>
+    </div>
+  </form>
 
+  {% include 'admin/usuarios/_partials/tabla_usuarios.html' with usuarios_list=usuarios_list titulo=titulo_crud badge_color=badge_color badge_text=badge_text total_registros=total_registros %}
 
-    {% include 'admin/usuarios/_partials/tabla_usuarios.html' with usuarios_list=usuarios_list titulo=titulo_crud badge_color=badge_color badge_text=badge_text %}
+  <div class="pagination u-mt-14">
+    {% for num in page_obj.paginator.page_range %}
+      <a class="pagination-btn {% if page_obj.number == num %}active{% endif %}" href="?page={{ num }}&page_size={{ page_size }}&q={{ search|urlencode }}">{{ num }}</a>
+    {% endfor %}
+  </div>
 </div>
+
+<div class="modal-overlay" id="export-modal">
+  <div class="glass-modal export-modal export-modal-rich">
+    <div class="modal-header export-modal-header">
+      <div>
+        <h3>Exportar administradores</h3>
+        <p class="section-subtitle">Configura alcance y columnas para un reporte más completo.</p>
+      </div>
+      <button type="button" class="btn-ghost" data-close-export>Cancelar</button>
+    </div>
+    <form method="get" id="export-form" class="export-options export-layout">
+      <input type="hidden" name="export" id="export-format" value="">
+      <section class="export-card">
+        <h4>Alcance del reporte</h4>
+        <div class="export-radio-grid">
+          <label class="export-radio-option"><input type="radio" name="export_scope" value="page" {% if export_scope == 'page' %}checked{% endif %}> Solo una página</label>
+          <label class="export-radio-option"><input type="radio" name="export_scope" value="pages" {% if export_scope == 'pages' %}checked{% endif %}> Páginas específicas</label>
+          <label class="export-radio-option"><input type="radio" name="export_scope" value="all" {% if export_scope == 'all' %}checked{% endif %}> Todos los resultados</label>
+        </div>
+        <label class="export-field">
+          Página a exportar
+          <select name="export_page" class="export-select" id="admin-export-page">
+            {% for num in page_obj.paginator.page_range %}
+              <option value="{{ num }}" {% if export_page|stringformat:'s' == num|stringformat:'s' %}selected{% endif %}>Página {{ num }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="export-field">
+          Páginas a exportar
+          <select name="export_pages" class="export-select export-pages-select" id="admin-export-pages" multiple size="6">
+            {% for num in page_obj.paginator.page_range %}
+              <option value="{{ num }}" {% if num in export_pages %}selected{% endif %}>Página {{ num }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="export-meta">
+          <span class="pill-tag">{{ page_obj.paginator.count }} registros</span>
+          <span class="pill-tag">{{ page_obj.paginator.num_pages }} páginas</span>
+        </div>
+      </section>
+
+      <section class="export-card">
+        <div class="export-columns-head">
+          <h4>Columnas a incluir</h4>
+          <div class="export-inline-actions">
+            <button type="button" class="btn-ghost btn-xs" data-check-columns>Marcar todas</button>
+            <button type="button" class="btn-ghost btn-xs" data-uncheck-columns>Limpiar</button>
+          </div>
+        </div>
+        <div class="checkbox-grid export-checkbox-grid">
+          {% for key,label in columns_options %}
+            <label><input type="checkbox" name="columns" value="{{ key }}" {% if key in selected_columns %}checked{% endif %}> {{ label }}</label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <input type="hidden" name="q" value="{{ search }}">
+      <input type="hidden" name="page_size" value="{{ page_size }}">
+      <div class="form-actions form-actions-end">
+        <button type="submit" class="btn-pill btn-primary" data-export-format="csv"><svg aria-hidden="true"><use href="#icon-export"></use></svg>CSV</button>
+        <button type="submit" class="btn-pill" data-export-format="xlsx"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Excel</button>
+        <button type="submit" class="btn-pill" data-export-format="pdf"><svg aria-hidden="true"><use href="#icon-export"></use></svg>PDF</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('export-modal');
+    const exportForm = document.getElementById('export-form');
+    const trigger = document.querySelector('[data-export-trigger]');
+    const closers = document.querySelectorAll('[data-close-export]');
+
+    if (trigger && modal) { trigger.addEventListener('click', () => modal.classList.add('show')); }
+    closers.forEach(btn => btn.addEventListener('click', () => modal.classList.remove('show')));
+
+    if (exportForm) {
+      const pageSelect = exportForm.querySelector('select[name="export_page"]');
+      const pagesSelect = exportForm.querySelector('select[name="export_pages"]');
+      const scopeInputs = exportForm.querySelectorAll('input[name="export_scope"]');
+      const formatField = document.getElementById('export-format');
+      const formatButtons = exportForm.querySelectorAll('[data-export-format]');
+      const colChecks = exportForm.querySelectorAll('input[name="columns"]');
+      const markAllBtn = exportForm.querySelector('[data-check-columns]');
+      const clearBtn = exportForm.querySelector('[data-uncheck-columns]');
+
+      const syncPageState = function() {
+        const pageScope = exportForm.querySelector('input[name="export_scope"][value="page"]');
+        const pagesScope = exportForm.querySelector('input[name="export_scope"][value="pages"]');
+        if (pageSelect && pageScope) {
+          pageSelect.disabled = !pageScope.checked;
+        }
+        if (pagesSelect && pagesScope) {
+          pagesSelect.disabled = !pagesScope.checked;
+        }
+      };
+
+      scopeInputs.forEach(function(input) {
+        input.addEventListener('change', syncPageState);
+      });
+      syncPageState();
+
+      formatButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (formatField) {
+            formatField.value = this.getAttribute('data-export-format') || 'csv';
+          }
+        });
+      });
+
+      if (markAllBtn) {
+        markAllBtn.addEventListener('click', function() {
+          colChecks.forEach(function(input) { input.checked = true; });
+        });
+      }
+
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+          colChecks.forEach(function(input) { input.checked = false; });
+        });
+      }
+
+      exportForm.addEventListener('submit', function() {
+        const pagesScope = exportForm.querySelector('input[name="export_scope"][value="pages"]');
+        if (pagesScope && pagesScope.checked && pagesSelect) {
+          const anySelected = Array.from(pagesSelect.options).some(function(opt) { return opt.selected; });
+          if (!anySelected) {
+            const fallback = Array.from(pagesSelect.options).find(function(opt) {
+              return opt.value === String(pageSelect ? pageSelect.value : '1');
+            });
+            if (fallback) {
+              fallback.selected = true;
+            }
+          }
+        }
+        setTimeout(() => modal.classList.remove('show'), 300);
+      });
+    }
+  });
+</script>
 {% endblock %}

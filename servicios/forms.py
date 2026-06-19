@@ -46,6 +46,8 @@ class AgendamientoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['cliente'].queryset = Cliente.objects.select_related('usuario').order_by('usuario_id')
         self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
+        self.fields['empleado'].queryset = Empleado.objects.select_related('usuario').filter(usuario__estado='ACTIVO', usuario__roles_asignados__id_rol__nombre='Empleado').order_by('usuario__nombre')
+        self.fields['empleado'].required = True
         # termina_en es opcional en el formulario — se calcula automáticamente en clean()
         self.fields['termina_en'].required = False
 
