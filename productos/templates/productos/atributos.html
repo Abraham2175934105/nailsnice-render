@@ -66,13 +66,26 @@
             <a href="{% url 'categoria_update' cat.id_categoria %}" class="btn-ghost btn-xs" style="color: #2D8C6F;">
               Editar
             </a>
+            {% if cat.activo %}
             <button type="button" class="btn-ghost btn-xs u-text-danger" 
-                    data-delete-btn 
+                    data-toggle-btn 
                     data-entity="categoria" 
                     data-pk="{{ cat.id_categoria }}" 
-                    data-name="{{ cat.nombre }}">
-              Eliminar
+                    data-name="{{ cat.nombre }}"
+                    data-action-name="Inactivar">
+              Inactivar
             </button>
+            {% else %}
+            <button type="button" class="btn-ghost btn-xs u-text-success" 
+                    style="color: #2D8C6F;"
+                    data-toggle-btn 
+                    data-entity="categoria" 
+                    data-pk="{{ cat.id_categoria }}" 
+                    data-name="{{ cat.nombre }}"
+                    data-action-name="Activar">
+              Activar
+            </button>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
@@ -115,13 +128,26 @@
             <a href="{% url 'marca_update' marca.id_marca %}" class="btn-ghost btn-xs" style="color: #2D8C6F;">
               Editar
             </a>
+            {% if marca.activo %}
             <button type="button" class="btn-ghost btn-xs u-text-danger" 
-                    data-delete-btn 
+                    data-toggle-btn 
                     data-entity="marca" 
                     data-pk="{{ marca.id_marca }}" 
-                    data-name="{{ marca.nombre }}">
-              Eliminar
+                    data-name="{{ marca.nombre }}"
+                    data-action-name="Inactivar">
+              Inactivar
             </button>
+            {% else %}
+            <button type="button" class="btn-ghost btn-xs u-text-success" 
+                    style="color: #2D8C6F;"
+                    data-toggle-btn 
+                    data-entity="marca" 
+                    data-pk="{{ marca.id_marca }}" 
+                    data-name="{{ marca.nombre }}"
+                    data-action-name="Activar">
+              Activar
+            </button>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
@@ -139,30 +165,30 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="confirm-delete-modal">
+<div class="modal-overlay" id="confirm-toggle-modal">
   <div class="glass-modal" style="max-width: 450px;">
     <div class="modal-header">
       <div>
-        <h3 class="u-text-danger">¿Confirmar eliminación?</h3>
-        <p class="section-subtitle">Esta acción removerá la entidad seleccionada si no tiene productos asociados.</p>
+        <h3 class="u-text-danger" id="modal-toggle-title" style="color: #8A2B59;">¿Confirmar cambio de estado?</h3>
+        <p class="section-subtitle" id="modal-toggle-desc">Esta acción modificará la visibilidad de la entidad.</p>
       </div>
     </div>
     
-    <form method="post" id="delete-form" class="u-p-16">
+    <form method="post" id="toggle-form" class="u-p-16">
       {% csrf_token %}
-      <input type="hidden" name="action" value="delete">
-      <input type="hidden" name="entity" id="delete-entity-input" value="">
-      <input type="hidden" name="pk" id="delete-pk-input" value="">
+      <input type="hidden" name="action" value="toggle">
+      <input type="hidden" name="entity" id="toggle-entity-input" value="">
+      <input type="hidden" name="pk" id="toggle-pk-input" value="">
       
       <div class="u-mb-14" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: var(--radius-sm, 4px);">
-        <span class="section-subtitle">Elemento a remover:</span>
-        <div id="delete-target-name" style="font-weight: bold; font-size: 1.1rem; margin-top: 4px;">-</div>
+        <span class="section-subtitle">Elemento a afectar:</span>
+        <div id="toggle-target-name" style="font-weight: bold; font-size: 1.1rem; margin-top: 4px; color: #2d0f22;">-</div>
       </div>
 
       <div class="form-actions form-actions-end">
-        <button type="button" class="btn-ghost" data-close-delete>Cancelar</button>
-        <button type="submit" class="btn-pill btn-primary" style="background-color: var(--clr-danger, #dc3545);">
-          Confirmar y Eliminar
+        <button type="button" class="btn-ghost" data-close-toggle>Cancelar</button>
+        <button type="submit" class="btn-pill btn-primary" id="modal-confirm-btn" style="background-color: #C05C82; border: none;">
+          Confirmar
         </button>
       </div>
     </form>
@@ -195,36 +221,45 @@
       });
     });
 
-    // 2. LÓGICA DEL MODAL DE ELIMINACIÓN AUTOMATIZADO
-    const deleteModal = document.getElementById('confirm-delete-modal');
-    const deleteForm = document.getElementById('delete-form');
-    const entityInput = document.getElementById('delete-entity-input');
-    const pkInput = document.getElementById('delete-pk-input');
-    const targetNameDisplay = document.getElementById('delete-target-name');
+    // 2. LÓGICA DEL MODAL DE TOGGLE (SOFT DELETE Y CASCADA)
+    const toggleModal = document.getElementById('confirm-toggle-modal');
+    const entityInput = document.getElementById('toggle-entity-input');
+    const pkInput = document.getElementById('toggle-pk-input');
+    const targetNameDisplay = document.getElementById('toggle-target-name');
+    const titleDisplay = document.getElementById('modal-toggle-title');
+    const descDisplay = document.getElementById('modal-toggle-desc');
     
-    const deleteButtons = document.querySelectorAll('[data-delete-btn]');
-    const closers = document.querySelectorAll('[data-close-delete]');
+    const toggleButtons = document.querySelectorAll('[data-toggle-btn]');
+    const closers = document.querySelectorAll('[data-close-toggle]');
 
-    deleteButtons.forEach(button => {
+    toggleButtons.forEach(button => {
       button.addEventListener('click', function() {
         const entity = this.getAttribute('data-entity');
         const pk = this.getAttribute('data-pk');
         const name = this.getAttribute('data-name');
+        const actionName = this.getAttribute('data-action-name');
 
-        // Cargar los inputs ocultos del formulario con la info de la fila
         if (entityInput) entityInput.value = entity;
         if (pkInput) pkInput.value = pk;
         if (targetNameDisplay) targetNameDisplay.textContent = `[${entity.toUpperCase()}] ${name}`;
 
-        // Mostrar el modal agregando la clase utilitaria del proyecto
-        if (deleteModal) deleteModal.classList.add('show');
+        if (titleDisplay) titleDisplay.textContent = `¿Confirmar ${actionName}?`;
+        
+        if (entity === 'marca' && actionName === 'Inactivar') {
+            descDisplay.innerHTML = `<strong style="color:#d9534f;">Atención:</strong> Si desactivas esta marca, todos los productos asociados se inactivarán automáticamente. ¿Continuar?`;
+        } else if (entity === 'marca' && actionName === 'Activar') {
+            descDisplay.innerHTML = `<strong style="color:#2D8C6F;">Atención:</strong> Si activas esta marca, todos los productos asociados volverán a estar activos en el catálogo. ¿Continuar?`;
+        } else {
+            descDisplay.textContent = `Esta acción cambiará la visibilidad de la entidad. ¿Continuar?`;
+        }
+
+        if (toggleModal) toggleModal.classList.add('show');
       });
     });
 
-    // Cerrar modal
     closers.forEach(btn => {
       btn.addEventListener('click', () => {
-        if (deleteModal) deleteModal.classList.remove('show');
+        if (toggleModal) toggleModal.classList.remove('show');
       });
     });
 

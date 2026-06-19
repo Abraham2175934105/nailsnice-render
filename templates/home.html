@@ -272,27 +272,110 @@
             </div>
         </section>
 
-        <section id="servicios" class="services" style="background: linear-gradient(180deg, #fff 0%, #fef0f5 100%);">
-            <div class="container">
-                <h2 class="reveal">Nuestros Servicios Profesionales</h2>
-                <div class="section-subtitle reveal">
-                    Manicura, pedicura y tratamientos especializados con los mejores productos.
+        <style>
+            .premium-services-section {
+                background: linear-gradient(180deg, #fdf5f8 0%, #fff 50%, #fdf5f8 100%);
+                padding: 6rem 0;
+            }
+            .premium-services-container {
+                max-width: 1350px;
+                margin: 0 auto;
+                padding: 0 2rem;
+            }
+            .premium-services-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 2.5rem;
+                margin-top: 3.5rem;
+            }
+            .premium-service-card {
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(10px);
+                border-radius: 24px;
+                padding: 3rem 2rem;
+                box-shadow: 0 15px 40px rgba(45, 15, 34, 0.04);
+                text-align: center;
+                transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+                border: 1px solid rgba(255, 64, 129, 0.08);
+                position: relative;
+                overflow: hidden;
+            }
+            .premium-service-card::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: 4px;
+                background: linear-gradient(90deg, #ff4081, #f06292);
+                opacity: 0;
+                transition: opacity 0.4s ease;
+            }
+            .premium-service-card:hover {
+                transform: translateY(-12px);
+                box-shadow: 0 25px 50px rgba(255, 64, 129, 0.12);
+                border-color: rgba(255, 64, 129, 0.2);
+            }
+            .premium-service-card:hover::before {
+                opacity: 1;
+            }
+            .premium-service-title {
+                font-family: 'Playfair Display', serif;
+                color: #2d0f22;
+                font-size: 1.8rem;
+                margin-bottom: 0.8rem;
+                font-weight: 700;
+            }
+            .premium-service-price {
+                color: #ff4081;
+                font-weight: 600;
+                font-size: 1.4rem;
+                margin-bottom: 2rem;
+                display: inline-block;
+                background: rgba(255,64,129,0.08);
+                padding: 5px 15px;
+                border-radius: 20px;
+            }
+            .premium-service-btn {
+                background: linear-gradient(135deg, #1a0a14, #2d0f22);
+                color: white;
+                border: none;
+                width: 100%;
+                font-size: 1.05rem;
+                padding: 1rem;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-family: 'Poppins', sans-serif;
+                font-weight: 600;
+            }
+            .premium-service-btn:hover {
+                background: linear-gradient(135deg, #ff4081, #f06292);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(255, 64, 129, 0.25);
+            }
+        </style>
+        <section id="servicios" class="premium-services-section">
+            <div class="premium-services-container">
+                <h2 class="reveal" style="text-align: center; font-size: 2.8rem; font-family: 'Playfair Display', serif; color: #2d0f22; margin-bottom: 1rem;">Servicios de Lujo</h2>
+                <div class="section-subtitle reveal" style="text-align: center; color: #666; font-size: 1.15rem; max-width: 700px; margin: 0 auto;">
+                    Experimenta el arte del cuidado personal. Diseñamos cada servicio para resaltar tu belleza única con acabados impecables y productos de primera categoría.
                 </div>
 
-                <div class="services-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 2rem;">
+                <div class="premium-services-grid reveal">
                     {% for s in servicios %}
-                    <div class="service-card" style="background: white; border-radius: 20px; padding: 2.5rem 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; transition: transform 0.3s; border: 1px solid rgba(255,64,129,0.1);">
-                        <h3 style="font-family: 'Playfair Display', serif; color: #2d0f22; font-size: 1.5rem; margin-bottom: 0.5rem;">{{ s.nombre }}</h3>
-                        <div style="color: #ff4081; font-weight: 600; font-size: 1.3rem; margin-bottom: 1.5rem;">${{ s.precio_base }}</div>
-                        <button type="button" class="btn-primary btn-ver-servicio" 
+                    <div class="premium-service-card">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem;">✨</div>
+                        <h3 class="premium-service-title">{{ s.nombre }}</h3>
+                        <div class="premium-service-price">${{ s.precio_base }}</div>
+                        <button type="button" class="premium-service-btn btn-ver-servicio" 
                                 data-nombre="{{ s.nombre }}" 
-                                data-desc="{{ s.descripcion|default:'Servicio premium.' }}"
+                                data-desc="{{ s.descripcion|default:'Un servicio diseñado a tu medida para resultados excepcionales.' }}"
                                 data-duracion="{{ s.duracion_minutos }}"
-                                data-precio="{{ s.precio_base }}"
-                                style="width: 100%; font-size: 0.95rem; padding: 0.8rem 1rem;">Ver detalle</button>
+                                data-precio="{{ s.precio_base }}">
+                            Descubrir Servicio
+                        </button>
                     </div>
                     {% empty %}
-                    <p style="text-align: center; grid-column: 1/-1; color: #666;">No hay servicios disponibles por el momento.</p>
+                    <p style="text-align: center; grid-column: 1/-1; color: #888; font-size: 1.1rem; padding: 3rem;">Estamos preparando experiencias únicas para ti. Vuelve pronto.</p>
                     {% endfor %}
                 </div>
             </div>

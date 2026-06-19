@@ -138,6 +138,7 @@ class ClienteAgendamientoForm(forms.ModelForm):
             attrs={'class': 'form-select', 'required': True},
             servicios_data=servicios_data
         )
+        self.fields['servicio'].widget.choices = self.fields['servicio'].choices
 
         # Filtramos los usuarios que tienen el rol de "Empleado"
         self.fields['empleado'].queryset = Usuario.objects.filter(

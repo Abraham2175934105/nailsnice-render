@@ -32,6 +32,12 @@ class CategoriaCatalogo(models.Model):
         managed = True
         ordering = ['nombre']
 
+    def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+        if not self.slug:
+            self.slug = slugify(self.nombre)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.nombre
 
@@ -54,6 +60,12 @@ class SubcategoriaCatalogo(models.Model):
         db_table = 'subcategoria_catalogo'
         managed = True
         ordering = ['nombre']
+
+    def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+        if not self.slug:
+            self.slug = slugify(self.nombre)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre

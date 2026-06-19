@@ -547,7 +547,20 @@ def catalogo_atributos(request):
             instance = None
             if pk:
                 instance = get_object_or_404(model_cls, pk=pk)
-            if action == 'delete' and instance:
+            if action == 'toggle' and instance:
+                instance.activo = not instance.activo
+                instance.save()
+                estado_str = "activada" if instance.activo else "inactivada"
+                mensaje_ok = f"{entity.title()} {estado_str} correctamente."
+                
+                # Cascada dinámica para marcas
+                if entity == 'marca':
+                    from .models import Producto
+                    nuevo_estado = 'ACTIVO' if instance.activo else 'INACTIVO'
+                    Producto.objects.filter(marca=instance).update(estado=nuevo_estado)
+                    mensaje_ok += f" Todos los productos asociados fueron {estado_str}s automáticamente."
+            elif action == 'delete' and instance:
+                # Opcional: mantengo delete por si hay llamados legacy, pero el requerimiento es soft delete.
                 instance.delete()
                 mensaje_ok = f"{entity.title()} eliminada"
             else:

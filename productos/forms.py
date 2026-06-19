@@ -6,13 +6,13 @@ from .models import CategoriaCatalogo, SubcategoriaCatalogo, MarcaCatalogo
 class CategoriaForm(forms.ModelForm):
     class Meta:
         model = CategoriaCatalogo
-        fields = ['nombre', 'slug', 'descripcion', 'activo']
+        fields = ['nombre', 'descripcion', 'activo']
 
 
 class SubcategoriaForm(forms.ModelForm):
     class Meta:
         model = SubcategoriaCatalogo
-        fields = ['categoria', 'nombre', 'slug', 'descripcion', 'activo']
+        fields = ['categoria', 'nombre', 'descripcion', 'activo']
 
 
 class MarcaForm(forms.ModelForm):
