@@ -37,8 +37,8 @@ class AgendamientoForm(forms.ModelForm):
             'notas',
         ]
         widgets = {
-            'inicia_en': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'termina_en': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'inicia_en': forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'}),
+            'termina_en': forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={'type': 'datetime-local'}),
             'notas': forms.Textarea(attrs={'rows': 3}),
         }
 

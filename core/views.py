@@ -404,9 +404,119 @@ def profile_view(request):
             'session_expires_at': None,
         }
 
+    try:
+        from servicios.models import Agendamiento
+        from clientes.models import Cliente
+        cliente_perfil = Cliente.objects.filter(usuario=user).first()
+        agendamientos = []
+        if cliente_perfil:
+            agendamientos_qs = Agendamiento.objects.filter(cliente=cliente_perfil).select_related('servicio', 'empleado__usuario').order_by('-inicia_en')
+            now = timezone.now()
+            for ag in agendamientos_qs:
+                is_past = ag.inicia_en < now
+                is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
+                time_diff = (ag.inicia_en - now).total_seconds()
+                is_locked = time_diff <= 900 and not is_past
+                
+                especialista_str = 'Sin asignar'
+                if ag.empleado and ag.empleado.usuario:
+                    especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
+                    
+                agendamientos.append({
+                    'id': ag.pk,
+                    'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
+                    'servicio_id': ag.servicio.pk if ag.servicio else '',
+                    'especialista': especialista_str,
+                    'empleado_id': ag.empleado.usuario.pk if ag.empleado and ag.empleado.usuario else '',
+                    'fecha': ag.inicia_en,
+                    'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
+                    'estado_raw': ag.estado,
+                    'is_past': is_past,
+                    'is_done': is_done,
+                    'is_locked': is_locked,
+                    'can_edit': not is_past and not is_done and not is_locked,
+                    'inicia_en_iso': timezone.localtime(ag.inicia_en).strftime('%Y-%m-%dT%H:%M') if ag.inicia_en else '',
+                    'notas': ag.notas or '',
+                })
+    except Exception as e:
+        agendamientos = []
+
+    from servicios.forms import ClienteAgendamientoForm
+    form_reagendar = ClienteAgendamientoForm()
+
     if request.method == 'POST':
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         action = request.POST.get('action')
+        
+        if action == 'cancelar_cita':
+            id_cita = request.POST.get('id_cita')
+            try:
+                from servicios.models import Agendamiento
+                cita = Agendamiento.objects.get(pk=id_cita, cliente__usuario=user)
+                
+                now = timezone.now()
+                is_past = cita.inicia_en < now
+                is_done = cita.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
+                time_diff = (cita.inicia_en - now).total_seconds()
+                is_locked = time_diff <= 900 and not is_past
+
+                if is_past or is_done or is_locked:
+                    if is_ajax:
+                        return JsonResponse({'ok': False, 'error': 'No se puede cancelar esta cita (tiempo límite excedido o cita caducada).'}, status=400)
+                    messages.error(request, 'No se puede cancelar esta cita (tiempo límite excedido).')
+                    return redirect('perfil')
+                
+                cita.estado = 'CANCELADO'
+                cita.save()
+                if is_ajax:
+                    return JsonResponse({'ok': True, 'message': 'Cita cancelada correctamente.'})
+                messages.success(request, 'Cita cancelada correctamente.')
+                return redirect('perfil')
+            except Exception as e:
+                if is_ajax:
+                    return JsonResponse({'ok': False, 'error': 'Error interno al cancelar la cita.'}, status=400)
+                messages.error(request, 'Error interno al cancelar la cita.')
+                return redirect('perfil')
+
+        if action == 'reagendar_cita':
+            id_cita = request.POST.get('id_cita')
+            try:
+                from servicios.models import Agendamiento
+                from servicios.forms import ClienteAgendamientoForm
+                cita = Agendamiento.objects.get(pk=id_cita, cliente__usuario=user)
+                
+                now = timezone.now()
+                is_past = cita.inicia_en < now
+                is_done = cita.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
+                time_diff = (cita.inicia_en - now).total_seconds()
+                is_locked = time_diff <= 900 and not is_past
+
+                if is_past or is_done or is_locked:
+                    if is_ajax:
+                        return JsonResponse({'ok': False, 'error': 'No se puede reagendar esta cita (tiempo límite excedido o cita caducada).'}, status=400)
+                    messages.error(request, 'No se puede reagendar esta cita (tiempo límite excedido).')
+                    return redirect('perfil')
+
+                form_cita = ClienteAgendamientoForm(request.POST, instance=cita)
+                if form_cita.is_valid():
+                    form_cita.save()
+                    if is_ajax:
+                        return JsonResponse({'ok': True, 'message': 'Cita reagendada con éxito.', 'redirect': reverse('perfil')})
+                    messages.success(request, 'Cita reagendada con éxito.')
+                    return redirect('perfil')
+                else:
+                    errors = {field: error_list[0] for field, error_list in form_cita.errors.items()}
+                    first_error = next(iter(errors.values())) if errors else 'Error de validación.'
+                    if is_ajax:
+                        return JsonResponse({'ok': False, 'error': first_error, 'errors': errors}, status=400)
+                    messages.error(request, first_error)
+                    return redirect('perfil')
+            except Exception as e:
+                if is_ajax:
+                    return JsonResponse({'ok': False, 'error': 'Error al reagendar la cita.'}, status=400)
+                messages.error(request, 'Error al reagendar la cita.')
+                return redirect('perfil')
+                
         if action == 'update_profile':
             form = PerfilUpdateForm(request.POST, instance=user)
             password_actual = request.POST.get('password_actual') or ''
@@ -500,6 +610,8 @@ def profile_view(request):
 
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
+        'agendamientos': agendamientos,
+        'form_reagendar': form_reagendar,
         'security_info': security_info,
         'direccion': direccion,
     })

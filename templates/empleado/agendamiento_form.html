@@ -2,89 +2,152 @@
 {% load static %}
 
 {% block title %}Empleado · {% if is_edit %}Editar{% else %}Crear{% endif %} Agendamiento{% endblock %}
-{% block page_title %}{% if is_edit %}Editar{% else %}Nuevo{% endif %} Agendamiento{% endblock %}
-
-{% block page_actions %}
-<div class="page-actions">
-  <a href="{% url 'empleado_agendamientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-calendar"></use></svg>Volver a mis agendamientos</a>
-  <a href="{% url 'empleado_pedidos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-clipboard"></use></svg>Ir a mis pedidos</a>
-</div>
-{% endblock %}
+{% block page_title %}Gestión de Citas{% endblock %}
 
 {% block content %}
-<div class="glass-panel fade-in-up crud-form-panel panel-max-980">
-  <div class="modal-header modal-header-centered">
-    <div class="u-text-center u-w-full">
-      <h3>{% if is_edit %}Editar agendamiento{% else %}Nuevo agendamiento{% endif %}</h3>
-      <p class="section-subtitle">Gestiona tu agenda diaria con un formulario claro y ordenado.</p>
-    </div>
-  </div>
+<div class="container mt-5 px-4 mb-5" style="max-width: 900px; font-family: 'Poppins', sans-serif;">
+    <style>
+        .premium-glass-form {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 64, 129, 0.15);
+            box-shadow: 0 20px 50px rgba(45, 15, 34, 0.05);
+            overflow: hidden;
+        }
+        .premium-form-header {
+            background: linear-gradient(135deg, rgba(255, 240, 245, 0.8), rgba(255, 255, 255, 0.9));
+            border-bottom: 1px solid rgba(255, 64, 129, 0.1);
+            padding: 2.5rem 2rem;
+            text-align: center;
+        }
+        .premium-input-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #8A2B59;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        .premium-input {
+            width: 100%;
+            border-radius: 14px !important;
+            border: 1px solid #EAD9E0 !important;
+            padding: 14px 18px !important;
+            font-size: 0.95rem !important;
+            color: #4A4A4A !important;
+            background: rgba(255,255,255,0.9) !important;
+            transition: all 0.3s ease !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02) !important;
+        }
+        .premium-input:focus {
+            border-color: #C05C82 !important;
+            box-shadow: 0 0 0 4px rgba(192, 92, 130, 0.1) !important;
+            outline: none !important;
+        }
+        .premium-btn-save {
+            background: linear-gradient(135deg, #1a0a14, #2d0f22);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 35px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .premium-btn-save:hover {
+            background: linear-gradient(135deg, #ff4081, #f06292);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 64, 129, 0.25);
+        }
+    </style>
+    
+    <div class="premium-glass-form">
+        <div class="premium-form-header">
+            <h3 class="m-0" style="font-family: 'Playfair Display', serif; color: #2d0f22; font-size: 2.2rem; font-weight: 700;">
+                {% if is_edit %}Editar Cita{% else %}Programar Nueva Cita{% endif %}
+            </h3>
+            <p class="text-muted small mb-0 mt-2" style="font-size: 1.05rem;">Gestiona tu agenda diaria.</p>
+        </div>
+        
+        <div class="card-body" style="padding: 3rem;">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                    <div class="alert alert-danger border-0 p-3 mb-4" style="border-radius: 12px; background-color: #FDF0F2; color: #C0392B; font-size: 0.95rem; border-left: 4px solid #C0392B !important;">
+                        <i class="fas fa-exclamation-circle me-2"></i> Verifique los campos obligatorios o formato de fecha.
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
 
-  <form method="post" class="form-grid">
-    {% csrf_token %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <label class="premium-input-label"><i class="fas fa-user text-secondary me-1"></i> CLIENTE</label>
+                        {{ form.cliente }}
+                        <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.cliente.errors }}</div>
+                    </div>
+                    <div>
+                        <label class="premium-input-label"><i class="fas fa-spa text-secondary me-1"></i> SERVICIO</label>
+                        {{ form.servicio }}
+                        <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.servicio.errors }}</div>
+                    </div>
+                </div>
 
-    {% if form.errors %}
-    <div class="form-alert form-alert--error u-grid-full">
-      <strong>Revisa los campos antes de guardar:</strong>
-      <ul class="form-alert-list">
-        {% for field in form %}
-          {% for error in field.errors %}
-          <li>{{ field.label }}: {{ error }}</li>
-          {% endfor %}
-        {% endfor %}
-        {% for error in form.non_field_errors %}
-        <li>{{ error }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <label class="premium-input-label"><i class="fas fa-calendar-plus text-secondary me-1"></i> FECHA Y HORA DE INICIO</label>
+                        {{ form.inicia_en }}
+                        <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.inicia_en.errors }}</div>
+                    </div>
+                    <div>
+                        <label class="premium-input-label"><i class="fas fa-calendar-check text-secondary me-1"></i> FECHA Y HORA DE FIN</label>
+                        {{ form.termina_en }}
+                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Se calcula auto si se deja vacío.</small>
+                        <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.termina_en.errors }}</div>
+                    </div>
+                </div>
 
-    {% if form.non_field_errors %}
-    <div class="badge-chip u-grid-full">
-      {{ form.non_field_errors }}
-    </div>
-    {% endif %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <label class="premium-input-label"><i class="fas fa-info-circle text-secondary me-1"></i> ESTADO</label>
+                        {{ form.estado }}
+                        <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.estado.errors }}</div>
+                    </div>
+                    <div>
+                        <label class="premium-input-label"><i class="fas fa-bullhorn text-secondary me-1"></i> CANAL DE RESERVA</label>
+                        {{ form.canal }}
+                        <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.canal.errors }}</div>
+                    </div>
+                </div>
 
-    <div class="field">
-      <label for="{{ form.cliente.id_for_label }}">Cliente</label>
-      {{ form.cliente }}
-      {% if form.cliente.errors %}<span class="badge-chip">{{ form.cliente.errors }}</span>{% endif %}
-    </div>
+                <div style="margin-bottom: 3rem;">
+                    <label class="premium-input-label"><i class="fas fa-align-left text-secondary me-1"></i> NOTAS ADICIONALES</label>
+                    {{ form.notas }}
+                    <div class="text-danger small mt-1" style="color: #e74c3c;">{{ form.notas.errors }}</div>
+                </div>
 
-    <div class="field">
-      <label for="{{ form.servicio.id_for_label }}">Servicio</label>
-      {{ form.servicio }}
-      {% if form.servicio.errors %}<span class="badge-chip">{{ form.servicio.errors }}</span>{% endif %}
+                <div class="d-flex justify-content-end gap-3">
+                    <a href="{% url 'empleado_agendamientos' %}" class="btn px-4 py-2" 
+                       style="border-radius: 50px; background-color: #f2edf0; color: #a58b9a; font-weight: 500; border: none; text-decoration: none;">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="premium-btn-save">
+                        <i class="fas fa-save me-2"></i> {% if is_edit %}Guardar cambios{% else %}Registrar agendamiento{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-
-    <div class="field">
-      <label for="{{ form.inicia_en.id_for_label }}">Inicio</label>
-      {{ form.inicia_en }}
-      {% if form.inicia_en.errors %}<span class="badge-chip">{{ form.inicia_en.errors }}</span>{% endif %}
-    </div>
-
-    <div class="field">
-      <label for="{{ form.termina_en.id_for_label }}">Fin</label>
-      {{ form.termina_en }}
-      {% if form.termina_en.errors %}<span class="badge-chip">{{ form.termina_en.errors }}</span>{% endif %}
-    </div>
-
-    <div class="field">
-      <label for="{{ form.estado.id_for_label }}">Estado</label>
-      {{ form.estado }}
-      {% if form.estado.errors %}<span class="badge-chip">{{ form.estado.errors }}</span>{% endif %}
-    </div>
-
-    <div class="field u-grid-full">
-      <label for="{{ form.notas.id_for_label }}">Notas</label>
-      {{ form.notas }}
-      {% if form.notas.errors %}<span class="badge-chip">{{ form.notas.errors }}</span>{% endif %}
-    </div>
-
-    <div class="form-actions form-actions-center u-grid-full">
-      <a class="btn-ghost" href="{% url 'empleado_agendamientos' %}">Cancelar</a>
-      <button class="btn-pill btn-primary" type="submit">{% if is_edit %}Guardar cambios{% else %}Registrar agendamiento{% endif %}</button>
-    </div>
-  </form>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll("input, select, textarea").forEach(el => {
+            if(!el.classList.contains('premium-input') && el.type !== 'hidden' && el.type !== 'checkbox') {
+                el.classList.add('premium-input');
+            }
+        });
+    });
+</script>
 {% endblock %}

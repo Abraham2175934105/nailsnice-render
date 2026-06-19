@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 {% load static %}
 <html lang="es">
 <head>
@@ -54,6 +54,7 @@
             <div class="sidebar-title">Mi espacio</div>
             <nav>
                 <a href="#mis-datos" data-target="mis-datos" class="sidebar-link active"><span class="sidebar-link__icon">👤</span><span>Mis datos</span></a>
+                <a href="#mis-agendamientos" data-target="mis-agendamientos" class="sidebar-link"><span class="sidebar-link__icon">📅</span><span>Mis citas</span></a>
                 <a href="#editar-datos" data-target="editar-datos" class="sidebar-link"><span class="sidebar-link__icon">📝</span><span>Editar datos</span></a>
                 <a href="#cambiar-pass" data-target="cambiar-pass" class="sidebar-link"><span class="sidebar-link__icon">🔒</span><span>Cambiar contraseña</span></a>
                 <a href="#mis-pedidos" data-target="mis-pedidos" class="sidebar-link"><span class="sidebar-link__icon">🛍️</span><span>Mis pedidos</span></a>
@@ -119,9 +120,9 @@
                         <p class="label">Sesión actual</p>
                         <p class="value">
                             {% if security_info.session_expire_browser_close %}
-                                Caduca al cerrar el navegador
+                                Se cerrara automaticamente al cerrar el navegador.
                             {% else %}
-                                Activa hasta {{ security_info.session_expires_at|date:"d/m/Y H:i" }}
+                                Tu sesion expirara el {{ security_info.session_expires_at|date:"d M Y H:i" }}.
                             {% endif %}
                         </p>
                     </div>
@@ -606,6 +607,85 @@
                 }
             }
         })();
+    </script>
+    <div id="reagendarModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        <div class="modal-content" style="background: white; border-radius: 20px; padding: 2rem; width: 90%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+            <h3 style="font-family: 'Playfair Display', serif; color: #2d0f22; margin-bottom: 1.5rem;">Reagendar Cita</h3>
+            <form method="POST" id="reagendarForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reagendar_cita">
+                <input type="hidden" name="id_cita" id="reagendar_id_cita">
+                
+                <div style="margin-bottom: 1rem;">
+                    <label class="form-label" style="font-weight: 600; color: #8A2B59; font-size: 0.85rem; text-transform: uppercase;">Servicio</label>
+                    <div style="width: 100%;">
+                        {{ form_reagendar.servicio }}
+                    </div>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label class="form-label" style="font-weight: 600; color: #8A2B59; font-size: 0.85rem; text-transform: uppercase;">Especialista</label>
+                    <div style="width: 100%;">
+                        {{ form_reagendar.empleado }}
+                    </div>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label class="form-label" style="font-weight: 600; color: #8A2B59; font-size: 0.85rem; text-transform: uppercase;">Fecha y Hora</label>
+                    <input type="datetime-local" name="inicia_en" id="reagendar_inicia_en" class="form-control" required style="width: 100%; border-radius: 14px; padding: 12px 16px; border: 1px solid #ead9e0;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label" style="font-weight: 600; color: #8A2B59; font-size: 0.85rem; text-transform: uppercase;">Notas adicionales</label>
+                    <textarea name="notas" id="reagendar_notas" class="form-control" rows="2" style="width: 100%; border-radius: 14px; padding: 12px 16px; border: 1px solid #ead9e0;"></textarea>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn" style="border-radius: 50px; padding: 10px 20px; font-weight: 600; background: #f1f1f1; border: none; color: #666; cursor: pointer;" onclick="closeReagendarModal()">Cerrar</button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #1a0a14, #2d0f22); color: white; border: none; border-radius: 50px; padding: 10px 20px; font-weight: 600; cursor: pointer;">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <form id="cancelarForm" method="POST" style="display: none;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancelar_cita">
+        <input type="hidden" name="id_cita" id="cancelar_id_cita">
+    </form>
+
+    <script>
+        function cancelarCita(id) {
+            if(confirm("¿Estás seguro que deseas cancelar esta cita? Esta acción no se puede deshacer.")) {
+                document.getElementById('cancelar_id_cita').value = id;
+                document.getElementById('cancelarForm').submit();
+            }
+        }
+
+        function openReagendarModal(id, servicioId, empleadoId, fecha, notas) {
+            document.getElementById('reagendar_id_cita').value = id;
+            
+            // Set values
+            const servicioSelect = document.querySelector('#reagendarForm select[name="servicio"]');
+            const empleadoSelect = document.querySelector('#reagendarForm select[name="empleado"]');
+            if (servicioSelect) servicioSelect.value = servicioId;
+            if (empleadoSelect) empleadoSelect.value = empleadoId;
+            
+            document.getElementById('reagendar_inicia_en').value = fecha;
+            document.getElementById('reagendar_notas').value = notas;
+            
+            document.getElementById('reagendarModal').style.display = 'flex';
+        }
+
+        function closeReagendarModal() {
+            document.getElementById('reagendarModal').style.display = 'none';
+        }
+        
+        // Fix for selects
+        document.querySelectorAll('#reagendarForm select').forEach(select => {
+            select.style.width = '100%';
+            select.style.borderRadius = '14px';
+            select.style.padding = '12px 16px';
+            select.style.border = '1px solid #ead9e0';
+            select.style.appearance = 'auto';
+        });
     </script>
 </body>
 </html>
