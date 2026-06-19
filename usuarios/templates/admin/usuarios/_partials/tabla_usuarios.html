@@ -1,60 +1,66 @@
-<div class="card border-0 shadow-sm mb-5" style="border-radius: 20px; overflow: hidden;">
-    <div class="card-header bg-white py-3 border-0 mt-2 px-4 d-flex align-items-center gap-3">
-        <h5 class="m-0" style="font-family: 'Playfair Display', serif; color: #5A2440; font-weight: 600;">{{ titulo }}</h5>
-        <span class="badge rounded-pill" style="background-color: {{ badge_color }}; color: {{ badge_text }}; font-weight: 500;">
-            {{ usuarios_list|length }} Registros
-        </span>
-    </div>
-    <div class="card-body px-4">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle" style="border-color: #F8EDF1;">
-                <thead style="background-color: #FAF4F6; color: #8A2B59;">
-                    <tr>
-                        <th class="py-3 px-3" style="border-radius: 10px 0 0 10px; font-weight: 600;">Nombre Completo</th>
-                        <th class="py-3" style="font-weight: 600;">Correo Electrónico</th>
-                        <th class="py-3" style="font-weight: 600;">Teléfono</th>
-                        <th class="py-3" style="font-weight: 600;">Estado</th>
-                        <th class="py-3 px-3 text-end" style="border-radius: 0 10px 10px 0; font-weight: 600;">Acciones UI</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in usuarios_list %}
-                    <tr style="transition: all 0.2s;">
-                        <td class="py-3 px-3"><strong>{{ u.nombre }} {{ u.apellido }}</strong></td>
-                        <td>{{ u.correo }}</td>
-                        <td>{{ u.telefono|default:"—" }}</td>
-                        <td>
-                            {% if u.estado == 'ACTIVO' %}
-                                <span class="badge px-3 py-2 text-white" style="background-color: #61B15A; border-radius: 30px; font-weight: 500;">Activo</span>
-                            {% else %}
-                                <span class="badge px-3 py-2 text-white" style="background-color: #E76F51; border-radius: 30px; font-weight: 500;">Bloqueado</span>
-                            {% endif %}
-                        </td>
-                        <td class="py-3 px-3 text-end">
-                            <div class="d-inline-flex gap-2">
-                                <a href="{% url 'usuarios:usuario_edit' u.id_usuario %}" class="btn btn-sm px-3" style="background-color: #FAF4F6; color: #8A2B59; border-radius: 30px; border: 1px solid #EAD9E0;">
-                                    <i class="fas fa-edit me-1"></i> Editar
-                                </a>
-                                
-                                {% if u.estado == 'ACTIVO' %}
-                                    <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn btn-sm px-3 text-white" style="background-color: #D9534F; border-radius: 30px;">
-                                        <i class="fas fa-user-slash me-1"></i> Bloquear
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn btn-sm px-3 text-white" style="background-color: #4BB543; border-radius: 30px;">
-                                        <i class="fas fa-user-check me-1"></i> Activar
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">No se encontraron usuarios en esta categoría.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div class="table-card glass-panel u-mb-14 skeleton-onload">
+  <div class="chart-head" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(244, 92, 150, 0.15); padding-bottom: 12px; margin-bottom: 12px;">
+    <h3 style="margin: 0; font-family: 'Playfair Display', serif; color: #2c091d; font-weight: 700;">{{ titulo }}</h3>
+    <span class="mini-badge" style="background: rgba(244, 92, 150, 0.1); color: #f45c96; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">{{ usuarios_list|length }} Registros</span>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre Completo</th>
+          <th>Correo Electrónico</th>
+          <th>Teléfono</th>
+          <th>Estado</th>
+          <th style="text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios_list %}
+        <tr>
+          <td><strong>{{ u.nombre }} {{ u.apellido }}</strong></td>
+          <td>{{ u.correo }}</td>
+          <td>
+            {% if u.telefono %}
+              {{ u.telefono }}
+            {% else %}
+              <span style="color:#a58b9a; font-style:italic;">No registrado</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.estado == 'ACTIVO' %}
+              <span class="badge badge-success" style="background: rgba(47, 156, 119, 0.16); color: #2d8c6f; border: 1px solid rgba(47, 156, 119, 0.35); padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82rem;">Activo</span>
+            {% else %}
+              <span class="badge badge-warning" style="background: rgba(230, 162, 60, 0.12); color: #d97706; border: 1px solid rgba(230, 162, 60, 0.35); padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82rem;">Bloqueado</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px;">
+            <a href="{% url 'usuarios:usuario_edit' u.id_usuario %}" class="btn-ghost btn-xs" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(244, 92, 150, 0.25); color: #f45c96; transition: all 0.2s;" title="Editar">
+              <svg aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5;"><use href="#icon-edit"></use></svg>
+            </a>
+            {% if u.estado == 'ACTIVO' %}
+              <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn-ghost btn-xs" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(217, 83, 79, 0.25); color: #d9534f; transition: all 0.2s;" title="Bloquear">
+                <svg aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5;"><use href="#icon-trash"></use></svg>
+              </a>
+            {% else %}
+              <a href="{% url 'usuarios:usuario_toggle_status' u.id_usuario %}" class="btn-ghost btn-xs" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(75, 181, 67, 0.25); color: #4bb543; transition: all 0.2s;" title="Activar">
+                <svg aria-hidden="true" style="width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5;"><use href="#icon-refresh"></use></svg>
+              </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="empty-row-cell">
+            <div class="empty-state-inline" style="text-align: center; padding: 40px 20px;">
+              <svg class="u-icon-large u-mb-14" style="width:32px; height:32px; fill: none; stroke: #f45c96; stroke-width: 1.5; opacity: 0.5;"><use href="#icon-users"></use></svg>
+              <h4 style="color: #2c091d; font-family: 'Playfair Display', serif; margin-bottom: 8px;">No hay registros</h4>
+              <p style="color: #7c6574;">No se encontraron usuarios en esta categoría.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>

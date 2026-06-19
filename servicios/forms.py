@@ -8,6 +8,21 @@ from usuarios.models import Empleado, Usuario
 from .models import Agendamiento, Servicio, CategoriaServicio, TipoServicio, EmpleadoServicio
 
 
+class ServicioSelectWidget(forms.Select):
+    def __init__(self, *args, **kwargs):
+        self.servicios_data = kwargs.pop('servicios_data', {})
+        super().__init__(*args, **kwargs)
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex=subindex, attrs=attrs)
+        if value and getattr(value, 'value', value) in self.servicios_data:
+            val = getattr(value, 'value', value)
+            data = self.servicios_data[val]
+            option['attrs']['data-descripcion'] = data['descripcion']
+            option['attrs']['data-duracion'] = data['duracion']
+            option['attrs']['data-precio'] = data['precio']
+        return option
+
 class AgendamientoForm(forms.ModelForm):
     class Meta:
         model = Agendamiento
@@ -108,7 +123,22 @@ class ClienteAgendamientoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['servicio'].queryset = Servicio.objects.filter(activo=True).order_by('nombre')
+        qs_servicios = Servicio.objects.filter(activo=True).order_by('nombre')
+        self.fields['servicio'].queryset = qs_servicios
+        
+        # Inyectar data-* en el widget del servicio
+        servicios_data = {
+            s.id_servicio: {
+                'descripcion': s.descripcion or 'Servicio profesional',
+                'duracion': s.duracion_minutos,
+                'precio': str(s.precio_base)
+            } for s in qs_servicios
+        }
+        self.fields['servicio'].widget = ServicioSelectWidget(
+            attrs={'class': 'form-select', 'required': True},
+            servicios_data=servicios_data
+        )
+
         # Filtramos los usuarios que tienen el rol de "Empleado"
         self.fields['empleado'].queryset = Usuario.objects.filter(
             estado='ACTIVO', 

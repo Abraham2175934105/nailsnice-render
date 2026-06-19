@@ -1,4 +1,4 @@
-﻿from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect
 # pyrefly: ignore [missing-import]
 from rest_framework.decorators import api_view
 # pyrefly: ignore [missing-import]
@@ -60,8 +60,10 @@ def _clear_reset_session(request):
 
 
 def index(request):
+    from servicios.models import Servicio
+    servicios = Servicio.objects.filter(activo=True).order_by('nombre')
     cart = request.session.get('cart', {})
-    return render(request, 'home.html', {'cart': cart})
+    return render(request, 'home.html', {'cart': cart, 'servicios': servicios})
 
 
 @api_view(['GET'])

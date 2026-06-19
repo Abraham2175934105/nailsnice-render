@@ -1,5 +1,4 @@
 {% extends 'admin_base.html' %}
-{% load crispy_forms_tags %}
 
 {% block page_title %}{% if form.instance.pk %}Editar Categoría{% else %}Nueva Categoría{% endif %}{% endblock %}
 
@@ -11,12 +10,38 @@
         </h3>
         <form method="post">
             {% csrf_token %}
-            {{ form|crispy }}
+            {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold small text-secondary" style="letter-spacing: 0.5px; text-transform: uppercase;">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
             <div class="d-flex justify-content-end gap-3 mt-4">
-                <a href="{% url 'catalogos_admin' %}" class="btn px-4 py-2" style="background-color: #f2edf0; color: #a58b9a; border-radius: 50px;">Cancelar</a>
-                <button type="submit" class="btn px-4 py-2 text-white shadow-sm" style="background-color: #C05C82; border-radius: 50px;">Guardar</button>
+                <a href="{% url 'catalogos_admin' %}" class="btn px-4 py-2" style="background-color: #f2edf0; color: #a58b9a; border-radius: 50px; text-decoration: none;">Cancelar</a>
+                <button type="submit" class="btn px-4 py-2 text-white shadow-sm" style="background-color: #C05C82; border-radius: 50px; border: none;">Guardar</button>
             </div>
         </form>
     </div>
 </div>
+
+<style>
+    .glass-panel input, .glass-panel select, .glass-panel textarea {
+        border-radius: 12px !important;
+        border: 1px solid #E2D1D8 !important;
+        padding: 10px 15px !important;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .glass-panel input:focus, .glass-panel select:focus, .glass-panel textarea:focus {
+        border-color: #C05C82 !important;
+        box-shadow: 0 0 0 0.25rem rgba(192, 92, 130, 0.15) !important;
+        outline: none;
+    }
+</style>
 {% endblock %}
+

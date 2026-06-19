@@ -242,18 +242,58 @@
                 </div>
 
                 <div class="hero-image">
-                    <div class="beauty-float" aria-hidden="true">
-                        <div class="beauty-orb"></div>
-                        <div class="beauty-orb beauty-orb--2"></div>
-                        <div class="beauty-sparkles">
-                            <span>✦</span><span>✦</span><span>✦</span>
-                            <span>✦</span><span>✦</span>
-                        </div>
-                        <div id="hero-product-card" class="hero-product-card">
-                            <img id="hero-product-img" alt="" />
-                            <div id="hero-product-fallback" class="hero-product-fallback">Kit de belleza</div>
+                    <style>
+                      .hero-static-card {
+                        background: rgba(255, 255, 255, 0.85);
+                        backdrop-filter: blur(10px);
+                        border: 1px solid rgba(255, 64, 129, 0.2);
+                        border-radius: 24px;
+                        padding: 3rem;
+                        text-align: center;
+                        box-shadow: 0 15px 35px rgba(255, 64, 129, 0.1);
+                        animation: floatStatic 4s ease-in-out infinite;
+                        max-width: 300px;
+                        margin: 0 auto;
+                      }
+                      @keyframes floatStatic {
+                        0% { transform: translateY(0); }
+                        50% { transform: translateY(-10px); }
+                        100% { transform: translateY(0); }
+                      }
+                    </style>
+                    <div class="hero-static-card" aria-hidden="true">
+                        <div class="hero-static-content">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+                            <h3 style="font-family: 'Playfair Display', serif; color: var(--brand-dark); margin: 0 0 10px 0; font-size: 1.5rem;">Belleza Integral</h3>
+                            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">Cuidado profesional para ti.</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="servicios" class="services" style="background: linear-gradient(180deg, #fff 0%, #fef0f5 100%);">
+            <div class="container">
+                <h2 class="reveal">Nuestros Servicios Profesionales</h2>
+                <div class="section-subtitle reveal">
+                    Manicura, pedicura y tratamientos especializados con los mejores productos.
+                </div>
+
+                <div class="services-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 2rem;">
+                    {% for s in servicios %}
+                    <div class="service-card" style="background: white; border-radius: 20px; padding: 2.5rem 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; transition: transform 0.3s; border: 1px solid rgba(255,64,129,0.1);">
+                        <h3 style="font-family: 'Playfair Display', serif; color: #2d0f22; font-size: 1.5rem; margin-bottom: 0.5rem;">{{ s.nombre }}</h3>
+                        <div style="color: #ff4081; font-weight: 600; font-size: 1.3rem; margin-bottom: 1.5rem;">${{ s.precio_base }}</div>
+                        <button type="button" class="btn-primary btn-ver-servicio" 
+                                data-nombre="{{ s.nombre }}" 
+                                data-desc="{{ s.descripcion|default:'Servicio premium.' }}"
+                                data-duracion="{{ s.duracion_minutos }}"
+                                data-precio="{{ s.precio_base }}"
+                                style="width: 100%; font-size: 0.95rem; padding: 0.8rem 1rem;">Ver detalle</button>
+                    </div>
+                    {% empty %}
+                    <p style="text-align: center; grid-column: 1/-1; color: #666;">No hay servicios disponibles por el momento.</p>
+                    {% endfor %}
                 </div>
             </div>
         </section>
@@ -477,6 +517,60 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de detalle de servicio -->
+    <div id="service-modal" style="display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(45, 15, 34, 0.4); backdrop-filter: blur(8px); z-index: 9999;">
+        <div class="premium-modal" style="background: rgba(255,255,255,0.95); border-radius: 24px; padding: 2.5rem; max-width: 450px; width: 90%; text-align: center; box-shadow: 0 20px 50px rgba(45,15,34,0.08); transform: translateY(20px); transition: transform 0.3s; position: relative;">
+            <button type="button" id="service-modal-close" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #666; transition: color 0.2s;">&times;</button>
+            <h3 id="srv-modal-title" style="font-family: 'Playfair Display', serif; color: #2d0f22; font-size: 1.8rem; margin-bottom: 1rem; margin-top: 0.5rem;">Servicio</h3>
+            <p id="srv-modal-desc" style="color: #555; margin-bottom: 1.8rem; line-height: 1.5; font-size: 1.05rem;">Descripción...</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2.2rem; font-weight: 600; font-size: 1.05rem;">
+                <span style="background: #fdf5f8; padding: 8px 18px; border-radius: 20px; color: #5A2440;">⏱ <span id="srv-modal-dur"></span> min</span>
+                <span style="background: #e6f4ea; padding: 8px 18px; border-radius: 20px; color: #1e8e3e;">💰 $<span id="srv-modal-price"></span></span>
+            </div>
+            <a href="{% url 'cliente_crear_agendamiento' %}" class="btn-primary" style="width: 100%; display: block; box-sizing: border-box; font-size: 1.1rem; padding: 1rem;">¡Agendar ahora!</a>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnsVerServicio = document.querySelectorAll('.btn-ver-servicio');
+            const serviceModal = document.getElementById('service-modal');
+            const serviceModalBox = serviceModal.querySelector('.premium-modal');
+            const serviceModalClose = document.getElementById('service-modal-close');
+            
+            const titleEl = document.getElementById('srv-modal-title');
+            const descEl = document.getElementById('srv-modal-desc');
+            const durEl = document.getElementById('srv-modal-dur');
+            const priceEl = document.getElementById('srv-modal-price');
+
+            btnsVerServicio.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    titleEl.textContent = this.getAttribute('data-nombre');
+                    descEl.textContent = this.getAttribute('data-desc');
+                    durEl.textContent = this.getAttribute('data-duracion');
+                    priceEl.textContent = this.getAttribute('data-precio');
+                    
+                    serviceModal.style.display = 'flex';
+                    setTimeout(() => {
+                        serviceModal.style.opacity = '1';
+                        serviceModalBox.style.transform = 'translateY(0)';
+                    }, 10);
+                });
+            });
+
+            function closeServiceModal() {
+                serviceModal.style.opacity = '0';
+                serviceModalBox.style.transform = 'translateY(20px)';
+                setTimeout(() => serviceModal.style.display = 'none', 300);
+            }
+
+            serviceModalClose.addEventListener('click', closeServiceModal);
+            serviceModal.addEventListener('click', function(e) {
+                if(e.target === serviceModal) closeServiceModal();
+            });
+        });
+    </script>
 
     {{ cart|json_script:"cart-data" }}
     <script src="{% static 'js/cart-ui.js' %}?v=20260401i"></script>
