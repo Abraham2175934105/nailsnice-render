@@ -6,6 +6,7 @@
 
 {% block page_actions %}
 <div class="page-actions">
+  {% include 'partials/export_button.html' %}
   <a href="{% url 'crear_servicio' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo Servicio</a>
 </div>
 {% endblock %}

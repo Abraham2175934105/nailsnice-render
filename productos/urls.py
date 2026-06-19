@@ -18,5 +18,9 @@ urlpatterns = [
     path('catalogo/', views.catalogo_productos, name='catalogo_productos'),
     path('catalogo/atributos/', views.catalogo_atributos, name='catalogo_atributos'),
     path('catalogos/', views.catalogo_atributos, name='catalogos_admin'),
+    path('catalogos/categoria/crear/', views.CategoriaCreateView.as_view(), name='categoria_create'),
+    path('catalogos/categoria/<int:pk>/editar/', views.CategoriaUpdateView.as_view(), name='categoria_update'),
+    path('catalogos/marca/crear/', views.MarcaCreateView.as_view(), name='marca_create'),
+    path('catalogos/marca/<int:pk>/editar/', views.MarcaUpdateView.as_view(), name='marca_update'),
     path('api/', include(router.urls)),
 ]

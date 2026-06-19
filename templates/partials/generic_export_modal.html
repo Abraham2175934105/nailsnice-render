@@ -1,0 +1,45 @@
+<div class="modal-overlay" id="generic-export-modal">
+  <div class="glass-modal export-modal" style="max-width: 500px;">
+    <div class="modal-header export-modal-header">
+      <div>
+        <h3>Exportar Registros</h3>
+        <p class="section-subtitle">Descarga los datos visualizados en la tabla actual.</p>
+      </div>
+      <button type="button" class="btn-ghost" onclick="document.getElementById('generic-export-modal').classList.remove('show')">Cancelar</button>
+    </div>
+    <div class="export-options" style="padding: 20px;">
+      <p style="color: #666; font-size: 0.95rem; margin-bottom: 20px;">
+        La exportación respetará todos los filtros, búsquedas y ordenamientos que tengas activos en este momento.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button type="button" class="btn-pill" onclick="triggerDTExport('csv')" style="background-color: #6c757d; color: white; border: none;">
+          <svg aria-hidden="true" style="margin-right: 6px; width: 16px; height: 16px;"><use href="#icon-export"></use></svg>CSV
+        </button>
+        <button type="button" class="btn-pill" onclick="triggerDTExport('excel')" style="background-color: #217346; color: white; border: none;">
+          <svg aria-hidden="true" style="margin-right: 6px; width: 16px; height: 16px;"><use href="#icon-export"></use></svg>Excel
+        </button>
+        <button type="button" class="btn-pill" onclick="triggerDTExport('pdf')" style="background-color: #D32F2F; color: white; border: none;">
+          <svg aria-hidden="true" style="margin-right: 6px; width: 16px; height: 16px;"><use href="#icon-export"></use></svg>PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function triggerDTExport(format) {
+    if (typeof $ === 'undefined' || !$.fn.DataTable) {
+        alert('DataTables no está cargado. No se puede exportar.');
+        return;
+    }
+    // Encontrar la tabla actual inicializada
+    var table = $('.table').DataTable();
+    if(format === 'csv') table.button('.buttons-csv').trigger();
+    if(format === 'excel') table.button('.buttons-excel').trigger();
+    if(format === 'pdf') table.button('.buttons-pdf').trigger();
+    document.getElementById('generic-export-modal').classList.remove('show');
+}
+</script>
+<style>
+/* Ocultar botones nativos de datatables para dar prioridad a la UI premium */
+div.dt-buttons { display: none !important; }
+</style>

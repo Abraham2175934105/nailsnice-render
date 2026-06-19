@@ -29,35 +29,38 @@ from django.views.decorators.csrf import csrf_exempt
 # 1. VISTAS PARA INTERFAZ GRÁFICA (UI SERVER-RENDERED - TEMPLATES .HTML)
 # =========================================================================
 
-class UsuarioListView(LoginRequiredMixin, ListView):
-    """
-    Despliega el listado de usuarios en la interfaz administrativa.
-    """
+class AdministradorListView(LoginRequiredMixin, ListView):
     model = Usuario
-    template_name = 'admin/usuarios/usuario_list.html'
-    context_object_name = 'usuarios'
+    template_name = 'admin/usuarios/admin_list.html'
+    context_object_name = 'usuarios_list'
     
     def get_queryset(self):
-        # Retorna todos los usuarios mapeados desde la BD 3FN con sus roles
-        return Usuario.objects.all().prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
+        return Usuario.objects.filter(
+            roles_asignados__id_rol__nombre='Administrador'
+        ).prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        usuarios = list(context['usuarios'])
-        
-        # Clasificar usuarios basados en sus roles (usando list comprehensions eficientes)
-        context['administradores'] = [
-            u for u in usuarios 
-            if any(r.id_rol.nombre == 'Administrador' for r in u.roles_asignados.all())
-        ]
-        context['empleados'] = [
-            u for u in usuarios 
-            if any(r.id_rol.nombre == 'Empleado' for r in u.roles_asignados.all())
-        ]
-        context['clientes'] = [
-            u for u in usuarios 
-            if any(r.id_rol.nombre == 'Cliente' for r in u.roles_asignados.all()) or not u.roles_asignados.exists()
-        ]
+        context['titulo_crud'] = "Equipo Administrativo"
+        context['badge_color'] = "#F8D7DA"
+        context['badge_text'] = "#721C24"
+        return context
+
+class EmpleadoUIListView(LoginRequiredMixin, ListView):
+    model = Usuario
+    template_name = 'admin/usuarios/empleado_list.html'
+    context_object_name = 'usuarios_list'
+    
+    def get_queryset(self):
+        return Usuario.objects.filter(
+            roles_asignados__id_rol__nombre='Empleado'
+        ).prefetch_related('roles_asignados__id_rol').order_by('nombre', 'apellido')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_crud'] = "Especialistas y Operativos"
+        context['badge_color'] = "#D1ECF1"
+        context['badge_text'] = "#0C5460"
         return context
 
 
@@ -68,7 +71,7 @@ class UsuarioCreateView(LoginRequiredMixin, CreateView):
     model = Usuario
     form_class = UsuarioForm
     template_name = 'admin/usuarios/usuario_form.html'
-    success_url = reverse_lazy('usuarios:usuario_list')
+    success_url = reverse_lazy('usuarios:admin_list')  # Default fallback
     
     def form_valid(self, form):
         messages.success(self.request, "Usuario creado exitosamente con su rol asignado.")
@@ -82,7 +85,7 @@ class UsuarioUpdateView(LoginRequiredMixin, UpdateView):
     model = Usuario
     form_class = UsuarioForm
     template_name = 'admin/usuarios/usuario_form.html'
-    success_url = reverse_lazy('usuarios:usuario_list')
+    success_url = reverse_lazy('usuarios:admin_list')  # Default fallback
     pk_url_kwarg = 'id_usuario'
     
     def form_valid(self, form):
@@ -109,7 +112,7 @@ def alternar_estado_usuario_view(request, id_usuario):
         usuario.save()
         messages.success(request, f"El estado de {usuario.correo} ahora es {usuario.estado}.")
         
-    return redirect('usuarios:usuario_list')
+    return redirect(request.META.get('HTTP_REFERER', 'usuarios:admin_list'))
 
 
 # ------------------------------------------------------------------

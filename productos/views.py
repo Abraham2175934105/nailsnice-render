@@ -642,3 +642,53 @@ class ColorViewSet(viewsets.ViewSet):
 
 class UnidadMedidaViewSet(viewsets.ViewSet):
     pass
+
+
+# =========================================================================
+# Vistas Web: CRUD para Atributos (Categorías y Marcas)
+# =========================================================================
+
+from django.views.generic import CreateView, UpdateView
+from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .forms import CategoriaForm, MarcaForm
+
+class CategoriaCreateView(LoginRequiredMixin, CreateView):
+    model = CategoriaCatalogo
+    form_class = CategoriaForm
+    template_name = 'productos/categoria_form.html'
+    success_url = reverse_lazy('catalogos_admin')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Categoría creada exitosamente.")
+        return super().form_valid(form)
+
+class CategoriaUpdateView(LoginRequiredMixin, UpdateView):
+    model = CategoriaCatalogo
+    form_class = CategoriaForm
+    template_name = 'productos/categoria_form.html'
+    success_url = reverse_lazy('catalogos_admin')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Categoría actualizada exitosamente.")
+        return super().form_valid(form)
+
+class MarcaCreateView(LoginRequiredMixin, CreateView):
+    model = MarcaCatalogo
+    form_class = MarcaForm
+    template_name = 'productos/marca_form.html'
+    success_url = reverse_lazy('catalogos_admin')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Marca creada exitosamente.")
+        return super().form_valid(form)
+
+class MarcaUpdateView(LoginRequiredMixin, UpdateView):
+    model = MarcaCatalogo
+    form_class = MarcaForm
+    template_name = 'productos/marca_form.html'
+    success_url = reverse_lazy('catalogos_admin')
+
+    def form_valid(self, form):
+        messages.success(self.request, "Marca actualizada exitosamente.")
+        return super().form_valid(form)

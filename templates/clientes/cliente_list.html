@@ -1,4 +1,4 @@
-﻿{% extends 'admin_base.html' %}
+{% extends 'admin_base.html' %}
 {% load static %}
 
 {% block title %}Clientes — Profesional Beauty Admin{% endblock %}
@@ -6,6 +6,7 @@
 
 {% block page_actions %}
 <div class="page-actions">
+  {% include 'partials/export_button.html' %}
   <a href="{% url 'clientes_carga_masiva' %}" class="btn-pill">
     <svg aria-hidden="true"><use href="#icon-export"></use></svg>Carga masiva
   </a>

@@ -1,0 +1,25 @@
+{% extends 'admin_base.html' %}
+
+{% block page_title %}Gestión de Administradores{% endblock %}
+
+{% block page_actions %}
+<div class="page-actions">
+  {% include 'partials/export_button.html' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4" style="font-family: 'Poppins', sans-serif; color: #4A4A4A;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1" style="font-family: 'Playfair Display', serif; color: #8A2B59; font-weight: 700;">Administradores</h2>
+            <p class="text-muted small">Panel de Control de Identidad y Seguridad (RBAC)</p>
+        </div>
+        <a href="{% url 'usuarios:usuario_create' %}" class="btn px-4 py-2 text-white shadow-sm" style="background-color: #C05C82; border-radius: 50px;">
+            <i class="fas fa-user-plus me-2"></i> Registrar Administrador
+        </a>
+    </div>
+
+    {% include 'admin/usuarios/_partials/tabla_usuarios.html' with usuarios_list=usuarios_list titulo=titulo_crud badge_color=badge_color badge_text=badge_text %}
+</div>
+{% endblock %}

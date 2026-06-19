@@ -6,6 +6,7 @@
 
 {% block page_actions %}
 <div class="page-actions">
+  {% include 'partials/export_button.html' %}
     <a href="{% url 'crear_movimiento' %}" class="btn-pill btn-primary"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Nuevo</a>
     <a href="{% url 'lista_movimientos' %}" class="btn-pill"><svg aria-hidden="true"><use href="#icon-refresh"></use></svg>Refrescar</a>
 </div>

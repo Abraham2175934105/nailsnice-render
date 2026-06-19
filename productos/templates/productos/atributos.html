@@ -1,4 +1,4 @@
-﻿{% extends 'admin_base.html' %}
+{% extends 'admin_base.html' %}
 {% load static %}
 
 {% block title %}Gestión de Atributos{% endblock %}
@@ -42,6 +42,12 @@
 </div>
 
 <div id="tab-categorias" class="tab-content active-content">
+  <div class="d-flex justify-content-end u-mb-14">
+    <a href="{% url 'categoria_create' %}" class="btn-pill btn-primary" style="background: linear-gradient(135deg, #f45c96, #ff8fbc); color: #fff; border: 1px solid rgba(244, 92, 150, 0.85); box-shadow: 0 4px 10px rgba(244, 92, 150, 0.25);">
+      <svg aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5;"><use href="#icon-plus"></use></svg>
+      Agregar Categoría
+    </a>
+  </div>
   <div class="glass-panel glass-table skeleton-onload">
     <table>
       <thead>
@@ -56,7 +62,10 @@
         <tr>
           <td>{{ cat.id_categoria }}</td>
           <td><strong>{{ cat.nombre }}</strong></td>
-          <td style="text-align: right;">
+          <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px;">
+            <a href="{% url 'categoria_update' cat.id_categoria %}" class="btn-ghost btn-xs" style="color: #2D8C6F;">
+              Editar
+            </a>
             <button type="button" class="btn-ghost btn-xs u-text-danger" 
                     data-delete-btn 
                     data-entity="categoria" 
@@ -82,6 +91,12 @@
 </div>
 
 <div id="tab-marcas" class="tab-content" style="display: none;">
+  <div class="d-flex justify-content-end u-mb-14">
+    <a href="{% url 'marca_create' %}" class="btn-pill btn-primary" style="background: linear-gradient(135deg, #f45c96, #ff8fbc); color: #fff; border: 1px solid rgba(244, 92, 150, 0.85); box-shadow: 0 4px 10px rgba(244, 92, 150, 0.25);">
+      <svg aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5;"><use href="#icon-plus"></use></svg>
+      Agregar Marca
+    </a>
+  </div>
   <div class="glass-panel glass-table skeleton-onload">
     <table>
       <thead>
@@ -96,7 +111,10 @@
         <tr>
           <td>{{ marca.id_marca }}</td>
           <td><strong>{{ marca.nombre }}</strong></td>
-          <td style="text-align: right;">
+          <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px;">
+            <a href="{% url 'marca_update' marca.id_marca %}" class="btn-ghost btn-xs" style="color: #2D8C6F;">
+              Editar
+            </a>
             <button type="button" class="btn-ghost btn-xs u-text-danger" 
                     data-delete-btn 
                     data-entity="marca" 

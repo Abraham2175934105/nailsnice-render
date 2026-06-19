@@ -113,7 +113,9 @@ class MetodoPagoClienteViewSet(
 @login_required
 def cliente_list(request):
     """Lista de todos los clientes con búsqueda y filtros."""
-    clientes = Cliente.objects.select_related('usuario').all()
+    clientes = Cliente.objects.filter(
+        usuario__roles_asignados__id_rol__nombre='Cliente'
+    ).select_related('usuario').all()
 
     search = (request.GET.get('q') or '').strip()
     if search:
