@@ -155,7 +155,7 @@ class ItemMovimientoForm(forms.Form):
 from .models import ProductoMaquillaje
 
 
-class ProductoMaquillajeForm(forms.ModelForm):
+class InventarioForm(forms.ModelForm):
     imagen = forms.FileField(required=False)
 
     class Meta:

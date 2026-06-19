@@ -12,7 +12,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from core.auth import admin_required
 from core.pdf_reports import build_crud_pdf_response
 from productos.models import VarianteProducto, Producto, ImagenProducto
-from .forms import VarianteProductoForm, SaldoInventarioForm, ProductoMaquillajeForm, MovimientoInventarioForm, ItemMovimientoForm
+from .forms import VarianteProductoForm, SaldoInventarioForm, InventarioForm, MovimientoInventarioForm, ItemMovimientoForm
 from .models import Bodega, SaldoInventario, ProductoMaquillaje, MovimientoInventario, TipoMovimientoInventario
 from .services import save_producto_form, soft_delete_producto, registrar_movimiento
 
@@ -213,12 +213,12 @@ def crear_producto(request):
     
     if not using_saldos:
         if request.method == 'POST':
-            form = ProductoMaquillajeForm(request.POST, request.FILES)
+            form = InventarioForm(request.POST, request.FILES)
             if form.is_valid():
                 save_producto_form(form, user=request.user)
                 return redirect('lista_inventario')
         else:
-            form = ProductoMaquillajeForm()
+            form = InventarioForm()
         return render(request, 'inventario/formulario.html', {
             'form': form,
         })
@@ -273,12 +273,12 @@ def editar_producto(request, id):
         if not producto.is_active:
             raise Http404()
         if request.method == 'POST':
-            form = ProductoMaquillajeForm(request.POST, request.FILES, instance=producto)
+            form = InventarioForm(request.POST, request.FILES, instance=producto)
             if form.is_valid():
                 save_producto_form(form, user=request.user)
                 return redirect('lista_inventario')
         else:
-            form = ProductoMaquillajeForm(instance=producto)
+            form = InventarioForm(instance=producto)
         return render(request, 'inventario/formulario.html', {
             'form': form,
             'producto': producto,

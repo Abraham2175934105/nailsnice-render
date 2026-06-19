@@ -207,13 +207,21 @@ def _get_or_create_client_for_user(user):
 
 @login_required
 def cliente_crear_agendamiento(request):
-    cliente = _get_or_create_client_for_user(request.user)
+    try:
+        cliente = _get_or_create_client_for_user(request.user)
+    except Exception as e:
+        cliente = None
+        
     if request.method == 'POST':
         form = ClienteAgendamientoForm(request.POST)
-        form.instance.cliente = cliente
+        if cliente:
+            form.instance.cliente = cliente
         form.instance.estado = 'PENDIENTE'
         form.instance.canal = 'WEB'
         if form.is_valid():
+            if not cliente:
+                messages.error(request, 'Error: Perfil de cliente no disponible. Por favor contacta soporte.')
+                return redirect('/')
             form.save()
             messages.success(request, '¡Tu cita ha sido agendada con éxito! Te esperamos.')
             return redirect('/')
@@ -221,9 +229,16 @@ def cliente_crear_agendamiento(request):
     else:
         form = ClienteAgendamientoForm()
 
+    # Prevenir 500 si falta el usuario o tiene atributos nulos
+    user_data = {
+        'nombre': getattr(request.user, 'nombre', ''),
+        'apellido': getattr(request.user, 'apellido', ''),
+        'correo': getattr(request.user, 'correo', getattr(request.user, 'email', '')),
+    }
+
     return render(request, 'agendamientos/agendar_cliente.html', {
         'form': form,
-        'user': request.user,
+        'user_data': user_data,
     })
 
 
