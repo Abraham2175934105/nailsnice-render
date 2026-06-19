@@ -1,5 +1,5 @@
-/**
- * NailsNice - Productos Page Script
+﻿/**
+ * Profesional Beauty - Productos Page Script
  * Gestiona: filtros dinámicos, búsqueda, productos, paginación, modal, carrito.
  */
 
@@ -1048,7 +1048,7 @@ const Modal = (() => {
                 img.parentElement.classList.remove('is-having-image');
             }
         }
-        if (fallback) fallback.textContent = product.nombre || 'NailsNice';
+        if (fallback) fallback.textContent = product.nombre || 'Profesional Beauty';
         if (title) title.textContent = product.nombre || '';
         if (desc) desc.textContent = product.descripcion || '';
         if (price) price.textContent = `$${Utils.formatPrice(product.precio || 0)}`;

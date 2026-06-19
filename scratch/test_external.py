@@ -1,4 +1,4 @@
-import psycopg2
+﻿import psycopg2
 import sys
 
 regions = ['oregon', 'ohio', 'frankfurt', 'singapore']
@@ -10,7 +10,7 @@ for region in regions:
     try:
         conn = psycopg2.connect(
             host=host,
-            database="nailsnice",
+            database="Profesional Beauty",
             user="admin",
             password="2O4M5jI0KvBVpo6fkwZd9l8S8bpQ0JgB",
             port=5432,

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+﻿from django.shortcuts import render, redirect
 # pyrefly: ignore [missing-import]
 from rest_framework.decorators import api_view
 # pyrefly: ignore [missing-import]
@@ -67,7 +67,7 @@ def index(request):
 @api_view(['GET'])
 def home_api(request):
     return Response({
-        "message": "Bienvenido a la API de NailsNice",
+        "message": "Bienvenido a la API de Profesional Beauty",
         "endpoints": {
             "usuarios": "/api/usuarios/",
             "productos": "/api/productos/",
@@ -371,7 +371,7 @@ def profile_view(request):
             except Exception as _pedido_err:
                 # Un pedido individual falló → lo saltamos, no caemos todo.
                 import logging as _log
-                _log.getLogger('nailsnice').warning(
+                _log.getLogger('Profesional Beauty').warning(
                     'profile_view: pedido %s falló al parsearse: %s',
                     getattr(p, 'id_pedido', '?'), _pedido_err,
                 )
@@ -380,7 +380,7 @@ def profile_view(request):
     except Exception as _profile_err:
         # El queryset principal falló (p. ej. tabla no existe, BD caída).
         import logging as _log
-        _log.getLogger('nailsnice').error(
+        _log.getLogger('Profesional Beauty').error(
             'profile_view: error crítico cargando pedidos de %s: %s',
             getattr(user, 'correo', '?'), _profile_err,
         )
@@ -559,10 +559,10 @@ def forgot_password_view(request):
 
             if usuario_activo and u_correo:
                 import logging as _log
-                _logger = _log.getLogger('nailsnice')
+                _logger = _log.getLogger('Profesional Beauty')
                 try:
                     send_mail(
-                        subject='Código de verificación - NailsNice',
+                        subject='Código de verificación - Profesional Beauty',
                         message=f'Tu código de verificación es: {codigo}. Válido por 10 minutos.',
                         from_email=None,  # Django usa DEFAULT_FROM_EMAIL
                         recipient_list=[u_correo],

@@ -1,9 +1,9 @@
-import os
+﻿import os
 import django
 import sys
 
 # Setup django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nailsnice.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Profesional Beauty.settings')
 django.setup()
 
 from django.test import Client

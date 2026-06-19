@@ -228,11 +228,21 @@ def crear_producto(request):
             saldo_form = SaldoInventarioForm(request.POST)
             if variante_form.is_valid() and saldo_form.is_valid():
                 with transaction.atomic():
-                    variante = variante_form.save()
+                    variante = variante_form.save(commit=False)
+                    # Actualizar nombre y descripción del Producto padre
+                    nombre_producto = variante_form.cleaned_data.get('nombre_producto', '').strip()
+                    descripcion = variante_form.cleaned_data.get('descripcion', '').strip()
+                    if nombre_producto and variante.producto_id:
+                        Producto.objects.filter(pk=variante.producto_id).update(
+                            nombre=nombre_producto,
+                            descripcion_corta=descripcion or None,
+                        )
+                    variante.save()
+                    variante_form.save_m2m()
                     saldo = saldo_form.save(commit=False)
                     saldo.variante = variante
                     saldo.save()
-                    
+
                     imagen = variante_form.cleaned_data.get('imagen')
                     if imagen:
                         from django.core.files.storage import default_storage
@@ -250,6 +260,7 @@ def crear_producto(request):
         return render(request, 'inventario/formulario.html', {
             'form_variante': variante_form,
             'form_saldo': saldo_form,
+            'is_editing': False,
         })
 
 
@@ -279,16 +290,28 @@ def editar_producto(request, id):
         saldo_form = SaldoInventarioForm(request.POST, instance=saldo)
         if variante_form.is_valid() and saldo_form.is_valid():
             with transaction.atomic():
-                variante = variante_form.save()
+                variante = variante_form.save(commit=False)
+                # --- Guardar nombre y descripción en el Producto padre ---
+                nombre_producto = variante_form.cleaned_data.get('nombre_producto', '').strip()
+                descripcion = variante_form.cleaned_data.get('descripcion', '').strip()
+                if nombre_producto and variante.producto_id:
+                    Producto.objects.filter(pk=variante.producto_id).update(
+                        nombre=nombre_producto,
+                        descripcion_corta=descripcion or None,
+                    )
+                    # Refrescar el cache del objeto para que el nombre quede actualizado
+                    variante.producto.nombre = nombre_producto
+                variante.save()
+                variante_form.save_m2m()
                 saldo = saldo_form.save(commit=False)
                 saldo.variante = variante
                 saldo.save()
-                
+
                 imagen = variante_form.cleaned_data.get('imagen')
                 if imagen:
-                    # Inactivate/Delete previous images
+                    # Eliminar imágenes previas de esta variante
                     ImagenProducto.objects.filter(variante=variante).delete()
-                    
+
                     from django.core.files.storage import default_storage
                     path = default_storage.save(f'productos/{imagen.name}', imagen)
                     ImagenProducto.objects.create(
@@ -301,13 +324,14 @@ def editar_producto(request, id):
     else:
         variante_form = VarianteProductoForm(instance=variante)
         saldo_form = SaldoInventarioForm(instance=saldo)
-    
+
     current_image = ImagenProducto.objects.filter(variante=variante).first()
     return render(request, 'inventario/formulario.html', {
         'form_variante': variante_form,
         'form_saldo': saldo_form,
         'variante': variante,
         'current_image': current_image,
+        'is_editing': True,
     })
 
 

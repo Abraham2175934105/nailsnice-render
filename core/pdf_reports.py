@@ -1,4 +1,4 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 from decimal import Decimal
 
 from django.http import HttpResponse
@@ -56,10 +56,10 @@ def build_crud_pdf_response(*, request, report_title: str, rows, filename: str):
         table_rows.append([_format_cell(row.get(header)) for header in headers])
 
     context = {
-        'company_name': 'Nails Nice',
+        'company_name': 'Profesional Beauty',
         'company_nit': '900000000-0',
         'company_city': 'Bogota, Colombia',
-        'company_email': 'info@nailsnice.com',
+        'company_email': 'info@profesionalbeauty.com',
         'company_phone': '+57 300 123 4567',
         'report_title': report_title,
         'generated_at': generated_at,
@@ -69,7 +69,7 @@ def build_crud_pdf_response(*, request, report_title: str, rows, filename: str):
         'headers': headers,
         'table_rows': table_rows,
         'legal_note': (
-            'Documento de control interno generado automaticamente por Nails Nice. '
+            'Documento de control interno generado automaticamente por Profesional Beauty. '
             'Su uso es administrativo y su distribucion debe estar autorizada.'
         ),
     }

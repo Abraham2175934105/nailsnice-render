@@ -88,27 +88,14 @@ class ProductoSerializer(serializers.ModelSerializer):
         if raw.startswith('http://') or raw.startswith('https://'):
             return raw
 
-        media_url = settings.MEDIA_URL or '/media/'
-        media_base = '/' + media_url.strip('/') + '/'
-
-        if raw.startswith('//'):
-            raw = '/' + raw.lstrip('/')
-
-        if raw.startswith(media_base):
-            while raw.startswith(media_base):
-                raw = raw[len(media_base):]
-            raw = raw.lstrip('/')
-            return f"{media_base}{raw}" if raw else None
-
-        media_no_slash = media_base.lstrip('/')
-        if raw.startswith(media_no_slash):
-            raw = raw[len(media_no_slash):].lstrip('/')
-            return f"{media_base}{raw}" if raw else None
-
+        media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
+        # Si ya viene con el prefijo de media completo, desnormalizarlo y re-construirlo
+        # (evita doble prefijo: /media//media/imagen.webp)
+        while raw.startswith(media_url):
+            raw = raw[len(media_url):]
         if raw.startswith('/'):
-            return raw
-
-        return f"{media_base}{raw}"
+            raw = raw.lstrip('/')
+        return f"{media_url}{raw}" if raw else None
 
     def _to_absolute(self, url):
         if not url:
@@ -116,7 +103,10 @@ class ProductoSerializer(serializers.ModelSerializer):
         if url.startswith('http://') or url.startswith('https://'):
             return url
         request = self.context.get('request') if hasattr(self, 'context') else None
-        return request.build_absolute_uri(url) if request else url
+        if request is not None:
+            return request.build_absolute_uri(url)
+        # Sin request en contexto, retornamos la URL relativa bien formada (funciona en mismo dominio)
+        return url
 
     def _iter_imagenes(self, obj):
         imagenes = getattr(obj, 'imagenes', None)

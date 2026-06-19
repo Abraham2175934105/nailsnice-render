@@ -1,4 +1,4 @@
-from django.views.generic import ListView, CreateView, UpdateView
+﻿from django.views.generic import ListView, CreateView, UpdateView
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
@@ -128,10 +128,10 @@ def request_password_reset(request):
             'codigo': codigo,
             'correo': correo,
             'expira_en': expira,
-            'sitio_nombre': 'Nails Nice',
+            'sitio_nombre': 'Profesional Beauty',
         }
         html = render_to_string('usuarios/email_recovery.html', context)
-        subject = 'Código de recuperación de contraseña - Nails Nice'
+        subject = 'Código de recuperación de contraseña - Profesional Beauty'
         from_email = None  # Django usará DEFAULT_FROM_EMAIL
 
         # send_mail maneja texto y html
@@ -165,10 +165,10 @@ def password_reset_request_page(request):
                 'codigo': codigo,
                 'correo': correo,
                 'expira_en': expira,
-                'sitio_nombre': 'Nails Nice',
+                'sitio_nombre': 'Profesional Beauty',
             }
             html = render_to_string('usuarios/email_recovery.html', context)
-            subject = 'Código de recuperación de contraseña - Nails Nice'
+            subject = 'Código de recuperación de contraseña - Profesional Beauty'
             send_mail(subject, f'Código: {codigo}', None, [correo], html_message=html)
 
             messages.success(request, 'Si existe una cuenta con ese correo, se ha enviado un código de verificación.')

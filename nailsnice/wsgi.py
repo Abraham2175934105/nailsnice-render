@@ -1,5 +1,5 @@
-"""
-WSGI config for nailsnice project.
+﻿"""
+WSGI config for Profesional Beauty project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 

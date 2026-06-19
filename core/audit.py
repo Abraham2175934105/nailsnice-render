@@ -1,4 +1,4 @@
-import datetime
+﻿import datetime
 import json
 import logging
 from decimal import Decimal
@@ -11,7 +11,7 @@ from django.db.models.fields.files import FieldFile
 
 from .models import AuditLog
 
-logger = logging.getLogger('nailsnice')
+logger = logging.getLogger('Profesional Beauty')
 
 
 def _normalize(value: Any):

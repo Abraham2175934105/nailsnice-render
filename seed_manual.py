@@ -1,9 +1,9 @@
-import os
+﻿import os
 import django
 import random
 from django.db import connection
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nailsnice.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Profesional Beauty.settings')
 django.setup()
 
 def seed():
@@ -19,7 +19,7 @@ def seed():
         cursor.execute("INSERT IGNORE INTO categoria_catalogo (nombre, slug, activo, creado_en) VALUES ('Esmaltes', 'esmaltes', 1, NOW()), ('Herramientas', 'herramientas', 1, NOW()), ('Cuidado', 'cuidado', 1, NOW()), ('Decoración', 'decoracion', 1, NOW()), ('Kits', 'kits', 1, NOW())")
         
         print("Insertando Marcas...")
-        cursor.execute("INSERT IGNORE INTO marca_catalogo (nombre, activo, creado_en) VALUES ('NailsNice', 1, NOW()), ('Masglo', 1, NOW()), ('OPI', 1, NOW()), ('Essie', 1, NOW()), ('Harmony', 1, NOW())")
+        cursor.execute("INSERT IGNORE INTO marca_catalogo (nombre, activo, creado_en) VALUES ('Profesional Beauty', 1, NOW()), ('Masglo', 1, NOW()), ('OPI', 1, NOW()), ('Essie', 1, NOW()), ('Harmony', 1, NOW())")
 
         print("Insertando Productos y Variantes...")
         # Obtener una subcategoría válida

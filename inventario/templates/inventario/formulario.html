@@ -1,25 +1,32 @@
 {% extends 'base_form.html' %}
 {% load static %}
 
-{% block title %}Producto | Crear / Editar{% endblock %}
+{% block title %}{% if variante %}Editar Producto{% else %}Nuevo Producto{% endif %} | Inventario{% endblock %}
 
 {% block content %}
 <div class="glass-panel fade-in-up crud-form-panel">
   <div class="modal-header modal-header-centered">
     <div class="u-text-center u-w-full">
-      <h3>{% if form %}Producto Legacy{% else %}Producto{% endif %}</h3>
-      <p class="section-subtitle">{% if form %}Actualiza los datos del producto legacy.{% else %}Datos básicos, stock y multimedia de la variante.{% endif %}</p>
+      {% if form %}
+        <h3>Producto Legacy</h3>
+        <p class="section-subtitle">Actualiza los datos del producto legacy.</p>
+      {% elif variante %}
+        <h3>✏️ Editar Producto</h3>
+        <p class="section-subtitle">Modifica el nombre, descripción, precio, stock e imagen del producto.</p>
+      {% else %}
+        <h3>➕ Nuevo Producto</h3>
+        <p class="section-subtitle">Registra un nuevo producto con su variante e inventario inicial.</p>
+      {% endif %}
     </div>
   </div>
 
   <form method="POST" enctype="multipart/form-data" class="form-grid">
     {% csrf_token %}
-    
+
     {% if form %}
-      <!-- Formulario Legacy (ProductoMaquillaje) -->
+      <!-- ═══ Formulario Legacy (ProductoMaquillaje) ═══ -->
       {% for field in form %}
         {% if field.name == 'imagen' %}
-          <!-- Preview above the image file upload field -->
           {% if producto.imagen %}
             <div class="u-grid-full u-text-center" style="margin-bottom: 1.5rem; padding: 1.2rem; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);">
               <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Foto Actual</label>
@@ -27,110 +34,280 @@
             </div>
           {% endif %}
         {% endif %}
-        
+
         <div class="field {% if field.name == 'descripcion' or field.name == 'imagen' or field.name == 'nombre' %}u-grid-full{% endif %}">
           <label for="{{ field.id_for_label }}">{{ field.label }}</label>
           {{ field }}
+          {% if field.help_text %}<small class="form-hint">{{ field.help_text }}</small>{% endif %}
           {% if field.errors %}
             <span class="badge-chip">{{ field.errors|join:", " }}</span>
           {% endif %}
         </div>
       {% endfor %}
-      
+
     {% else %}
-      <!-- Formulario Moderno (VarianteProducto + SaldoInventario) -->
-      
-      <!-- Preview above the image file upload field -->
-      {% if current_image %}
-        <div class="u-grid-full u-text-center" style="margin-bottom: 1.5rem; padding: 1.2rem; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);">
-          <label style="display: block; margin-bottom: 0.8rem; font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Foto Actual</label>
-          <img src="/media/{{ current_image.ruta_almacenamiento }}" class="img-thumbnail" style="max-width: 150px; display: block; margin: 0 auto 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 2px solid var(--accent-color, #ff4081);">
+      <!-- ═══ Formulario Moderno (VarianteProducto + SaldoInventario) ═══ -->
+
+      <!-- ─── SECCIÓN 1: Identidad del Producto ─── -->
+      <div class="u-grid-full form-section-header">
+        <span class="form-section-icon">🏷️</span>
+        <div>
+          <strong>Identidad del Producto</strong>
+          <small>Nombre y descripción visibles en el catálogo</small>
         </div>
+      </div>
+
+      <!-- Nombre del Producto (campo de texto directo, siempre visible) -->
+      <div class="field u-grid-full">
+        <label for="{{ form_variante.nombre_producto.id_for_label }}">
+          {{ form_variante.nombre_producto.label }}
+          <span class="field-required" title="Obligatorio">*</span>
+        </label>
+        {{ form_variante.nombre_producto }}
+        {% if form_variante.nombre_producto.help_text %}
+          <small class="form-hint">{{ form_variante.nombre_producto.help_text }}</small>
+        {% endif %}
+        {% if form_variante.nombre_producto.errors %}
+          <span class="badge-chip">{{ form_variante.nombre_producto.errors }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Descripción -->
+      <div class="field u-grid-full">
+        <label for="{{ form_variante.descripcion.id_for_label }}">
+          {{ form_variante.descripcion.label }}
+        </label>
+        {{ form_variante.descripcion }}
+        {% if form_variante.descripcion.help_text %}
+          <small class="form-hint">{{ form_variante.descripcion.help_text }}</small>
+        {% endif %}
+        {% if form_variante.descripcion.errors %}
+          <span class="badge-chip">{{ form_variante.descripcion.errors }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Campo de Producto (catálogo) — solo visible en CREACIÓN para seleccionar el Producto padre -->
+      {% if not is_editing %}
+      <div class="field u-grid-full">
+        <label for="{{ form_variante.producto.id_for_label }}">
+          Producto del catálogo
+          <span class="field-required" title="Obligatorio">*</span>
+        </label>
+        {{ form_variante.producto }}
+        <small class="form-hint">
+          Selecciona a qué producto del catálogo pertenece esta variante. Si el producto aún no existe en el catálogo, créalo primero desde <a href="{% url 'catalogos_admin' %}" target="_blank">Catálogos</a>.
+        </small>
+        {% if form_variante.producto.errors %}
+          <span class="badge-chip">{{ form_variante.producto.errors }}</span>
+        {% endif %}
+      </div>
+      {% else %}
+      <!-- En edición mostramos el nombre del producto como info (no editable aquí) -->
+      <div class="field u-grid-full" style="display:none;">
+        {{ form_variante.producto }}
+      </div>
       {% endif %}
 
+      <!-- Nombre de Variante / Presentación -->
       <div class="field u-grid-full">
-        <label for="{{ form_variante.producto.id_for_label }}">Producto Base</label>
-        {{ form_variante.producto }}
-        {% if form_variante.producto.errors %}<span class="badge-chip">{{ form_variante.producto.errors }}</span>{% endif %}
-      </div>
-
-      <div class="field">
-        <label for="{{ form_variante.nombre_variante.id_for_label }}">Nombre de la Variante</label>
+        <label for="{{ form_variante.nombre_variante.id_for_label }}">
+          {{ form_variante.nombre_variante.label }}
+        </label>
         {{ form_variante.nombre_variante }}
-        {% if form_variante.nombre_variante.errors %}<span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>{% endif %}
+        <small class="form-hint">
+          Diferenciador de esta versión del producto: color, tamaño, sabor, etc. Déjalo vacío si no aplica.
+        </small>
+        {% if form_variante.nombre_variante.errors %}
+          <span class="badge-chip">{{ form_variante.nombre_variante.errors }}</span>
+        {% endif %}
+      </div>
+
+      <!-- ─── SECCIÓN 2: Identificadores ─── -->
+      <div class="u-grid-full form-section-header">
+        <span class="form-section-icon">🔑</span>
+        <div>
+          <strong>Identificadores</strong>
+          <small>SKU y código de barras</small>
+        </div>
       </div>
 
       <div class="field">
-        <label for="{{ form_variante.sku.id_for_label }}">SKU</label>
+        <label for="{{ form_variante.sku.id_for_label }}">
+          {{ form_variante.sku.label }}
+          <span class="field-required" title="Obligatorio">*</span>
+        </label>
         {{ form_variante.sku }}
         {% if form_variante.sku.errors %}<span class="badge-chip">{{ form_variante.sku.errors }}</span>{% endif %}
       </div>
 
       <div class="field">
-        <label for="{{ form_variante.codigo_barras.id_for_label }}">Código de Barras</label>
+        <label for="{{ form_variante.codigo_barras.id_for_label }}">{{ form_variante.codigo_barras.label }}</label>
         {{ form_variante.codigo_barras }}
         {% if form_variante.codigo_barras.errors %}<span class="badge-chip">{{ form_variante.codigo_barras.errors }}</span>{% endif %}
       </div>
 
-      <div class="field">
-        <label for="{{ form_variante.peso_gramos.id_for_label }}">Peso (gramos)</label>
-        {{ form_variante.peso_gramos }}
-        {% if form_variante.peso_gramos.errors %}<span class="badge-chip">{{ form_variante.peso_gramos.errors }}</span>{% endif %}
+      <!-- ─── SECCIÓN 3: Precios ─── -->
+      <div class="u-grid-full form-section-header">
+        <span class="form-section-icon">💰</span>
+        <div>
+          <strong>Precios</strong>
+          <small>Precio de venta y costo de compra</small>
+        </div>
       </div>
 
       <div class="field">
-        <label for="{{ form_variante.precio.id_for_label }}">Precio de Venta</label>
+        <label for="{{ form_variante.precio.id_for_label }}">
+          {{ form_variante.precio.label }}
+          <span class="field-required" title="Obligatorio">*</span>
+        </label>
         {{ form_variante.precio }}
         {% if form_variante.precio.errors %}<span class="badge-chip">{{ form_variante.precio.errors }}</span>{% endif %}
       </div>
 
       <div class="field">
-        <label for="{{ form_variante.costo.id_for_label }}">Costo de Compra</label>
+        <label for="{{ form_variante.costo.id_for_label }}">{{ form_variante.costo.label }}</label>
         {{ form_variante.costo }}
         {% if form_variante.costo.errors %}<span class="badge-chip">{{ form_variante.costo.errors }}</span>{% endif %}
       </div>
 
       <div class="field">
-        <label for="{{ form_saldo.bodega.id_for_label }}">Bodega de Almacenamiento</label>
+        <label for="{{ form_variante.peso_gramos.id_for_label }}">{{ form_variante.peso_gramos.label }}</label>
+        {{ form_variante.peso_gramos }}
+        {% if form_variante.peso_gramos.errors %}<span class="badge-chip">{{ form_variante.peso_gramos.errors }}</span>{% endif %}
+      </div>
+
+      <!-- ─── SECCIÓN 4: Stock ─── -->
+      <div class="u-grid-full form-section-header">
+        <span class="form-section-icon">📦</span>
+        <div>
+          <strong>Inventario y Bodega</strong>
+          <small>Stock actual, reservas y punto de reorden</small>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="{{ form_saldo.bodega.id_for_label }}">{{ form_saldo.bodega.label }}</label>
         {{ form_saldo.bodega }}
         {% if form_saldo.bodega.errors %}<span class="badge-chip">{{ form_saldo.bodega.errors }}</span>{% endif %}
       </div>
 
       <div class="field">
-        <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">Cantidad en Stock</label>
+        <label for="{{ form_saldo.cantidad_existencia.id_for_label }}">{{ form_saldo.cantidad_existencia.label }}</label>
         {{ form_saldo.cantidad_existencia }}
         {% if form_saldo.cantidad_existencia.errors %}<span class="badge-chip">{{ form_saldo.cantidad_existencia.errors }}</span>{% endif %}
       </div>
 
       <div class="field">
-        <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">Cantidad Reservada</label>
+        <label for="{{ form_saldo.cantidad_reservada.id_for_label }}">{{ form_saldo.cantidad_reservada.label }}</label>
         {{ form_saldo.cantidad_reservada }}
         {% if form_saldo.cantidad_reservada.errors %}<span class="badge-chip">{{ form_saldo.cantidad_reservada.errors }}</span>{% endif %}
       </div>
 
       <div class="field">
-        <label for="{{ form_saldo.nivel_reorden.id_for_label }}">Nivel de Reorden</label>
+        <label for="{{ form_saldo.nivel_reorden.id_for_label }}">{{ form_saldo.nivel_reorden.label }}</label>
         {{ form_saldo.nivel_reorden }}
         {% if form_saldo.nivel_reorden.errors %}<span class="badge-chip">{{ form_saldo.nivel_reorden.errors }}</span>{% endif %}
       </div>
 
+      <!-- ─── SECCIÓN 5: Imagen y Estado ─── -->
+      <div class="u-grid-full form-section-header">
+        <span class="form-section-icon">🖼️</span>
+        <div>
+          <strong>Imagen y Estado</strong>
+          <small>Foto del producto y visibilidad en el catálogo</small>
+        </div>
+      </div>
+
+      <!-- Vista previa de imagen actual -->
+      {% if current_image %}
+        <div class="u-grid-full" style="margin-bottom: 1rem;">
+          <label style="display:block; margin-bottom: 0.6rem; font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Imagen actual</label>
+          <div style="display:flex; align-items:center; gap: 1.2rem; padding: 1rem 1.2rem; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);">
+            <img
+              src="/media/{{ current_image.ruta_almacenamiento }}"
+              alt="Imagen actual del producto"
+              style="max-width: 120px; max-height: 120px; object-fit:cover; border-radius: 8px; border: 2px solid var(--accent-color, #ff4081); box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+            >
+            <div style="display:none; width:80px; height:80px; align-items:center; justify-content:center; background:#f9e6ef; border-radius:8px; font-size:2rem;">💅</div>
+            <div>
+              <p style="margin:0 0 0.3rem; font-size:0.85rem; color: var(--text-secondary);">
+                📁 <code>{{ current_image.ruta_almacenamiento }}</code>
+              </p>
+              <p style="margin:0; font-size:0.8rem; color: var(--text-muted);">
+                Sube una nueva imagen para reemplazarla.
+              </p>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
       <div class="field u-grid-full">
-        <label for="{{ form_variante.imagen.id_for_label }}">Imagen del Producto</label>
+        <label for="{{ form_variante.imagen.id_for_label }}">
+          {% if current_image %}Reemplazar imagen{% else %}Subir imagen del producto{% endif %}
+        </label>
         {{ form_variante.imagen }}
+        <small class="form-hint">Formatos: JPG, PNG, WebP. Tamaño recomendado: 800×800 px.</small>
         {% if form_variante.imagen.errors %}<span class="badge-chip">{{ form_variante.imagen.errors }}</span>{% endif %}
       </div>
 
       <div class="field u-grid-full" style="flex-direction: row; align-items: center; gap: 8px;">
         {{ form_variante.activo }}
-        <label for="{{ form_variante.activo.id_for_label }}" style="margin: 0; cursor: pointer;">Este producto se encuentra activo y visible en el catálogo</label>
+        <label for="{{ form_variante.activo.id_for_label }}" style="margin: 0; cursor: pointer;">
+          Este producto está <strong>activo</strong> y visible en el catálogo
+        </label>
         {% if form_variante.activo.errors %}<span class="badge-chip">{{ form_variante.activo.errors }}</span>{% endif %}
       </div>
     {% endif %}
 
     <div class="form-actions form-actions-center u-grid-full" style="margin-top: 2rem;">
       <a class="btn-ghost" href="{% url 'lista_inventario' %}">Cancelar</a>
-      <button type="submit" class="btn-pill btn-primary">Guardar Producto</button>
+      <button type="submit" class="btn-pill btn-primary">
+        {% if variante %}Guardar Cambios{% else %}Crear Producto{% endif %}
+      </button>
     </div>
   </form>
 </div>
+
+<style>
+  .form-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255,255,255,0.06);
+    border-left: 3px solid var(--accent-color, #ff4081);
+    border-radius: 0 8px 8px 0;
+    margin-top: 1.2rem;
+    margin-bottom: 0.2rem;
+  }
+  .form-section-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+  .form-section-header strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+  .form-section-header small {
+    font-size: 0.78rem;
+    color: var(--text-muted, #aaa);
+  }
+  .field-required {
+    color: #ff4081;
+    margin-left: 2px;
+  }
+  .form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--text-muted, #888);
+    line-height: 1.4;
+  }
+  .form-hint a {
+    color: var(--accent-color, #ff4081);
+  }
+</style>
 {% endblock %}

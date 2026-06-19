@@ -5,17 +5,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>NailsNice - Todos los Productos</title>
+    <meta name="description" content="Catálogo completo de Profesional Beauty. Esmaltes, bases, paletas y más con envío rápido a Bogotá.">
+    <title>Profesional Beauty - Todos los Productos</title>
     <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260401g">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+      /* ── Brand Logo Animation ── */
+      .logo h1 {
+        background: linear-gradient(135deg, #ff4081 0%, #c2185b 40%, #f06292 75%, #ff80ab 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: brandShimmer 4s ease-in-out infinite;
+        transition: letter-spacing 0.3s ease;
+      }
+      .logo h1:hover { letter-spacing: 1px; animation: brandShimmer 1.5s ease-in-out infinite; }
+      @keyframes brandShimmer {
+        0%   { background-position: 0% center; }
+        50%  { background-position: 100% center; }
+        100% { background-position: 0% center; }
+      }
+      /* ── Premium Footer ── */
+      .footer-premium {
+        background: linear-gradient(160deg, #1a0a14 0%, #2d0f22 50%, #1a0a14 100%);
+        border-top: 1px solid rgba(255,64,129,.2);
+        color: #e0d0d8; padding: 3.5rem 0 0; font-size: .9rem;
+      }
+      .footer-premium .fp-container { max-width:1100px; margin:0 auto; padding:0 1.5rem; }
+      .footer-grid { display:grid; grid-template-columns:2fr 1.2fr 1.2fr; gap:3rem; padding-bottom:3rem; border-bottom:1px solid rgba(255,255,255,.08); }
+      @media (max-width:768px) { .footer-grid { grid-template-columns:1fr; gap:2rem; } }
+      .footer-brand-logo { font-family:'Playfair Display',serif; font-size:1.5rem; font-weight:700; background:linear-gradient(135deg,#ff80ab,#f06292); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; display:block; margin-bottom:.75rem; }
+      .footer-tagline { color:#b09aa8; line-height:1.6; margin-bottom:1.2rem; font-size:.88rem; }
+      .footer-social { display:flex; gap:.75rem; }
+      .footer-social a { display:flex; align-items:center; justify-content:center; width:36px; height:36px; background:rgba(255,64,129,.12); border:1px solid rgba(255,64,129,.25); border-radius:50%; color:#ff80ab; text-decoration:none; font-size:1rem; transition:background .2s,transform .2s; }
+      .footer-social a:hover { background:rgba(255,64,129,.25); transform:translateY(-2px); }
+      .footer-col-title { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; color:#fff; margin-bottom:1.2rem; position:relative; padding-bottom:.6rem; }
+      .footer-col-title::after { content:''; position:absolute; left:0; bottom:0; width:30px; height:2px; background:#ff4081; border-radius:2px; }
+      .footer-contact-item { display:flex; align-items:flex-start; gap:.5rem; color:#b09aa8; margin-bottom:.6rem; line-height:1.4; }
+      .footer-contact-item a { color:#f06292; text-decoration:none; transition:color .2s; }
+      .footer-contact-item a:hover { color:#ff80ab; }
+      .footer-hours-row { display:flex; justify-content:space-between; color:#b09aa8; margin-bottom:.4rem; font-size:.85rem; }
+      .footer-hours-row .day { color:#e0d0d8; font-weight:500; }
+      .footer-hours-row .closed { color:#e05070; }
+      .footer-bottom { padding:1.2rem 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; font-size:.8rem; color:#7a5f6a; }
+      .footer-bottom a { color:#f06292; text-decoration:none; }
+      .footer-bottom a:hover { color:#ff80ab; }
+      .footer-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(255,64,129,.1); border:1px solid rgba(255,64,129,.2); border-radius:20px; padding:3px 10px; font-size:.75rem; color:#ff80ab; }
+    </style>
 </head>
 <body>
     <header class="header">
         <nav class="nav">
             <div class="nav-container">
                 <div class="logo">
-                    <h1>NailsNice</h1>
+                    <h1>Profesional Beauty</h1>
                 </div>
                 <ul class="nav-menu">
                     <li><a href="/">Inicio</a></li>
@@ -44,7 +89,7 @@
                     {% else %}
                         <li class="nav-auth">
                             <button type="button" class="nav-auth-trigger" aria-haspopup="true" aria-expanded="false">
-                                <span class="nav-auth-title">Empieza ahora con NailsNice</span>
+                                <span class="nav-auth-title">Empieza ahora con Profesional Beauty</span>
                                 <span class="nav-auth-subtitle">Accede o crea tu cuenta</span>
                             </button>
                             <div class="nav-auth-menu" id="nav-auth-menu" aria-label="Accesos de cuenta">
@@ -172,28 +217,36 @@
         </section>
     </main>
 
-    <footer id="contacto" class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>NailsNice</h3>
-                    <p>Tu destino para el cuidado y embellecimiento de tus uñas.</p>
+    <!-- ══ FOOTER PREMIUM ══ -->
+    <footer id="contacto" class="footer-premium">
+        <div class="fp-container">
+            <div class="footer-grid">
+                <div>
+                    <span class="footer-brand-logo">Profesional Beauty</span>
+                    <p class="footer-tagline">Tu destino para el cuidado y embellecimiento integral. Cosméticos de calidad, servicios profesionales y atención personalizada.</p>
+                    <div class="footer-social">
+                        <a href="https://wa.me/573001234567" target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
+                        <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">📸</a>
+                        <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook">📘</a>
+                    </div>
                 </div>
-                <div class="footer-section">
-                    <h3>Contacto</h3>
-                    <p>📞 +57 300 123 4567</p>
-                    <p>📧 info@nailsnice.com</p>
-                    <p>📍 Calle 123, Bogotá, Colombia</p>
+                <div>
+                    <h3 class="footer-col-title">Contacto</h3>
+                    <div class="footer-contact-item"><span>📞</span><a href="tel:+573001234567">+57 300 123 4567</a></div>
+                    <div class="footer-contact-item"><span>📧</span><a href="mailto:info@profesionalbeauty.com">info@profesionalbeauty.com</a></div>
+                    <div class="footer-contact-item"><span>📍</span><span>Bogotá, Colombia</span></div>
                 </div>
-                <div class="footer-section">
-                    <h3>Horarios</h3>
-                    <p>Lunes - Viernes: 9:00 AM - 7:00 PM</p>
-                    <p>Sábados: 8:00 AM - 5:00 PM</p>
-                    <p>Domingos: Cerrado</p>
+                <div>
+                    <h3 class="footer-col-title">Horarios</h3>
+                    <div class="footer-hours-row"><span class="day">Lunes – Viernes</span><span>9:00 AM – 7:00 PM</span></div>
+                    <div class="footer-hours-row"><span class="day">Sábados</span><span>8:00 AM – 5:00 PM</span></div>
+                    <div class="footer-hours-row"><span class="day">Domingos</span><span class="closed">Cerrado</span></div>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2026 Nails Nice | Diseñado con amor para tus uñas</p>
+                <span>&copy; 2026 Profesional Beauty &mdash; Bogotá, Colombia</span>
+                <span class="footer-badge">✦ Hecho con amor para tu belleza</span>
+                <span><a href="/productos.html">Catálogo</a> &middot; <a href="{% url 'login' %}">Mi cuenta</a></span>
             </div>
         </div>
     </footer>
@@ -206,7 +259,7 @@
             <div class="modal-body">
                 <div class="modal-image">
                     <img id="modal-image" alt="" />
-                    <div id="modal-image-fallback" class="modal-image-fallback">NailsNice</div>
+                    <div id="modal-image-fallback" class="modal-image-fallback">Profesional Beauty</div>
                 </div>
                 <div class="modal-info">
                     <h3 id="modal-title"></h3>
@@ -224,6 +277,7 @@
     {{ cart|json_script:"cart-data" }}
     <script>window.NAILSNICE_IS_AUTH = {{ request.user.is_authenticated|yesno:"true,false" }};</script>
     <script src="{% static 'js/cart-ui.js' %}?v=20260401g"></script>
+    <script src="{% static 'js/nav-auth.js' %}?v=20260619"></script>
     <script src="{% static 'js/productos.js' %}?v=20260401g"></script>
 </body>
 </html>

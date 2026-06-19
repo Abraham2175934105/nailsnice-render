@@ -6,10 +6,31 @@ from .models import Bodega, SaldoInventario, TipoMovimientoInventario, Movimient
 
 
 class VarianteProductoForm(forms.ModelForm):
+    # ---- Campos extra (no-model): editan directamente el Producto padre ----
+    nombre_producto = forms.CharField(
+        required=False,
+        label="Nombre del Producto",
+        max_length=160,
+        widget=forms.TextInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Ej: Labial SuperStay Mate',
+        }),
+        help_text="Nombre real del producto que verán los clientes en el catálogo.",
+    )
+    descripcion = forms.CharField(
+        required=False,
+        label="Descripción del Producto",
+        widget=forms.Textarea(attrs={
+            'class': 'form-input',
+            'rows': 3,
+            'placeholder': 'Describe el producto: características, uso, ingredientes…',
+        }),
+        help_text="Descripción que aparece en la página de detalle del catálogo.",
+    )
     imagen = forms.FileField(
-        required=False, 
+        required=False,
         label="Imagen del Producto",
-        widget=forms.FileInput(attrs={'class': 'form-input'})
+        widget=forms.FileInput(attrs={'class': 'form-input'}),
     )
 
     class Meta:
@@ -25,21 +46,25 @@ class VarianteProductoForm(forms.ModelForm):
             'activo',
         ]
         widgets = {
+            # El select queda oculto; se usa sólo en creación, en edición se sustituye por nombre_producto.
             'producto': forms.Select(attrs={'class': 'form-select'}),
             'sku': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: SKU-001'}),
             'codigo_barras': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Opcional'}),
-            'nombre_variante': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: Labial Rojo'}),
+            'nombre_variante': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: Rojo, 50ml, Talla M… (deja vacío si no aplica)',
+            }),
             'precio': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
             'costo': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
             'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'class': 'form-input'}),
         }
         labels = {
-            'producto': 'Producto',
+            'producto': 'Producto (catálogo)',
             'sku': 'SKU',
             'codigo_barras': 'Código de barras',
-            'nombre_variante': 'Nombre de variante',
-            'precio': 'Precio',
-            'costo': 'Costo',
+            'nombre_variante': 'Variante / Presentación',
+            'precio': 'Precio de venta',
+            'costo': 'Costo de compra',
             'peso_gramos': 'Peso (g)',
             'activo': 'Activo',
         }
@@ -47,6 +72,17 @@ class VarianteProductoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['producto'].queryset = Producto.objects.select_related('subcategoria').order_by('nombre')
+        # Pre-poblar los campos extra desde el Producto relacionado (modo edición)
+        instance = kwargs.get('instance')
+        if instance and instance.pk and hasattr(instance, 'producto') and instance.producto_id:
+            try:
+                prod = instance.producto
+                self.fields['nombre_producto'].initial = prod.nombre
+                self.fields['descripcion'].initial = (
+                    prod.descripcion_corta or prod.descripcion_larga or ''
+                )
+            except Exception:
+                pass
 
 
 class SaldoInventarioForm(forms.ModelForm):

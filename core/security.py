@@ -1,10 +1,10 @@
-import hashlib
+﻿import hashlib
 import logging
 
 from django.core.cache import cache
 
 
-SECURITY_LOGGER = logging.getLogger('nailsnice.security')
+SECURITY_LOGGER = logging.getLogger('Profesional Beauty.security')
 
 
 def get_client_ip(request):

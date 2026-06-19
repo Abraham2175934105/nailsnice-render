@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     function readJSONScript(id, fallback) {
         const el = document.getElementById(id);
         if (!el) return fallback;
@@ -93,7 +93,7 @@
                         <div class="product-header">
                             <h1 class="product-title">${this.product.nombre}</h1>
                             <p class="product-subtitle">Seleccionado para ti con enfoque profesional y acabado de salon.</p>
-                            <span class="product-brand">${this.product.marca || 'NailsNice'}</span>
+                            <span class="product-brand">${this.product.marca || 'Profesional Beauty'}</span>
                         </div>
                         <div class="product-price-section">
                             <div class="price-current">$${formatPrice(this.product.precio)}</div>

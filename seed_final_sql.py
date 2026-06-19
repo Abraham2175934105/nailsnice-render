@@ -1,9 +1,9 @@
-import os
+﻿import os
 import django
 import random
 from decimal import Decimal
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nailsnice.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Profesional Beauty.settings')
 django.setup()
 
 from django.db import connection

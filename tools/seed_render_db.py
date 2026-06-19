@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -12,7 +12,7 @@ def main():
         sys.exit(2)
 
     os.environ.setdefault('DATABASE_URL', db_url)
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nailsnice.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Profesional Beauty.settings')
 
     import django
     django.setup()
@@ -34,7 +34,7 @@ def main():
     rol_empleado, _ = RolAcceso.objects.get_or_create(codigo='EMPLEADO', defaults={'nombre': 'Empleado'})
 
     # Superuser
-    admin_email = 'admin@nailsnice.com'
+    admin_email = 'admin@Profesional Beauty.com'
     admin_password = '12345678Ns.'
     admin, created = Usuario.objects.get_or_create(correo=admin_email, defaults={'nombre': 'Administrador', 'apellido': 'Nails', 'is_staff': True, 'is_superuser': True, 'estado': 'ACTIVO'})
     if created:
@@ -48,7 +48,7 @@ def main():
     # Create 5 empleados (as usuarios with role EMPLEADO)
     empleados = []
     for i in range(1, 3):
-        correo = f'tecnico{i}@nailsnice.com'
+        correo = f'tecnico{i}@Profesional Beauty.com'
         u, created = Usuario.objects.get_or_create(correo=correo, defaults={'nombre': f'Tecnico{i}', 'apellido': 'Nails', 'estado': 'ACTIVO'})
         if created:
             u.set_password(admin_password)
@@ -71,7 +71,7 @@ def main():
         clientes.append(cliente)
 
     # Productos: marca, categoria, subcategoria, producto, variante
-    marca, _ = MarcaCatalogo.objects.get_or_create(nombre='NailsNice')
+    marca, _ = MarcaCatalogo.objects.get_or_create(nombre='Profesional Beauty')
     categoria, _ = CategoriaCatalogo.objects.get_or_create(nombre='Productos de Uñas', slug='productos-unas')
     subcat, _ = SubcategoriaCatalogo.objects.get_or_create(categoria=categoria, nombre='Esmaltes', slug='esmaltes')
 

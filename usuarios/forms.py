@@ -1,4 +1,4 @@
-from django import forms
+﻿from django import forms
 from django.contrib.auth.hashers import make_password
 from .models import Usuario, RolAcceso, UsuarioRol
 
@@ -22,7 +22,7 @@ class UsuarioForm(forms.ModelForm):
         model = Usuario
         fields = ['correo', 'password', 'nombre', 'apellido', 'telefono', 'estado']
         widgets = {
-            'correo': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'ejemplo@nailsnice.com'}),
+            'correo': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'ejemplo@Profesional Beauty.com'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'apellido': forms.TextInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),

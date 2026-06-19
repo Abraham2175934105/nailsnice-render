@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+﻿from django.core.management.base import BaseCommand
 from django.db import transaction
 from usuarios.models import RolAcceso, Usuario, UsuarioRol
 
@@ -38,10 +38,10 @@ class Command(BaseCommand):
         
         # Usamos update_or_create sobre el correo
         admin, created = Usuario.objects.update_or_create(
-            correo='admin@nailsnice.com',
+            correo='admin@Profesional Beauty.com',
             defaults={
                 'nombre': 'Admin',
-                'apellido': 'NailsNice',
+                'apellido': 'Profesional Beauty',
                 'estado': 'ACTIVO',
                 'is_staff': True,
                 'is_superuser': True,
@@ -55,7 +55,7 @@ class Command(BaseCommand):
             UsuarioRol.objects.get_or_create(id_usuario=admin, id_rol=admin_rol)
             
             self.stdout.write(self.style.SUCCESS("  ✓ Superusuario creado y rol asignado"))
-            self.stdout.write(f"    Email: admin@nailsnice.com")
+            self.stdout.write(f"    Email: admin@Profesional Beauty.com")
             self.stdout.write(f"    Password: Admin123!")
         else:
             self.stdout.write("  - Superusuario ya existe")

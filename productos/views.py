@@ -65,27 +65,12 @@ def _normalize_image_url(raw):
     if value.startswith('http://') or value.startswith('https://'):
         return value
 
-    media_url = settings.MEDIA_URL or '/media/'
-    media_base = '/' + media_url.strip('/') + '/'
-
-    if value.startswith('//'):
-        value = '/' + value.lstrip('/')
-
-    if value.startswith(media_base):
-        while value.startswith(media_base):
-            value = value[len(media_base):]
-        value = value.lstrip('/')
-        return f"{media_base}{value}" if value else None
-
-    media_no_slash = media_base.lstrip('/')
-    if value.startswith(media_no_slash):
-        value = value[len(media_no_slash):].lstrip('/')
-        return f"{media_base}{value}" if value else None
-
-    if value.startswith('/'):
-        return value
-
-    return f"{media_base}{value}"
+    media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
+    # Evitar doble prefijo /media//media/
+    while value.startswith(media_url):
+        value = value[len(media_url):]
+    value = value.lstrip('/')
+    return f"{media_url}{value}" if value else None
 
 
 def _image_candidates(image_field):

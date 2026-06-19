@@ -1,9 +1,9 @@
-import requests
+﻿import requests
 import re
 
 session = requests.Session()
-login_url = "https://nailsnice-render.onrender.com/login/"
-profile_url = "https://nailsnice-render.onrender.com/perfil/"
+login_url = "https://Profesional Beauty-render.onrender.com/login/"
+profile_url = "https://Profesional Beauty-render.onrender.com/perfil/"
 
 print("Visiting login page to get CSRF token...")
 r = session.get(login_url)

@@ -1,10 +1,10 @@
-import os
+﻿import os
 import sys
 import django
 
 # Agregar la ruta actual para que Django encuentre el módulo settings
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "nailsnice.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Profesional Beauty.settings")
 django.setup()
 
 from usuarios.models import Usuario, RolAcceso, UsuarioRol, Empleado
