@@ -1,4 +1,4 @@
-﻿"""
+"""
 URL configuration for Profesional Beauty project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -110,5 +110,14 @@ urlpatterns = [
     path('inventario/movimientos/crear/', inventario_views.crear_movimiento, name='crear_movimiento'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Exponer las rutas de archivos multimedia en todos los entornos
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# En producción, si no se utiliza un backend de almacenamiento en la nube,
+# servimos los archivos locales a través de la vista estática de Django.
+if not settings.DEBUG:
+    from django.views.static import serve
+    from django.urls import re_path
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

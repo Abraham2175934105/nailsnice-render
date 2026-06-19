@@ -341,13 +341,34 @@ def editar_producto(request, id):
         saldo_form = SaldoInventarioForm(instance=saldo)
 
     current_image = ImagenProducto.objects.filter(variante=variante).first()
+    current_image_url = None
+    if current_image and current_image.ruta_almacenamiento:
+        path = current_image.ruta_almacenamiento
+        if path.startswith('http://') or path.startswith('https://'):
+            current_image_url = path
+        else:
+            media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
+            while path.startswith(media_url):
+                path = path[len(media_url):]
+            if path.startswith('/media/'):
+                path = path[len('/media/'):]
+            path = path.lstrip('/')
+            
+            from django.core.files.storage import default_storage
+            try:
+                current_image_url = default_storage.url(path)
+            except Exception:
+                current_image_url = f"{media_url}{path}"
+
     return render(request, 'inventario/formulario.html', {
         'form_variante': variante_form,
         'form_saldo': saldo_form,
         'variante': variante,
         'current_image': current_image,
+        'current_image_url': current_image_url,
         'is_editing': True,
     })
+
 
 
 @admin_required

@@ -29,3 +29,6 @@ django-extensions==4.1
 psycopg2-binary
 whitenoise
 dj-database-url>=1.0.0
+cloudinary>=1.34.0
+django-cloudinary-storage>=0.3.0
+

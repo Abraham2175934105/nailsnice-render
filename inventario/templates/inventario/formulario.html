@@ -226,12 +226,12 @@
       </div>
 
       <!-- Vista previa de imagen actual -->
-      {% if current_image %}
+      {% if current_image_url %}
         <div class="u-grid-full" style="margin-bottom: 1rem;">
           <label style="display:block; margin-bottom: 0.6rem; font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Imagen actual</label>
           <div style="display:flex; align-items:center; gap: 1.2rem; padding: 1rem 1.2rem; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);">
             <img
-              src="/media/{{ current_image.ruta_almacenamiento }}"
+              src="{{ current_image_url }}"
               alt="Imagen actual del producto"
               style="max-width: 120px; max-height: 120px; object-fit:cover; border-radius: 8px; border: 2px solid var(--accent-color, #ff4081); box-shadow: 0 4px 12px rgba(0,0,0,0.15);"
               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
