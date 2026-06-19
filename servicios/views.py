@@ -241,10 +241,20 @@ def cliente_crear_agendamiento(request):
     except Exception:
         user_data = {'nombre': '', 'apellido': '', 'correo': ''}
 
-    return render(request, 'agendamientos/agendar_cliente.html', {
-        'form': form,
-        'user_data': user_data,
-    })
+    try:
+        return render(request, 'agendamientos/agendar_cliente.html', {
+            'form': form,
+            'user_data': user_data,
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"Error renderizando agendar_cliente.html: {str(e)}")
+        from django.http import HttpResponseServerError
+        return HttpResponseServerError(
+            f"<h1>Error Crítico de Renderizado</h1>"
+            f"<p>El sistema experimentó un fallo al generar la vista. Asegúrese de que todas las plantillas base existan.</p>"
+            f"<p><strong>Detalle técnico:</strong> {str(e)}</p>"
+        )
 
 
 # ========== AGENDAMIENTOS ADMIN ==========
