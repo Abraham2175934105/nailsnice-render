@@ -35,6 +35,12 @@ class ClienteForm(forms.ModelForm):
         label='Teléfono / Celular',
         required=False,
     )
+    estado_activo = forms.BooleanField(
+        required=False,
+        label='Cliente Activo',
+        help_text='Desmarca esta casilla para desactivar temporalmente el acceso del cliente.',
+        initial=True
+    )
 
 
     class Meta:
@@ -61,6 +67,7 @@ class ClienteForm(forms.ModelForm):
             self.fields['nombre'].initial = getattr(u, 'nombre', '')
             self.fields['apellido'].initial = getattr(u, 'apellido', '')
             self.fields['telefono'].initial = getattr(u, 'telefono', '')
+            self.fields['estado_activo'].initial = u.estado == 'ACTIVO'
 
 
 
@@ -82,6 +89,9 @@ class ClienteForm(forms.ModelForm):
                 u.apellido = cd.get('apellido', '')
             if hasattr(u, 'telefono'):
                 u.telefono = cd.get('telefono', '')
+            
+            u.estado = 'ACTIVO' if cd.get('estado_activo') else 'BLOQUEADO'
+            
             if commit:
                 u.save()
                 cliente.save()

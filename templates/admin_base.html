@@ -7,8 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Profesional Beauty Admin{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
   <link rel="stylesheet" href="{% static 'css/base_tokens.css' %}?v=20260426">
   <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=20260401">
+  <style>
+    /* Styling para los botones de DataTables en el tema premium */
+    div.dt-buttons .btn { margin-right: 5px; border-radius: 8px; font-weight: 500; font-size: 0.85rem; }
+    .dataTables_filter input { border-radius: 20px; border: 1px solid #EAD9E0; padding: 4px 15px; outline: none; }
+    .dataTables_filter input:focus { border-color: #C05C82; box-shadow: 0 0 0 3px rgba(192, 92, 130, 0.1); }
+  </style>
   {% block extra_head %}{% endblock %}
 </head>
 
@@ -122,12 +130,18 @@
           </svg>
           <span>Inicio</span>
         </a>
-        <div class="nav-section">Identidad &amp; Seguridad</div>
-        <a class="nav-link" href="/admin/">
+        <div class="nav-section">Empresa</div>
+        <a class="nav-link" href="{% url 'usuarios:usuario_list' %}#admin-tab" onclick="setTimeout(() => { document.getElementById('admin-tab')?.click(); }, 100);">
           <svg aria-hidden="true">
             <use href="#icon-user"></use>
           </svg>
-          <span>Usuarios y roles</span>
+          <span>Administradores</span>
+        </a>
+        <a class="nav-link" href="{% url 'usuarios:usuario_list' %}#empleados-tab" onclick="setTimeout(() => { document.getElementById('empleados-tab')?.click(); }, 100);">
+          <svg aria-hidden="true">
+            <use href="#icon-users"></use>
+          </svg>
+          <span>Empleados</span>
         </a>
         <div class="nav-section">Clientes &amp; Fidelización</div>
         <a class="nav-link" href="{% url 'clientes:cliente_list' %}">
@@ -238,6 +252,45 @@
       submit.disabled = true;
     });
   </script>
+
+  <!-- DataTables & Export Dependencies -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+  <script>
+    $(document).ready(function() {
+        $('.table').DataTable({
+            dom: '<"d-flex flex-wrap justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+            buttons: [
+                { extend: 'excelHtml5', className: 'btn text-white', style: 'background-color: #217346;', text: '📊 Excel' },
+                { extend: 'csvHtml5', className: 'btn btn-secondary', text: '📑 CSV' },
+                { extend: 'pdfHtml5', className: 'btn text-white', style: 'background-color: #D32F2F;', text: '📄 PDF' }
+            ],
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            },
+            responsive: true,
+            pageLength: 10,
+            retrieve: true,
+            order: [] // Evita reordenar inicialmente si la tabla ya viene ordenada del backend
+        });
+        
+        // Aplicar estilos premium a los botones generados por DataTables
+        setTimeout(() => {
+            $('.dt-buttons .btn:contains("Excel")').css('background-color', '#217346').css('color', 'white').css('border', 'none');
+            $('.dt-buttons .btn:contains("PDF")').css('background-color', '#D32F2F').css('color', 'white').css('border', 'none');
+        }, 100);
+    });
+  </script>
+
   {% block extra_js %}{% endblock %}
 </body>
 
