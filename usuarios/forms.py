@@ -1,4 +1,4 @@
-﻿from django import forms
+from django import forms
 from django.contrib.auth.hashers import make_password
 from .models import Usuario, RolAcceso, UsuarioRol
 
@@ -31,12 +31,18 @@ class UsuarioForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Ocultar campo de rol si viene predefinido en initial (creación específica)
+        if 'initial' in kwargs and kwargs['initial'].get('rol'):
+            self.fields['rol'].widget = forms.HiddenInput()
+
         # Si estamos editando un usuario existente, pre-poblamos el selector de rol
         if self.instance and self.instance.pk:
             rol_actual = self.instance.rol_principal
             if rol_actual:
                 # Modificación para apuntar al objeto o ID correcto según tu helper
                 self.fields['rol'].initial = rol_actual
+                # También podemos ocultarlo en edición si no se permite cambiar, pero lo dejamos por si acaso
             # Si se edita, la contraseña no es obligatoria
             self.fields['password'].required = False
             self.fields['password'].help_text = "Dejar en blanco si no se desea cambiar la contraseña."

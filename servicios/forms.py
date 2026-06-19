@@ -154,12 +154,13 @@ class ClienteAgendamientoForm(forms.ModelForm):
         usuario_empleado = cleaned.get('empleado')  # Esto ahora es una instancia de Usuario
 
         if inicia_en and servicio and usuario_empleado:
-            # Resolución dinámica del perfil físico del Empleado (lo auto-crea si no existe)
+            # Resolución dinámica del perfil físico del Empleado
             perfil_empleado, created = Empleado.objects.get_or_create(
                 usuario=usuario_empleado,
                 defaults={'codigo_empleado': f'EMP-{usuario_empleado.id_usuario}', 'activo': True}
             )
-            # Reemplazar la instancia de Usuario por la instancia de Empleado para que el modelo Agendamiento no falle
+            # Asignar directamente a la instancia para evitar errores de ModelForm (ya que el campo original era un Usuario)
+            self.instance.empleado = perfil_empleado
             cleaned['empleado'] = perfil_empleado
 
             # 1. Bloqueo de fechas pasadas estricto
@@ -167,8 +168,9 @@ class ClienteAgendamientoForm(forms.ModelForm):
                 self.add_error('inicia_en', 'La cita no puede ser programada en el pasado. Selecciona una hora futura válida.')
                 return cleaned
 
-            # 2. Calcular la duración (usar duración del servicio)
+            # 2. Calcular la duración y asignar directamente a la instancia (porque no está en fields)
             termina_en = inicia_en + timedelta(minutes=servicio.duracion_minutos)
+            self.instance.termina_en = termina_en
             cleaned['termina_en'] = termina_en
 
             # 3. Lógica de disponibilidad (Cruces de horario)
@@ -178,6 +180,9 @@ class ClienteAgendamientoForm(forms.ModelForm):
                 inicia_en__lt=termina_en,
                 termina_en__gt=inicia_en,
             ).order_by('termina_en')
+            
+            if self.instance.pk:
+                conflictos = conflictos.exclude(pk=self.instance.pk)
 
             if conflictos.exists():
                 conflicto = conflictos.last()

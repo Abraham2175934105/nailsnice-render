@@ -71,8 +71,29 @@ class UsuarioCreateView(LoginRequiredMixin, CreateView):
     model = Usuario
     form_class = UsuarioForm
     template_name = 'admin/usuarios/usuario_form.html'
-    success_url = reverse_lazy('usuarios:admin_list')  # Default fallback
     
+    def get_success_url(self):
+        rol_name = self.request.GET.get('rol')
+        if rol_name == 'Administrador':
+            return reverse_lazy('usuarios:admin_list')
+        elif rol_name == 'Empleado':
+            return reverse_lazy('usuarios:empleado_list')
+        return reverse_lazy('usuarios:admin_list')
+    
+    def get_initial(self):
+        initial = super().get_initial()
+        rol_name = self.request.GET.get('rol')
+        if rol_name:
+            rol_obj = RolAcceso.objects.filter(nombre=rol_name).first()
+            if rol_obj:
+                initial['rol'] = rol_obj
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['rol_fijo'] = self.request.GET.get('rol')
+        return context
+
     def form_valid(self, form):
         messages.success(self.request, "Usuario creado exitosamente con su rol asignado.")
         return super().form_valid(form)

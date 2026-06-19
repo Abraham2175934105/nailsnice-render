@@ -60,7 +60,7 @@
     <div class="premium-glass-form">
         <div class="premium-form-header">
             <h3 class="m-0" style="font-family: 'Playfair Display', serif; color: #2d0f22; font-size: 2.2rem; font-weight: 700;">
-                {% if form.instance.pk %}Editar Cuenta de Usuario{% else %}Alta de Nuevo Usuario{% endif %}
+                {% if form.instance.pk %}Editar Cuenta de Usuario{% else %}Alta de Nuevo {{ rol_fijo|default:'Usuario' }}{% endif %}
             </h3>
             <p class="text-muted small mb-0 mt-2" style="font-size: 1.05rem;">Registra y configura accesos de forma segura.</p>
         </div>
@@ -118,7 +118,7 @@
                     </div>
                 </div>
 
-                <div class="p-4" style="background-color: rgba(255,64,129,0.03); border-radius: 18px; border: 1px dashed rgba(255,64,129,0.2); margin-bottom: 3rem;">
+                <div class="p-4" style="background-color: rgba(255,64,129,0.03); border-radius: 18px; border: 1px dashed rgba(255,64,129,0.2); margin-bottom: 3rem; {% if form.rol.is_hidden %}display: none;{% endif %}">
                     <label class="premium-input-label text-dark mb-3" style="font-size: 1rem; color: #2d0f22;">
                         <i class="fas fa-shield-alt text-secondary me-2"></i> Asignación de Rol
                     </label>

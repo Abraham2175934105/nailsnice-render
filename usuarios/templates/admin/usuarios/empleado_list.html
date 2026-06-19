@@ -5,7 +5,7 @@
 {% block page_actions %}
 <div class="page-actions">
   {% include 'partials/export_button.html' %}
-  <a href="{% url 'usuarios:usuario_create' %}" class="btn-pill btn-primary">
+  <a href="{% url 'usuarios:usuario_create' %}?rol=Empleado" class="btn-pill btn-primary">
     <svg aria-hidden="true"><use href="#icon-plus"></use></svg>Registrar
   </a>
 </div>
