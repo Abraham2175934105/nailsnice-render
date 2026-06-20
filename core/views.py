@@ -406,36 +406,55 @@ def profile_view(request):
 
     try:
         from servicios.models import Agendamiento
-        agendamientos_qs = Agendamiento.objects.filter(cliente__usuario=user).select_related('servicio', 'empleado__usuario').order_by('-inicia_en')
+        cliente_id = getattr(user, 'id_usuario', getattr(user, 'id', None))
+        # Remove select_related('empleado__usuario') to avoid INNER JOIN drops if empleado is missing in DB
+        agendamientos_qs = Agendamiento.objects.filter(cliente_id=cliente_id).select_related('servicio').order_by('-inicia_en')
         agendamientos = []
         now = timezone.now()
         for ag in agendamientos_qs:
-            is_past = ag.inicia_en < now
-            is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
-            time_diff = (ag.inicia_en - now).total_seconds()
-            is_locked = time_diff <= 900 and not is_past
-            
-            especialista_str = 'Sin asignar'
-            if ag.empleado and ag.empleado.usuario:
-                especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
+            try:
+                fecha_inicia = ag.inicia_en
+                if timezone.is_naive(fecha_inicia):
+                    fecha_inicia = timezone.make_aware(fecha_inicia)
                 
-            agendamientos.append({
-                'id': ag.pk,
-                'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
-                'servicio_id': ag.servicio.pk if ag.servicio else '',
-                'especialista': especialista_str,
-                'empleado_id': ag.empleado.usuario.pk if ag.empleado and ag.empleado.usuario else '',
-                'fecha': ag.inicia_en,
-                'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
-                'estado_raw': ag.estado,
-                'is_past': is_past,
-                'is_done': is_done,
-                'is_locked': is_locked,
-                'can_edit': not is_past and not is_done and not is_locked,
-                'inicia_en_iso': timezone.localtime(ag.inicia_en).strftime('%Y-%m-%dT%H:%M') if ag.inicia_en else '',
-                'notas': ag.notas or '',
-            })
+                is_past = fecha_inicia < now
+                is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
+                time_diff = (fecha_inicia - now).total_seconds()
+                is_locked = time_diff <= 900 and not is_past
+                
+                especialista_str = 'Sin asignar'
+                empleado_pk = ''
+                try:
+                    if hasattr(ag, 'empleado') and ag.empleado:
+                        if hasattr(ag.empleado, 'usuario') and ag.empleado.usuario:
+                            especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
+                            empleado_pk = ag.empleado.usuario.pk
+                except Exception:
+                    pass
+                    
+                agendamientos.append({
+                    'id': ag.pk,
+                    'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
+                    'servicio_id': ag.servicio.pk if ag.servicio else '',
+                    'especialista': especialista_str,
+                    'empleado_id': empleado_pk,
+                    'fecha': fecha_inicia,
+                    'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
+                    'estado_raw': ag.estado,
+                    'is_past': is_past,
+                    'is_done': is_done,
+                    'is_locked': is_locked,
+                    'can_edit': not is_past and not is_done and not is_locked,
+                    'inicia_en_iso': timezone.localtime(fecha_inicia).strftime('%Y-%m-%dT%H:%M') if fecha_inicia else '',
+                    'notas': ag.notas or '',
+                })
+            except Exception as item_err:
+                import logging
+                logging.getLogger('Profesional Beauty').error('Error parsing agendamiento %s: %s', ag.pk, item_err)
+                continue
     except Exception as e:
+        import logging
+        logging.getLogger('Profesional Beauty').error('Error querying agendamientos: %s', e)
         agendamientos = []
 
     from servicios.forms import ClienteAgendamientoForm

@@ -1931,33 +1931,7 @@ body {
 .home-page {
     position: relative;
     overflow-x: hidden;
-}
-
-.home-page::before,
-.home-page::after {
-    content: '';
-    position: fixed;
-    width: 520px;
-    height: 520px;
-    border-radius: 999px;
-    filter: blur(70px);
-    opacity: 0.3;
-    z-index: -1;
-    pointer-events: none;
-}
-
-.home-page::before {
-    top: -130px;
-    left: -120px;
-    background: radial-gradient(circle, rgba(214, 122, 167, 0.85), rgba(214, 122, 167, 0));
-    animation: homeBlobA 16s ease-in-out infinite;
-}
-
-.home-page::after {
-    top: 18%;
-    right: -150px;
-    background: radial-gradient(circle, rgba(184, 91, 130, 0.76), rgba(184, 91, 130, 0));
-    animation: homeBlobB 14s ease-in-out infinite;
+    background: linear-gradient(135deg, #fdf5f8 0%, #ffffff 50%, #fef4f8 100%);
 }
 
 .home-page .hero {
