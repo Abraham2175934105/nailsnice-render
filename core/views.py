@@ -407,7 +407,15 @@ def profile_view(request):
     try:
         from servicios.models import Agendamiento
         cliente_id = getattr(user, 'id_usuario', getattr(user, 'id', None))
-        # Remove select_related('empleado__usuario') to avoid INNER JOIN drops if empleado is missing in DB
+        
+        # DEBUG: Print exact query requested by user
+        debug_qs = Agendamiento.objects.filter(cliente=user)
+        print("====== DEBUG AGENDAMIENTOS ======")
+        print(f"Usuario Logueado: {user.pk} - {user.correo}")
+        print(f"Query Filter(cliente=request.user): {list(debug_qs)}")
+        print(f"Query Filter(cliente_id={cliente_id}): {list(Agendamiento.objects.filter(cliente_id=cliente_id))}")
+        print("=================================")
+
         agendamientos_qs = Agendamiento.objects.filter(cliente_id=cliente_id).select_related('servicio').order_by('-inicia_en')
         agendamientos = []
         now = timezone.now()
@@ -456,6 +464,7 @@ def profile_view(request):
         import logging
         logging.getLogger('Profesional Beauty').error('Error querying agendamientos: %s', e)
         agendamientos = []
+        debug_qs = []
 
     from servicios.forms import ClienteAgendamientoForm
     form_reagendar = ClienteAgendamientoForm()
@@ -627,6 +636,7 @@ def profile_view(request):
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
         'agendamientos': agendamientos,
+        'mis_agendamientos': debug_qs, # RAW queryset for debugging
         'form_reagendar': form_reagendar,
         'security_info': security_info,
         'direccion': direccion,

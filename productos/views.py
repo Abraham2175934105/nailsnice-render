@@ -446,6 +446,13 @@ def catalogo_productos(request):
     for producto in page_obj.object_list:
         variante = _get_default_variante(producto)
         categoria = getattr(producto.subcategoria, 'categoria', None) if getattr(producto, 'subcategoria', None) else None
+        
+        imagen_url = ''
+        if producto.imagenes.exists():
+            img = producto.imagenes.first()
+            if img and img.imagen:
+                imagen_url = img.imagen.url
+
         productos_data.append({
             'id': producto.id_producto,
             'nombre': producto.nombre,
@@ -455,6 +462,7 @@ def catalogo_productos(request):
             'marca': getattr(producto.marca, 'nombre', '') if getattr(producto, 'marca', None) else '',
             'inventario_id': getattr(variante, 'id_variante', None) if variante else None,
             'stock': _get_stock_disponible(variante),
+            'imagen_url': imagen_url,
         })
 
     selected_columns = [c for c in request.GET.getlist('columns') if c in dict(PRODUCTO_COLUMNS)] or PRODUCTO_DEFAULT_COLUMNS
