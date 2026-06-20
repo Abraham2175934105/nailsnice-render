@@ -408,6 +408,10 @@ def profile_view(request):
         from servicios.models import Agendamiento
         # Safe query avoiding instance type errors
         agendamientos_qs = Agendamiento.objects.filter(cliente__usuario=user).select_related('servicio').order_by('-inicia_en')
+        
+        if not agendamientos_qs.exists() and hasattr(user, 'correo') and user.correo:
+            agendamientos_qs = Agendamiento.objects.filter(cliente__usuario__correo=user.correo).select_related('servicio').order_by('-inicia_en')
+            
         agendamientos = []
         now = timezone.now()
         for ag in agendamientos_qs:
