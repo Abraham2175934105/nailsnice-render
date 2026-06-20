@@ -23,6 +23,28 @@
   <form method="POST" enctype="multipart/form-data" class="form-grid">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+      <div class="u-grid-full alert alert-danger" style="background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); color: #ff4d4f; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        {% for error in form.non_field_errors %}
+          <div>⚠️ {{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if form_variante.non_field_errors %}
+      <div class="u-grid-full alert alert-danger" style="background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); color: #ff4d4f; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        {% for error in form_variante.non_field_errors %}
+          <div>⚠️ {{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if form_saldo.non_field_errors %}
+      <div class="u-grid-full alert alert-danger" style="background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); color: #ff4d4f; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        {% for error in form_saldo.non_field_errors %}
+          <div>⚠️ {{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {% if form %}
       <!-- ═══ Formulario Legacy (ProductoMaquillaje) ═══ -->
       {% for field in form %}

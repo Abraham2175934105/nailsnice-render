@@ -281,84 +281,136 @@ def crear_producto(request):
 
 @admin_required
 def editar_producto(request, id):
+    # Determinar si usar el flujo legacy o el moderno por existencia de la variante en base de datos.
+    # Esto previene errores de compatibilidad si existen registros mezclados.
+    using_saldos = True
+    variante = None
+    producto_legacy = None
+
     try:
         variante = VarianteProducto.objects.get(pk=id)
-    except VarianteProducto.DoesNotExist:
-        producto = get_object_or_404(ProductoMaquillaje, pk=id)
-        if not producto.is_active:
+        using_saldos = True
+    except Exception:
+        # Fallback / Detección: si no se encuentra en VarianteProducto o hay error de base de datos
+        try:
+            producto_legacy = ProductoMaquillaje.objects.get(pk=id)
+            using_saldos = False
+        except Exception:
+            raise Http404("Producto no encontrado")
+
+    if not using_saldos:
+        # --- Flujo Legacy (ProductoMaquillaje) ---
+        if not producto_legacy.is_active:
             raise Http404()
         if request.method == 'POST':
-            form = InventarioForm(request.POST, request.FILES, instance=producto)
+            form = InventarioForm(request.POST, request.FILES, instance=producto_legacy)
             if form.is_valid():
-                save_producto_form(form, user=request.user)
-                return redirect('lista_inventario')
+                try:
+                    save_producto_form(form, user=request.user)
+                    return redirect('lista_inventario')
+                except Exception as e:
+                    form.add_error(None, f"Error de base de datos al guardar: {str(e)}")
         else:
-            form = InventarioForm(instance=producto)
+            form = InventarioForm(instance=producto_legacy)
         return render(request, 'inventario/formulario.html', {
             'form': form,
-            'producto': producto,
+            'producto': producto_legacy,
+            'is_editing': True,
         })
 
-    saldo = SaldoInventario.objects.filter(variante=variante).first()
+    # --- Flujo Moderno (VarianteProducto + SaldoInventario) ---
+    try:
+        saldo = SaldoInventario.objects.filter(variante=variante).first()
+    except Exception:
+        saldo = None
+
     if request.method == 'POST':
         variante_form = VarianteProductoForm(request.POST, request.FILES, instance=variante)
         saldo_form = SaldoInventarioForm(request.POST, instance=saldo)
+        
+        # Validar y procesar formularios de forma segura sin Error 500
         if variante_form.is_valid() and saldo_form.is_valid():
-            with transaction.atomic():
-                variante = variante_form.save(commit=False)
-                # --- Guardar nombre y descripción en el Producto padre ---
-                nombre_producto = variante_form.cleaned_data.get('nombre_producto', '').strip()
-                descripcion = variante_form.cleaned_data.get('descripcion', '').strip()
-                if nombre_producto and variante.producto_id:
-                    Producto.objects.filter(pk=variante.producto_id).update(
-                        nombre=nombre_producto,
-                        descripcion_corta=descripcion or None,
-                    )
-                    # Refrescar el cache del objeto para que el nombre quede actualizado
-                    variante.producto.nombre = nombre_producto
-                variante.save()
-                variante_form.save_m2m()
-                saldo = saldo_form.save(commit=False)
-                saldo.variante = variante
-                saldo.save()
+            try:
+                with transaction.atomic():
+                    variante = variante_form.save(commit=False)
+                    
+                    # --- Guardar campos del Producto padre (Nombre, Descripción, Categoría, Marca) ---
+                    nombre_producto = variante_form.cleaned_data.get('nombre_producto', '').strip()
+                    descripcion = variante_form.cleaned_data.get('descripcion', '').strip()
+                    subcategoria = variante_form.cleaned_data.get('subcategoria')
+                    marca = variante_form.cleaned_data.get('marca')
+                    
+                    if nombre_producto and variante.producto_id:
+                        Producto.objects.filter(pk=variante.producto_id).update(
+                            nombre=nombre_producto,
+                            subcategoria=subcategoria,
+                            marca=marca,
+                            descripcion_corta=descripcion or None,
+                        )
+                        # Actualizar en memoria para prevenir valores obsoletos en el hilo
+                        try:
+                            if variante.producto:
+                                variante.producto.nombre = nombre_producto
+                                variante.producto.subcategoria = subcategoria
+                                variante.producto.marca = marca
+                        except Exception:
+                            pass
+                            
+                    variante.save()
+                    variante_form.save_m2m()
+                    
+                    # Guardar saldo inventario
+                    if not saldo:
+                        default_bodega = _ensure_default_bodega()
+                        saldo = SaldoInventario(variante=variante, bodega=default_bodega)
+                        
+                    saldo = saldo_form.save(commit=False)
+                    saldo.variante = variante
+                    saldo.save()
 
-                imagen = variante_form.cleaned_data.get('imagen')
-                if imagen:
-                    # Eliminar imágenes previas de esta variante
-                    ImagenProducto.objects.filter(variante=variante).delete()
+                    imagen = variante_form.cleaned_data.get('imagen')
+                    if imagen:
+                        # Eliminar imágenes previas de esta variante
+                        ImagenProducto.objects.filter(variante=variante).delete()
 
-                    from django.core.files.storage import default_storage
-                    path = default_storage.save(f'productos/{imagen.name}', imagen)
-                    ImagenProducto.objects.create(
-                        producto=variante.producto,
-                        variante=variante,
-                        ruta_almacenamiento=path,
-                        es_principal=True
-                    )
-            return redirect('lista_inventario')
+                        from django.core.files.storage import default_storage
+                        path = default_storage.save(f'productos/{imagen.name}', imagen)
+                        ImagenProducto.objects.create(
+                            producto=variante.producto,
+                            variante=variante,
+                            ruta_almacenamiento=path,
+                            es_principal=True
+                        )
+                return redirect('lista_inventario')
+            except Exception as e:
+                variante_form.add_error(None, f"Error en la base de datos al guardar: {str(e)}")
     else:
         variante_form = VarianteProductoForm(instance=variante)
         saldo_form = SaldoInventarioForm(instance=saldo)
 
-    current_image = ImagenProducto.objects.filter(variante=variante).first()
     current_image_url = None
-    if current_image and current_image.ruta_almacenamiento:
-        path = current_image.ruta_almacenamiento
-        if path.startswith('http://') or path.startswith('https://'):
-            current_image_url = path
-        else:
-            media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
-            while path.startswith(media_url):
-                path = path[len(media_url):]
-            if path.startswith('/media/'):
-                path = path[len('/media/'):]
-            path = path.lstrip('/')
-            
-            from django.core.files.storage import default_storage
-            try:
-                current_image_url = default_storage.url(path)
-            except Exception:
-                current_image_url = f"{media_url}{path}"
+    current_image = None
+    try:
+        current_image = ImagenProducto.objects.filter(variante=variante).first()
+        if current_image and current_image.ruta_almacenamiento:
+            path = current_image.ruta_almacenamiento
+            if path.startswith('http://') or path.startswith('https://'):
+                current_image_url = path
+            else:
+                media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
+                while path.startswith(media_url):
+                    path = path[len(media_url):]
+                if path.startswith('/media/'):
+                    path = path[len('/media/'):]
+                path = path.lstrip('/')
+                
+                from django.core.files.storage import default_storage
+                try:
+                    current_image_url = default_storage.url(path)
+                except Exception:
+                    current_image_url = f"{media_url}{path}"
+    except Exception:
+        pass
 
     return render(request, 'inventario/formulario.html', {
         'form_variante': variante_form,
@@ -368,6 +420,7 @@ def editar_producto(request, id):
         'current_image_url': current_image_url,
         'is_editing': True,
     })
+
 
 
 
