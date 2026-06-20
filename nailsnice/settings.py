@@ -83,7 +83,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary',
     'rest_framework',
     'core',
     'productos',
@@ -193,6 +195,20 @@ if not DEBUG:
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Cloudinary Storage Configuration
+# Si CLOUDINARY_URL está configurado, usamos la nube. Si no, fallback a local.
+if os.environ.get('CLOUDINARY_URL'):
+    import cloudinary
+    import dj_database_url
+    # CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.environ.get('CLOUDINARY_URL').split('@')[1] if '@' in os.environ.get('CLOUDINARY_URL') else '',
+        'API_KEY': os.environ.get('CLOUDINARY_URL').split('://')[1].split(':')[0] if '://' in os.environ.get('CLOUDINARY_URL') else '',
+        'API_SECRET': os.environ.get('CLOUDINARY_URL').split(':')[2].split('@')[0] if '@' in os.environ.get('CLOUDINARY_URL') else '',
+    }
+    # django-cloudinary-storage automatically parses CLOUDINARY_URL globally for cloudinary python library too
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Cookies y seguridad en producción
 SESSION_COOKIE_SECURE = True

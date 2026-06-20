@@ -397,18 +397,13 @@ def editar_producto(request, id):
             if path.startswith('http://') or path.startswith('https://'):
                 current_image_url = path
             else:
-                media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
-                while path.startswith(media_url):
-                    path = path[len(media_url):]
-                if path.startswith('/media/'):
-                    path = path[len('/media/'):]
-                path = path.lstrip('/')
-                
-                from django.core.files.storage import default_storage
                 try:
+                    from django.core.files.storage import default_storage
                     current_image_url = default_storage.url(path)
                 except Exception:
-                    current_image_url = f"{media_url}{path}"
+                    from django.conf import settings
+                    media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
+                    current_image_url = media_url + path.lstrip('/')
     except Exception:
         pass
 

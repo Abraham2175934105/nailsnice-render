@@ -2198,3 +2198,27 @@ body {
         border-radius: 20px;
     }
 }
+
+/* ── Brand Logo Animation (Global for all headers) ── */
+.logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    line-height: 1.2;
+    margin: 0;
+    background: linear-gradient(135deg, #ff4081 0%, #c2185b 40%, #f06292 75%, #ff80ab 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: brandShimmer 4s ease-in-out infinite;
+    transition: letter-spacing 0.3s ease;
+    white-space: nowrap !important;
+}
+.logo h1:hover { 
+    animation: brandShimmer 1.5s ease-in-out infinite; 
+}
+@keyframes brandShimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}

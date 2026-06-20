@@ -65,6 +65,15 @@ def _normalize_image_url(raw):
     if value.startswith('http://') or value.startswith('https://'):
         return value
 
+    # If Cloudinary or S3 is used, default_storage.url will return the remote URL.
+    try:
+        from django.core.files.storage import default_storage
+        url = default_storage.url(value)
+        if url:
+            return url
+    except Exception:
+        pass
+
     media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
     # Evitar doble prefijo /media//media/
     while value.startswith(media_url):
