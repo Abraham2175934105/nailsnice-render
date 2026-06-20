@@ -405,12 +405,17 @@ def profile_view(request):
         }
 
     try:
+        from django.db.models import Q
         from servicios.models import Agendamiento
-        # Safe query avoiding instance type errors
-        agendamientos_qs = Agendamiento.objects.filter(cliente__usuario=user).select_related('servicio').order_by('-inicia_en')
         
-        if not agendamientos_qs.exists() and hasattr(user, 'correo') and user.correo:
-            agendamientos_qs = Agendamiento.objects.filter(cliente__usuario__correo=user.correo).select_related('servicio').order_by('-inicia_en')
+        correo_usuario = getattr(user, 'correo', '') or ''
+        
+        # Safe query combining direct user match or case-insensitive email match, and even creado_por fallback
+        agendamientos_qs = Agendamiento.objects.filter(
+            Q(cliente__usuario=user) | 
+            Q(cliente__usuario__correo__iexact=correo_usuario) |
+            Q(creado_por=user)
+        ).select_related('servicio').order_by('-inicia_en').distinct()
             
         agendamientos = []
         now = timezone.now()
@@ -628,6 +633,8 @@ def profile_view(request):
             messages.success(request, 'Contraseña actualizada con éxito.')
             return redirect('perfil')
 
+    print(f"CITAS DEL USUARIO: {len(agendamientos)} (QuerySet count: {agendamientos_qs.count()})")
+    
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
         'agendamientos': agendamientos,

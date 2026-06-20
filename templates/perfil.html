@@ -180,15 +180,28 @@
                     <p class="empty-state__text">Aún no tienes citas agendadas.</p>
                 </div>
                 {% else %}
-                <div style="margin-top: 2rem;">
-                    <h3>Debug Agendamientos</h3>
-                    <pre style="background: #111; color: #0f0; padding: 20px; border-radius: 8px; overflow-x: auto;">
-RAW QuerySet (mis_agendamientos):
-{{ mis_agendamientos }}
-
-Context List (agendamientos):
-{{ agendamientos|pprint }}
-                    </pre>
+                <div class="table">
+                    <div class="table-head">
+                        <span>Servicio</span>
+                        <span>Fecha y Hora</span>
+                        <span>Especialista</span>
+                        <span>Estado</span>
+                        <span></span>
+                    </div>
+                    {% for cita in agendamientos %}
+                    <div class="table-row">
+                        <span><strong>{{ cita.servicio }}</strong></span>
+                        <span>{{ cita.fecha|date:"d/m/Y H:i" }}</span>
+                        <span>{{ cita.especialista }}</span>
+                        <span class="badge badge-{{ cita.estado_raw|lower }}">{{ cita.estado }}</span>
+                        <span>
+                            {% if cita.can_edit %}
+                                <button type="button" class="btn-ghost" onclick="openReagendarModal('{{ cita.id }}', '{{ cita.servicio_id }}', '{{ cita.empleado_id }}', '{{ cita.inicia_en_iso }}', '{{ cita.notas|escapejs }}')">Reagendar</button>
+                                <button type="button" class="btn-ghost" style="color: var(--color-danger);" onclick="cancelarCita('{{ cita.id }}')">Cancelar</button>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
             </section>
