@@ -179,7 +179,6 @@ STATIC_URL = 'static/'
 # sin necesidad de meter assets dentro de cada app.
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-    BASE_DIR / 'staticfiles',  # sirve los assets generados con hash en desarrollo
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles_build'  # separado para no chocar con STATICFILES_DIRS
 use_manifest = (os.environ.get('USE_MANIFEST_STATIC', 'false') or '').lower() in {'1', 'true', 'yes'}
@@ -191,7 +190,9 @@ if DEBUG:
 
 # En producción use WhiteNoise para servir estáticos optimizados
 if not DEBUG:
-    STATICFILES_STORAGE = os.environ.get('STATICFILES_STORAGE', 'whitenoise.storage.CompressedManifestStaticFilesStorage')
+    # Usar CompressedStaticFilesStorage evita el MissingFileError cuando faltan fuentes
+    # referenciadas en CSS de terceros (como Django Rest Framework).
+    STATICFILES_STORAGE = os.environ.get('STATICFILES_STORAGE', 'whitenoise.storage.CompressedStaticFilesStorage')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
