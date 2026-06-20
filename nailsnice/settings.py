@@ -239,6 +239,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configure DATABASES from DATABASE_URL using dj-database-url (Render internal DB recommended)
 # Use the Render internal URL as a sensible default if DATABASE_URL is not set.
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://admin:2O4M5jI0KvBVpo6fkwZd9l8S8bpQ0JgB@dpg-d8pg2s5ckfvc73a89g4g-a/Profesional Beauty')
+
+# Parche maestro: Render no resuelve los hosts internos (dpg-...) durante la fase de Build.
+# Si falla la resolucion DNS, forzamos SQLite temporalmente para que manage.py no falle.
+import socket
+from urllib.parse import urlparse
+if DATABASE_URL.startswith('postgres'):
+    try:
+        db_host = urlparse(DATABASE_URL).hostname
+        if db_host:
+            socket.gethostbyname(db_host)
+    except Exception:
+        DATABASE_URL = 'sqlite:///' + str(BASE_DIR / 'db.sqlite3')
+
 # If DATABASE_URL is a sqlite URL (local dev/migrations), configure SQLite directly
 if DATABASE_URL.startswith('sqlite'):
     DATABASES = {
