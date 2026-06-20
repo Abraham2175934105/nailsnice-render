@@ -6,8 +6,7 @@ echo "📦 Instalando dependencias..."
 pip install -r requirements.txt
 
 echo "🎨 Recolectando archivos estáticos..."
-rm -rf staticfiles_build
-python manage.py collectstatic --noinput --clear
+python manage.py collectstatic --noinput
 
 # NOTA: Las migraciones NO se ejecutan aquí porque en la fase de Build
 # Render no permite conexión al host interno de la base de datos.
