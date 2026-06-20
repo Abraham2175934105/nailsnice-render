@@ -274,6 +274,20 @@ if 'test' in sys.argv:
 
 # Custom User Model
 AUTH_USER_MODEL = 'usuarios.Usuario'
+
+# BACKENDS Y HASHERS - Añadidos para soporte robusto de passwords heredados (MD5) y estado inactivo
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.AllowAllUsersModelBackend',
+]
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.MD5PasswordHasher',
+]
+
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
