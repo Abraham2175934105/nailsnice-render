@@ -193,6 +193,9 @@ if not DEBUG:
     # Usar CompressedStaticFilesStorage evita el MissingFileError cuando faltan fuentes
     # referenciadas en CSS de terceros (como Django Rest Framework).
     STATICFILES_STORAGE = os.environ.get('STATICFILES_STORAGE', 'whitenoise.storage.CompressedStaticFilesStorage')
+    
+    # Previene errores fatales de collectstatic si no se encuentra un archivo mapeado
+    WHITENOISE_MANIFEST_STRICT = False
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
