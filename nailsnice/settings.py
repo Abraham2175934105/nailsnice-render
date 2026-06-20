@@ -181,21 +181,7 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles_build'  # separado para no chocar con STATICFILES_DIRS
-use_manifest = (os.environ.get('USE_MANIFEST_STATIC', 'false') or '').lower() in {'1', 'true', 'yes'}
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage' if use_manifest else 'django.contrib.staticfiles.storage.StaticFilesStorage'
-
-# En desarrollo servir estáticos sin manifest para evitar 404 si no se ha corrido collectstatic
-if DEBUG:
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-
-# En producción use WhiteNoise para servir estáticos optimizados
-if not DEBUG:
-    # Usar CompressedStaticFilesStorage evita el MissingFileError cuando faltan fuentes
-    # referenciadas en CSS de terceros (como Django Rest Framework).
-    STATICFILES_STORAGE = os.environ.get('STATICFILES_STORAGE', 'whitenoise.storage.CompressedStaticFilesStorage')
-    
-    # Previene errores fatales de collectstatic si no se encuentra un archivo mapeado
-    WHITENOISE_MANIFEST_STRICT = False
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
