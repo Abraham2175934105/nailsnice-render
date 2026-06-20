@@ -83,8 +83,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary_storage',
     'cloudinary',
     'rest_framework',
     'core',
@@ -178,9 +178,9 @@ STATIC_URL = '/static/'
 # Permite servir el directorio `/static/` del proyecto (p.ej. `static/css/style.css`)
 # sin necesidad de meter assets dentro de cada app.
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / 'static',
 ]
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
+STATIC_ROOT = BASE_DIR / 'staticfiles_build'
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 MEDIA_URL = '/media/'
@@ -413,6 +413,10 @@ if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
     if 'cloudinary_storage' not in INSTALLED_APPS:
-        INSTALLED_APPS.insert(0, 'cloudinary_storage')
+        INSTALLED_APPS.append('cloudinary_storage')
     if 'cloudinary' not in INSTALLED_APPS:
-        INSTALLED_APPS.append('cloudinary')
+        INSTALLED_APPS.append('cloudinary')
+
+print(">>> BASE_DIR:", BASE_DIR)
+print(">>> STATIC_DIRS:", STATICFILES_DIRS)
+
