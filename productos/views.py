@@ -459,8 +459,8 @@ def catalogo_productos(request):
         imagen_url = ''
         if producto.imagenes.exists():
             img = producto.imagenes.first()
-            if img and img.imagen:
-                imagen_url = img.imagen.url
+            if img and getattr(img, 'ruta_almacenamiento', None):
+                imagen_url = _normalize_image_url(img.ruta_almacenamiento) or ''
 
         productos_data.append({
             'id': producto.id_producto,
