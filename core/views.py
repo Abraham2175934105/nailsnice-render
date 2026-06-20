@@ -420,46 +420,48 @@ def profile_view(request):
         agendamientos = []
         now = timezone.now()
         for ag in agendamientos_qs:
-            try:
-                fecha_inicia = ag.inicia_en
-                if timezone.is_naive(fecha_inicia):
-                    fecha_inicia = timezone.make_aware(fecha_inicia)
-                
-                is_past = fecha_inicia < now
-                is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
-                time_diff = (fecha_inicia - now).total_seconds()
-                is_locked = time_diff <= 900 and not is_past
-                
-                especialista_str = 'Sin asignar'
-                empleado_pk = ''
-                try:
-                    if hasattr(ag, 'empleado') and ag.empleado:
-                        if hasattr(ag.empleado, 'usuario') and ag.empleado.usuario:
-                            especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
-                            empleado_pk = ag.empleado.usuario.pk
-                except Exception:
-                    pass
+            fecha_inicia = ag.inicia_en
+            
+            if timezone.is_naive(fecha_inicia) and timezone.is_aware(now):
+                fecha_inicia = timezone.make_aware(fecha_inicia)
+            elif timezone.is_aware(fecha_inicia) and timezone.is_naive(now):
+                fecha_inicia = timezone.make_naive(fecha_inicia)
+            
+            is_past = fecha_inicia < now
+            is_done = ag.estado in ['COMPLETADO', 'CANCELADO', 'NO_ASISTIO']
+            time_diff = (fecha_inicia - now).total_seconds()
+            is_locked = time_diff <= 900 and not is_past
+            
+            especialista_str = 'Sin asignar'
+            empleado_pk = ''
+            if hasattr(ag, 'empleado') and ag.empleado:
+                if hasattr(ag.empleado, 'usuario') and ag.empleado.usuario:
+                    especialista_str = f"{getattr(ag.empleado.usuario, 'nombre', '')} {getattr(ag.empleado.usuario, 'apellido', '')}".strip()
+                    empleado_pk = ag.empleado.usuario.pk
                     
-                agendamientos.append({
-                    'id': ag.pk,
-                    'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
-                    'servicio_id': ag.servicio.pk if ag.servicio else '',
-                    'especialista': especialista_str,
-                    'empleado_id': empleado_pk,
-                    'fecha': fecha_inicia,
-                    'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
-                    'estado_raw': ag.estado,
-                    'is_past': is_past,
-                    'is_done': is_done,
-                    'is_locked': is_locked,
-                    'can_edit': not is_past and not is_done and not is_locked,
-                    'inicia_en_iso': timezone.localtime(fecha_inicia).strftime('%Y-%m-%dT%H:%M') if fecha_inicia else '',
-                    'notas': ag.notas or '',
-                })
-            except Exception as item_err:
-                import logging
-                logging.getLogger('Profesional Beauty').error('Error parsing agendamiento %s: %s', ag.pk, item_err)
-                continue
+            inicia_en_iso = ''
+            if fecha_inicia:
+                if timezone.is_aware(fecha_inicia):
+                    inicia_en_iso = timezone.localtime(fecha_inicia).strftime('%Y-%m-%dT%H:%M')
+                else:
+                    inicia_en_iso = fecha_inicia.strftime('%Y-%m-%dT%H:%M')
+                    
+            agendamientos.append({
+                'id': ag.pk,
+                'servicio': ag.servicio.nombre if ag.servicio else 'Servicio',
+                'servicio_id': ag.servicio.pk if ag.servicio else '',
+                'especialista': especialista_str,
+                'empleado_id': empleado_pk,
+                'fecha': fecha_inicia,
+                'estado': ag.get_estado_display() if hasattr(ag, 'get_estado_display') else ag.estado,
+                'estado_raw': ag.estado,
+                'is_past': is_past,
+                'is_done': is_done,
+                'is_locked': is_locked,
+                'can_edit': not is_past and not is_done and not is_locked,
+                'inicia_en_iso': inicia_en_iso,
+                'notas': ag.notas or '',
+            })
     except Exception as e:
         import logging
         logging.getLogger('Profesional Beauty').error('Error querying agendamientos: %s', e)
@@ -859,7 +861,7 @@ def dashboard_view(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
     
-    hoy: date = datetime.now().date()
+    hoy: date = timezone.now().date()
     start_date: date = hoy - timedelta(days=30)
     end_date: date = hoy
 
