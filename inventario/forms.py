@@ -33,7 +33,7 @@ class VarianteProductoForm(forms.ModelForm):
             return f"{obj.categoria.nombre} - {obj.nombre}"
 
     subcategoria = SubcategoriaChoiceField(
-        queryset=SubcategoriaCatalogo.objects.filter(activo=True).select_related('categoria').order_by('categoria__nombre', 'nombre'),
+        queryset=SubcategoriaCatalogo.objects.none(),  # Se inicializa dinámicamente en __init__
         required=True,
         label="Categoría / Subcategoría",
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -86,6 +86,9 @@ class VarianteProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Cargar dinámicamente absolutamente todas las subcategorías y sus categorías de la base de datos
+        self.fields['subcategoria'].queryset = SubcategoriaCatalogo.objects.all().select_related('categoria').order_by('categoria__nombre', 'nombre')
+        
         # Pre-poblar los campos extra desde el Producto relacionado (modo edición)
         instance = kwargs.get('instance')
         if instance and instance.pk and hasattr(instance, 'producto') and instance.producto_id:
