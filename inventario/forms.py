@@ -33,7 +33,7 @@ class VarianteProductoForm(forms.ModelForm):
             return f"{obj.categoria.nombre} - {obj.nombre}"
 
     subcategoria = SubcategoriaChoiceField(
-        queryset=SubcategoriaCatalogo.objects.none(),  # Se inicializa dinámicamente en __init__
+        queryset=SubcategoriaCatalogo.objects.all().select_related('categoria').order_by('categoria__nombre', 'nombre'),
         required=True,
         label="Categoría / Subcategoría",
         widget=forms.Select(attrs={'class': 'form-select'}),
