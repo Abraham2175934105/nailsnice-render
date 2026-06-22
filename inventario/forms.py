@@ -43,9 +43,10 @@ class VarianteProductoForm(forms.ModelForm):
         help_text="Marca del producto (opcional).",
     )
     imagen = forms.FileField(
-        required=False,
+        required=True,
         label="Imagen del Producto",
         widget=forms.FileInput(attrs={'class': 'form-input'}),
+        error_messages={'required': 'Es obligatorio subir una imagen para el producto'}
     )
 
     class Meta:

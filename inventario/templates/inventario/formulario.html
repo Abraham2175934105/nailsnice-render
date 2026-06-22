@@ -344,30 +344,41 @@
   document.addEventListener('DOMContentLoaded', function() {
     var subcatSelect = document.getElementById('id_subcategoria');
     var skuInput = document.getElementById('id_sku_input');
+    var varianteInput = document.getElementById('id_nombre_variante');
+    var prodNameInput = document.getElementById('id_nombre_producto');
     
-    if (subcatSelect && skuInput) {
-      subcatSelect.addEventListener('change', function() {
-        if (!skuInput.value && subcatSelect.value) {
-          // get text like "Líquidos - Removedores"
-          var text = subcatSelect.options[subcatSelect.selectedIndex].text;
-          var parts = text.split('-');
-          var catPrefix = 'CAT';
-          var subPrefix = 'SUB';
-          
-          if (parts.length > 1) {
-            catPrefix = parts[0].trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
-            subPrefix = parts[1].trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
-          } else if (text) {
-            catPrefix = text.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    function generateSku() {
+      if (!skuInput || skuInput.value) return;
+      if (!subcatSelect || !subcatSelect.value) return;
+
+      var text = subcatSelect.options[subcatSelect.selectedIndex].text;
+      var parts = text.split('-');
+      var catPrefix = 'CAT';
+      var subPrefix = 'GEN';
+      
+      if (parts.length > 1) {
+        catPrefix = parts[0].trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        subPrefix = parts[1].trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      } else if (text) {
+        catPrefix = text.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        
+        // Intentar extraer de variante o nombre de producto
+        var extraText = (varianteInput && varianteInput.value) ? varianteInput.value : ((prodNameInput && prodNameInput.value) ? prodNameInput.value : '');
+        if (extraText) {
+            subPrefix = extraText.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        } else {
             subPrefix = 'VAR';
-          }
-          
-          var seq = Math.floor(Math.random() * 900) + 100; // Generate a random 3 digit "sequential" number for now
-          var autoSku = 'NN-' + catPrefix + '-' + subPrefix + '-' + seq;
-          skuInput.value = autoSku;
         }
-      });
+      }
+      
+      var seq = Math.floor(Math.random() * 900) + 100;
+      var autoSku = 'NN-' + catPrefix + '-' + subPrefix + '-' + seq;
+      skuInput.value = autoSku;
     }
+
+    if (subcatSelect) subcatSelect.addEventListener('change', generateSku);
+    if (varianteInput) varianteInput.addEventListener('blur', generateSku);
+    if (prodNameInput) prodNameInput.addEventListener('blur', generateSku);
   });
 </script>
 {% endblock %}
