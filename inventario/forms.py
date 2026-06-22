@@ -27,7 +27,12 @@ class VarianteProductoForm(forms.ModelForm):
         }),
         help_text="Descripción que aparece en la página de detalle del catálogo.",
     )
-    subcategoria = forms.ModelChoiceField(
+
+    class SubcategoriaChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            return f"{obj.categoria.nombre} - {obj.nombre}"
+
+    subcategoria = SubcategoriaChoiceField(
         queryset=SubcategoriaCatalogo.objects.filter(activo=True).select_related('categoria').order_by('categoria__nombre', 'nombre'),
         required=True,
         label="Categoría / Subcategoría",
@@ -59,15 +64,15 @@ class VarianteProductoForm(forms.ModelForm):
             'activo',
         ]
         widgets = {
-            'sku': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: SKU-001'}),
+            'sku': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: NN-LIQ-REM-500', 'id': 'id_sku_input'}),
             'codigo_barras': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Opcional'}),
             'nombre_variante': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Ej: Rojo, 50ml, Talla M… (deja vacío si no aplica)',
             }),
-            'precio': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
-            'costo': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
-            'peso_gramos': forms.NumberInput(attrs={'min': '0', 'step': 'any', 'class': 'form-input'}),
+            'precio': forms.TextInput(attrs={'class': 'form-input'}),
+            'costo': forms.TextInput(attrs={'class': 'form-input'}),
+            'peso_gramos': forms.TextInput(attrs={'class': 'form-input'}),
         }
         labels = {
             'sku': 'SKU',
