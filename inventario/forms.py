@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from productos.models import VarianteProducto, Producto, SubcategoriaCatalogo, MarcaCatalogo
+from productos.models import VarianteProducto, Producto, SubcategoriaCatalogo, MarcaCatalogo, CategoriaCatalogo
 from .models import Bodega, SaldoInventario, TipoMovimientoInventario, MovimientoInventario
 
 
@@ -28,16 +28,12 @@ class VarianteProductoForm(forms.ModelForm):
         help_text="Descripción que aparece en la página de detalle del catálogo.",
     )
 
-    class SubcategoriaChoiceField(forms.ModelChoiceField):
-        def label_from_instance(self, obj):
-            return f"{obj.categoria.nombre} - {obj.nombre}"
-
-    subcategoria = SubcategoriaChoiceField(
-        queryset=SubcategoriaCatalogo.objects.all().select_related('categoria').order_by('categoria__nombre', 'nombre'),
+    subcategoria = forms.ModelChoiceField(
+        queryset=CategoriaCatalogo.objects.none(),
         required=True,
-        label="Categoría / Subcategoría",
+        label="Categoría",
         widget=forms.Select(attrs={'class': 'form-select'}),
-        help_text="Categoría del catálogo a la que pertenece el producto.",
+        help_text="Categoría maestra del catálogo.",
     )
     marca = forms.ModelChoiceField(
         queryset=MarcaCatalogo.objects.filter(activo=True).order_by('nombre'),
@@ -86,8 +82,8 @@ class VarianteProductoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Cargar dinámicamente absolutamente todas las subcategorías y sus categorías de la base de datos
-        self.fields['subcategoria'].queryset = SubcategoriaCatalogo.objects.all().select_related('categoria').order_by('categoria__nombre', 'nombre')
+        # Cargar el modelo MAESTRO real que contiene las 7 categorías de la base de datos
+        self.fields['subcategoria'].queryset = CategoriaCatalogo.objects.all().order_by('nombre')
         
         # Pre-poblar los campos extra desde el Producto relacionado (modo edición)
         instance = kwargs.get('instance')
@@ -98,10 +94,25 @@ class VarianteProductoForm(forms.ModelForm):
                 self.fields['descripcion'].initial = (
                     prod.descripcion_corta or prod.descripcion_larga or ''
                 )
-                self.fields['subcategoria'].initial = prod.subcategoria
+                if prod.subcategoria:
+                    self.fields['subcategoria'].initial = prod.subcategoria.categoria
                 self.fields['marca'].initial = prod.marca
             except Exception:
                 pass
+
+    def clean_subcategoria(self):
+        categoria = self.cleaned_data.get('subcategoria')
+        if not categoria:
+            return None
+        # Convertimos la Categoria maestra en una Subcategoria automáticamente para respetar
+        # la relación estricta en la base de datos (Producto -> SubcategoriaCatalogo).
+        # Si no existe una subcategoría con el mismo nombre, la crea.
+        subcat, _ = SubcategoriaCatalogo.objects.get_or_create(
+            categoria=categoria,
+            nombre=categoria.nombre,
+            defaults={'activo': True}
+        )
+        return subcat
 
 
 class SaldoInventarioForm(forms.ModelForm):
