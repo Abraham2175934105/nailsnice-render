@@ -872,8 +872,8 @@ def dashboard_view(request):
             start_date = parsed_start
             end_date = parsed_end
 
-    start_datetime = datetime.combine(start_date, datetime.min.time())
-    end_datetime = datetime.combine(end_date, datetime.max.time())
+    start_datetime = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+    end_datetime = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
 
     try:
         from servicios.models import Agendamiento
@@ -956,7 +956,7 @@ def dashboard_view(request):
     ).select_related('cliente__usuario').order_by('-realizado_en')[:5]
 
     # Ingresos ultimos 7 dias
-    siete_dias_atras = datetime.combine(hoy - timedelta(days=7), datetime.min.time())
+    siete_dias_atras = timezone.make_aware(datetime.combine(hoy - timedelta(days=7), datetime.min.time()))
     from django.db.models.functions import TruncDay
     ventas_7_dias = PedidoVenta.objects.filter(
         realizado_en__range=(siete_dias_atras, end_datetime)
