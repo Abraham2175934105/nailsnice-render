@@ -189,15 +189,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Cloudinary Storage Configuration
 # Si CLOUDINARY_URL está configurado, usamos la nube. Si no, fallback a local.
 if os.environ.get('CLOUDINARY_URL'):
-    import cloudinary
-    import dj_database_url
-    # CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': os.environ.get('CLOUDINARY_URL').split('@')[1] if '@' in os.environ.get('CLOUDINARY_URL') else '',
-        'API_KEY': os.environ.get('CLOUDINARY_URL').split('://')[1].split(':')[0] if '://' in os.environ.get('CLOUDINARY_URL') else '',
-        'API_SECRET': os.environ.get('CLOUDINARY_URL').split(':')[2].split('@')[0] if '@' in os.environ.get('CLOUDINARY_URL') else '',
-    }
-    # django-cloudinary-storage automatically parses CLOUDINARY_URL globally for cloudinary python library too
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Cookies y seguridad en producción
@@ -428,25 +419,7 @@ LOGGING = {
 }
 AUTH_USER_MODEL = 'usuarios.Usuario'
 
-# ---------------------------------------------------------------------------
-# Configuración condicional de Cloudinary para almacenamiento persistente
-# ---------------------------------------------------------------------------
-CLOUDINARY_CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME')
-CLOUDINARY_API_KEY = os.environ.get('CLOUDINARY_API_KEY')
-CLOUDINARY_API_SECRET = os.environ.get('CLOUDINARY_API_SECRET')
 
-if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': CLOUDINARY_CLOUD_NAME,
-        'API_KEY': CLOUDINARY_API_KEY,
-        'API_SECRET': CLOUDINARY_API_SECRET,
-    }
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-    if 'cloudinary_storage' not in INSTALLED_APPS:
-        INSTALLED_APPS.append('cloudinary_storage')
-    if 'cloudinary' not in INSTALLED_APPS:
-        INSTALLED_APPS.append('cloudinary')
 
 print(">>> BASE_DIR:", BASE_DIR)
 print(">>> STATIC_DIRS:", STATICFILES_DIRS)
