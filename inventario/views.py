@@ -11,6 +11,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from core.auth import admin_required
 from core.pdf_reports import build_crud_pdf_response
+from core.utils import build_bulk_import_message
 from productos.models import VarianteProducto, Producto, ImagenProducto
 from .forms import VarianteProductoForm, SaldoInventarioForm, InventarioForm, MovimientoInventarioForm, ItemMovimientoForm
 from .models import Bodega, SaldoInventario, ProductoMaquillaje, MovimientoInventario, TipoMovimientoInventario
@@ -460,12 +461,18 @@ def cargar_inventario_masivo(request):
             messages.error(request, f'Faltan columnas requeridas: {", ".join(sorted(missing))}')
             return redirect('inventario_carga_masiva')
 
-        errores = []
-        creados = 0
+        lista_fallidos = []
+        lista_duplicados = []
+        exitosos = 0
+        procesados = 0
+
         for idx, row in df.iterrows():
+            procesados += 1
+            fila_num = int(idx) + 2 if isinstance(idx, (int, float)) else str(idx)
+
             try:
                 nombre_producto = str(row.get('producto') or '').strip()
-                if not nombre_producto:
+                if not nombre_producto or nombre_producto.lower() == 'nan':
                     raise ValueError('Producto requerido')
 
                 producto = Producto.objects.filter(nombre__iexact=nombre_producto).first()
@@ -473,11 +480,11 @@ def cargar_inventario_masivo(request):
                     raise ValueError('Producto no encontrado')
 
                 sku = str(row.get('sku') or '').strip()
-                if not sku:
+                if not sku or sku.lower() == 'nan':
                     raise ValueError('SKU requerido')
 
                 bodega_raw = str(row.get('bodega') or '').strip()
-                if not bodega_raw:
+                if not bodega_raw or bodega_raw.lower() == 'nan':
                     raise ValueError('Bodega requerida')
 
                 bodega = Bodega.objects.filter(codigo__iexact=bodega_raw).first()
@@ -495,8 +502,14 @@ def cargar_inventario_masivo(request):
                 stock = int(row.get('stock') or 0)
                 reservado = int(row.get('reservado') or 0)
                 nivel_reorden = int(row.get('nivel_reorden') or 0)
+                
                 codigo_barras = str(row.get('codigo_barras') or '').strip() or None
+                if codigo_barras and codigo_barras.lower() == 'nan':
+                    codigo_barras = None
+                    
                 nombre_variante = str(row.get('nombre_variante') or '').strip() or None
+                if nombre_variante and nombre_variante.lower() == 'nan':
+                    nombre_variante = None
 
                 variante, created = VarianteProducto.objects.get_or_create(
                     sku=sku,
@@ -518,7 +531,7 @@ def cargar_inventario_masivo(request):
                     variante.activo = True
                     variante.save()
 
-                saldo, _ = SaldoInventario.objects.get_or_create(
+                saldo, saldo_created = SaldoInventario.objects.get_or_create(
                     variante=variante,
                     defaults={
                         'bodega': bodega,
@@ -527,22 +540,38 @@ def cargar_inventario_masivo(request):
                         'nivel_reorden': nivel_reorden,
                     },
                 )
-                if saldo.bodega != bodega:
-                    saldo.bodega = bodega
-                saldo.cantidad_existencia = stock
-                saldo.cantidad_reservada = reservado
-                saldo.nivel_reorden = nivel_reorden
-                saldo.save()
+                if not saldo_created:
+                    if saldo.bodega != bodega:
+                        saldo.bodega = bodega
+                    saldo.cantidad_existencia = stock
+                    saldo.cantidad_reservada = reservado
+                    saldo.nivel_reorden = nivel_reorden
+                    saldo.save()
 
-                creados += 1
+                if created:
+                    exitosos += 1
+                else:
+                    lista_duplicados.append(f"Fila {fila_num}: SKU '{sku}' (Actualizado)")
+
             except Exception as exc:
-                # CORRECCIÓN: Tratamos a idx de forma directa como string para satisfacer por completo a Pylance
-                errores.append(f'Fila {str(idx)}: {exc}')
+                lista_fallidos.append(f'Fila {fila_num}: {exc}')
 
-        if errores:
-            messages.warning(request, f'Creados {creados}. Errores en filas: {len(errores)}')
+        duplicados_count = len(lista_duplicados)
+        fallidos_count = len(lista_fallidos)
+        
+        msg_html = build_bulk_import_message(
+            procesados=procesados,
+            exitosos=exitosos,
+            duplicados=duplicados_count,
+            fallidos=fallidos_count,
+            lista_duplicados=lista_duplicados,
+            lista_fallidos=lista_fallidos
+        )
+
+        if fallidos_count > 0:
+            messages.warning(request, msg_html, extra_tags='safe')
         else:
-            messages.success(request, f'Cargados {creados} registros correctamente.')
+            messages.success(request, msg_html, extra_tags='safe')
         return redirect('lista_inventario')
 
     return render(request, 'inventario/carga_masiva.html')

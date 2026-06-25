@@ -13,6 +13,7 @@ from core.auth import admin_required, employee_required
 from django.contrib.auth.decorators import login_required
 from core.permissions import IsAdminOrReadOnly
 from core.pdf_reports import build_crud_pdf_response
+from core.utils import build_bulk_import_message
 from clientes.models import Cliente
 from usuarios.models import Empleado
 from .forms import (
@@ -497,21 +498,34 @@ def carga_masiva_agendamientos(request):
             return redirect('agendamientos_carga_masiva')
 
         creados = 0
-        errores = []
+        procesados = 0
+        lista_duplicados = []
+        lista_fallidos = []
         valid_estados = {choice[0] for choice in Agendamiento.ESTADO_CHOICES}
 
         for idx, row in df.iterrows():
+            procesados += 1
+            fila_num = int(idx) + 2 if isinstance(idx, (int, float)) else str(idx)
+            
             try:
                 cliente_correo = str(row.get('cliente_correo') or row.get('cliente_email') or '').strip()
+                if cliente_correo.lower() == 'nan': cliente_correo = ''
+                
                 servicio_nombre = str(row.get('servicio') or row.get('servicio_nombre') or '').strip()
+                if servicio_nombre.lower() == 'nan': servicio_nombre = ''
+                
                 fecha_raw = row.get('fecha') if 'fecha' in df.columns else row.get('fecha_agendamiento')
                 hora_raw = row.get('hora') if 'hora' in df.columns else row.get('hora_agendamiento')
+                
                 empleado_correo = str(row.get('empleado_correo') or row.get('empleado_email') or '').strip()
+                if empleado_correo.lower() == 'nan': empleado_correo = ''
+                
                 estado_val = str(row.get('estado') or row.get('estado_agendamiento') or 'PENDIENTE').strip()
                 notas_val = str(row.get('notas') or '').strip()
+                if notas_val.lower() == 'nan': notas_val = ''
 
                 if not cliente_correo or not servicio_nombre or pd.isna(fecha_raw) or pd.isna(hora_raw):
-                    raise ValueError('Datos faltantes: cliente_correo/cliente_email, servicio, fecha u hora.')
+                    raise ValueError('Datos faltantes: cliente_correo/email, servicio, fecha u hora.')
 
                 try:
                     fecha_val = pd.to_datetime(fecha_raw).date()
@@ -543,6 +557,23 @@ def carga_masiva_agendamientos(request):
                 inicia_en = pd.to_datetime(f"{fecha_val} {hora_val}")
                 termina_en = inicia_en + pd.to_timedelta(int(servicio_obj.duracion_minutos or 30), unit='minute')
 
+                # Chequear si ya existe un agendamiento para evitar duplicados puros
+                agendamiento_existente = Agendamiento.objects.filter(
+                    cliente=cliente_obj,
+                    servicio=servicio_obj,
+                    inicia_en=inicia_en
+                ).first()
+
+                if agendamiento_existente:
+                    # En vez de fallar, lo reportamos como duplicado/actualizado
+                    agendamiento_existente.empleado = empleado_obj
+                    agendamiento_existente.estado = estado_clean
+                    agendamiento_existente.notas = notas_val
+                    agendamiento_existente.termina_en = termina_en
+                    agendamiento_existente.save()
+                    lista_duplicados.append(f"Fila {fila_num}: Agendamiento ya existía (Actualizado)")
+                    continue
+
                 nuevo = Agendamiento(
                     cliente=cliente_obj,
                     servicio=servicio_obj,
@@ -556,14 +587,25 @@ def carga_masiva_agendamientos(request):
                 nuevo.save()
                 creados += 1
             except Exception as exc:
-                # CORRECCIÓN PYLANCE: Casteo explícito del índice para evitar problemas de tipos con Hashable
-                fila_num = int(idx) + 1 if isinstance(idx, (int, float)) else str(idx)
-                errores.append(f'Fila {fila_num}: {exc}')
+                lista_fallidos.append(f'Fila {fila_num}: {exc}')
 
-        if errores:
-            messages.warning(request, f'Creados {creados}. Errores en {len(errores)} filas.')
+        duplicados_count = len(lista_duplicados)
+        fallidos_count = len(lista_fallidos)
+
+        msg_html = build_bulk_import_message(
+            procesados=procesados,
+            exitosos=creados,
+            duplicados=duplicados_count,
+            fallidos=fallidos_count,
+            lista_duplicados=lista_duplicados,
+            lista_fallidos=lista_fallidos
+        )
+
+        if fallidos_count > 0:
+            messages.warning(request, msg_html, extra_tags='safe')
         else:
-            messages.success(request, f'Cargados {creados} agendamientos correctamente.')
+            messages.success(request, msg_html, extra_tags='safe')
+            
         return redirect('lista_agendamientos')
 
     return render(request, 'agendamientos/carga_masiva.html')

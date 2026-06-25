@@ -8,6 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 
 from core.auth import admin_required
 from core.pdf_reports import build_crud_pdf_response
+from core.utils import build_bulk_import_message
 from clientes.models import Cliente
 from usuarios.models import RolAcceso, Usuario, UsuarioRol
 from .forms import ClienteForm
@@ -219,23 +220,11 @@ def eliminar_clientes(request, id):
 
 @admin_required
 def carga_masiva_clientes(request):
-    def _render_upload_page(feedback=None):
-        return render(request, 'web/carga_masiva_clientes.html', {'upload_feedback': feedback})
-
     if request.method == 'POST':
         file = request.FILES.get('file')
         if not file:
-            return _render_upload_page({
-                'status': 'error',
-                'summary': 'Debes adjuntar un archivo CSV o Excel.',
-                'creados': 0,
-                'duplicados': 0,
-                'errores_total': 1,
-                'errores': ['No se encontró un archivo para procesar.'],
-                'warnings': [],
-                'file_name': '',
-                'errors_truncated': False,
-            })
+            messages.error(request, 'Debes adjuntar un archivo CSV o Excel.')
+            return redirect('clientes_carga_masiva')
 
         try:
             if file.name.lower().endswith('.csv'):
@@ -243,17 +232,8 @@ def carga_masiva_clientes(request):
             else:
                 df = pd.read_excel(file)
         except Exception:
-            return _render_upload_page({
-                'status': 'error',
-                'summary': 'No se pudo leer el archivo. Usa CSV o Excel válido.',
-                'creados': 0,
-                'duplicados': 0,
-                'errores_total': 1,
-                'errores': ['El formato no pudo procesarse correctamente.'],
-                'warnings': [],
-                'file_name': getattr(file, 'name', ''),
-                'errors_truncated': False,
-            })
+            messages.error(request, 'No se pudo leer el archivo. Usa CSV o Excel válido.')
+            return redirect('clientes_carga_masiva')
 
         df.columns = [str(c).strip().lower() for c in df.columns]
         columns = set(df.columns)
@@ -261,35 +241,19 @@ def carga_masiva_clientes(request):
         missing_base = required_base - columns
         if missing_base:
             missing_text = ", ".join(sorted(missing_base))
-            return _render_upload_page({
-                'status': 'error',
-                'summary': f'Faltan columnas requeridas: {missing_text}',
-                'creados': 0,
-                'duplicados': 0,
-                'errores_total': 1,
-                'errores': [f'Incluye las columnas faltantes: {missing_text}.'],
-                'warnings': [],
-                'file_name': getattr(file, 'name', ''),
-                'errors_truncated': False,
-            })
+            messages.error(request, f'Faltan columnas requeridas: {missing_text}')
+            return redirect('clientes_carga_masiva')
 
         has_names = {'nombre', 'apellido'}.issubset(columns) or {'nombre1', 'apellido1'}.issubset(columns)
         if not has_names:
-            return _render_upload_page({
-                'status': 'error',
-                'summary': 'El archivo debe incluir nombre y apellido (o nombre1 y apellido1).',
-                'creados': 0,
-                'duplicados': 0,
-                'errores_total': 1,
-                'errores': ['No se encontró un par válido de columnas para nombres.'],
-                'warnings': [],
-                'file_name': getattr(file, 'name', ''),
-                'errors_truncated': False,
-            })
+            messages.error(request, 'El archivo debe incluir nombre y apellido (o nombre1 y apellido1).')
+            return redirect('clientes_carga_masiva')
 
         creados = 0
-        duplicados = 0
-        errores = []
+        procesados = 0
+        lista_duplicados = []
+        lista_fallidos = []
+        
         tiene_columna_rol = 'rol' in df.columns or 'id_rol' in df.columns or 'rol_nombre' in df.columns
 
         def _as_text(value):
@@ -326,6 +290,9 @@ def carga_masiva_clientes(request):
         seen_phones = set()
 
         for idx, row in df.iterrows():
+            procesados += 1
+            fila_num = int(idx) + 2 if isinstance(idx, (int, float)) else str(idx)
+            
             nombre_legacy = _as_text(row.get('nombre', ''))
             apellido_legacy = _as_text(row.get('apellido', ''))
             nombre1_csv = _as_text(row.get('nombre1', ''))
@@ -335,9 +302,7 @@ def carga_masiva_clientes(request):
             apellido = apellido_legacy or apellido1_csv
 
             if not nombre or not apellido:
-                errores.append(
-                    f'Fila {idx + 1}: faltan datos de nombre/apellido. Usa nombre y apellido o nombre1 y apellido1.'
-                )
+                lista_fallidos.append(f'Fila {fila_num}: faltan datos de nombre/apellido.')
                 continue
 
             data = {
@@ -353,19 +318,18 @@ def carga_masiva_clientes(request):
             duplicate_reasons = []
             if correo_key:
                 if correo_key in seen_emails:
-                    duplicate_reasons.append(f"correo duplicado en el archivo ({data['correo']})")
+                    duplicate_reasons.append(f"correo duplicado en archivo ({data['correo']})")
                 elif correo_key in existing_emails:
                     duplicate_reasons.append(f"correo ya existe ({data['correo']})")
 
             if telefono_key:
                 if telefono_key in seen_phones:
-                    duplicate_reasons.append(f"teléfono duplicado en el archivo ({data['telefono']})")
+                    duplicate_reasons.append(f"teléfono duplicado en archivo ({data['telefono']})")
                 elif telefono_key in existing_phones:
                     duplicate_reasons.append(f"teléfono ya existe ({data['telefono']})")
 
             if duplicate_reasons:
-                duplicados += 1
-                errores.append(f"Fila {idx + 1}: {'; '.join(duplicate_reasons)}.")
+                lista_duplicados.append(f"Fila {fila_num}: {', '.join(duplicate_reasons)}")
                 continue
 
             if correo_key:
@@ -376,7 +340,7 @@ def carga_masiva_clientes(request):
             role_value = row.get('rol', row.get('id_rol', row.get('rol_nombre', ''))) if tiene_columna_rol else ''
             role_obj, role_error = _resolve_role_from_value(role_value)
             if role_error:
-                errores.append(f'Fila {idx + 1}: {role_error}')
+                lista_fallidos.append(f'Fila {fila_num}: {role_error}')
                 continue
 
             acepta_fidelizacion = _as_bool(row.get('acepta_fidelizacion', True))
@@ -400,36 +364,28 @@ def carga_masiva_clientes(request):
                 form.save()
                 creados += 1
             else:
-                errores.append(f'Fila {idx + 1}: {form.errors.as_text()}')
+                lista_fallidos.append(f"Fila {fila_num}: {form.errors.as_text().replace('*', '').strip()}")
 
-        warnings = []
         if not tiene_columna_rol:
-            warnings.append('No se envió columna rol. Se asignó Cliente por defecto donde aplicó.')
+            messages.info(request, 'No se envió columna rol. Se asignó Cliente por defecto donde aplicó.')
 
-        status = 'success'
-        if errores and creados > 0:
-            status = 'warning'
-        elif errores:
-            status = 'error'
+        duplicados_count = len(lista_duplicados)
+        fallidos_count = len(lista_fallidos)
 
-        if errores:
-            summary = f'Carga procesada: {creados} creado(s), {len(errores)} fila(s) con error.'
+        msg_html = build_bulk_import_message(
+            procesados=procesados,
+            exitosos=creados,
+            duplicados=duplicados_count,
+            fallidos=fallidos_count,
+            lista_duplicados=lista_duplicados,
+            lista_fallidos=lista_fallidos
+        )
+
+        if fallidos_count > 0:
+            messages.warning(request, msg_html, extra_tags='safe')
         else:
-            summary = f'Carga completada: {creados} cliente(s) creado(s) sin errores.'
+            messages.success(request, msg_html, extra_tags='safe')
 
-        max_errors = 80
-        visible_errors = errores[:max_errors]
+        return redirect('lista_clientes')
 
-        return _render_upload_page({
-            'status': status,
-            'summary': summary,
-            'creados': creados,
-            'duplicados': duplicados,
-            'errores_total': len(errores),
-            'errores': visible_errors,
-            'warnings': warnings,
-            'file_name': getattr(file, 'name', ''),
-            'errors_truncated': len(errores) > max_errors,
-        })
-
-    return _render_upload_page()
+    return render(request, 'web/carga_masiva_clientes.html')
