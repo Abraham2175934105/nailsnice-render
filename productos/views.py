@@ -464,11 +464,7 @@ def catalogo_productos(request):
         variante = _get_default_variante(producto)
         categoria = getattr(producto.subcategoria, 'categoria', None) if getattr(producto, 'subcategoria', None) else None
         
-        imagen_url = ''
-        if producto.imagenes.exists():
-            img = producto.imagenes.first()
-            if img and getattr(img, 'ruta_almacenamiento', None):
-                imagen_url = _normalize_image_url(img.ruta_almacenamiento) or ''
+        imagen_url = _resolve_producto_image_url(request, producto) or ''
 
         productos_data.append({
             'id': producto.id_producto,

@@ -156,6 +156,14 @@ class ProductoSerializer(serializers.ModelSerializer):
         return self._get_disponible(variante)
 
     def get_imagen(self, obj):
+        if getattr(obj, 'imagen', None):
+            try:
+                url = obj.imagen.url
+                if url:
+                    return url
+            except Exception:
+                pass
+
         sources = []
         for img in self._iter_imagenes(obj):
             if img.ruta_almacenamiento:

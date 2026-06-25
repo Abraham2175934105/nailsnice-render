@@ -127,6 +127,14 @@ def _resolve_cart_image_url(request, variante):
     if not variante:
         return None
 
+    if getattr(variante, 'producto', None) and getattr(variante.producto, 'imagen', None):
+        try:
+            url = variante.producto.imagen.url
+            if url:
+                return url
+        except Exception:
+            pass
+
     sources = []
     imagenes = getattr(variante, 'imagenes', None)
     if imagenes is not None:
