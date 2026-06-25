@@ -57,9 +57,9 @@ def _resolve_role_from_value(role_value):
 
 def _get_role_name(usuario):
     # Buscamos el rol a través de la tabla intermedia UsuarioRol
-    user_role = UsuarioRol.objects.filter(usuario=usuario).select_related('rol').first()
-    if user_role and user_role.rol:
-        return user_role.rol.nombre
+    user_role = UsuarioRol.objects.filter(usuario=usuario).select_related('id_rol').first()
+    if user_role and user_role.id_rol:
+        return user_role.id_rol.nombre
     return '-'
 
 
