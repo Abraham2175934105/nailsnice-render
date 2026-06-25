@@ -57,7 +57,7 @@ def get_env_bool(name: str, default: bool = False):
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = get_env_bool('DJANGO_DEBUG', True)
+DEBUG = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
@@ -72,7 +72,7 @@ def get_env_list(name: str, default: str = ""):
     parts = [p.strip() for p in raw.replace(';', ',').split(',')]
     return [p for p in parts if p]
 
-ALLOWED_HOSTS = get_env_list('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
+ALLOWED_HOSTS = ['nailsnice-render.onrender.com', '127.0.0.1', 'localhost', 'testserver', '*']
 
 
 # Application definition
@@ -399,11 +399,15 @@ LOGGING = {
             'encoding': 'utf-8',
         },
     },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'WARNING',
+    },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
         'django.request': {
             'handlers': ['console', 'file'],
