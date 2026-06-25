@@ -187,8 +187,6 @@ from .models import ProductoMaquillaje
 
 
 class InventarioForm(forms.ModelForm):
-    imagen = forms.FileField(required=False)
-
     class Meta:
         model = ProductoMaquillaje
         fields = [

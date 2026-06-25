@@ -1,6 +1,8 @@
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
+from django.db.models import Sum
+from cloudinary.models import CloudinaryField
 
 
 class Bodega(models.Model):
@@ -157,7 +159,7 @@ class ProductoMaquillaje(models.Model):
     proveedor = models.CharField(max_length=120, null=True, blank=True)
     color = models.CharField(max_length=80, null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
-    imagen = models.FileField(upload_to='productos/', null=True, blank=True)
+    imagen = CloudinaryField('imagen', folder='productos')
     creado_en = models.DateTimeField(auto_now_add=True)
 
     objects = models.Manager()
