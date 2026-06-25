@@ -160,6 +160,14 @@ def _iter_imagenes_product(producto):
 
 
 def _resolve_producto_image_url(request, producto):
+    if getattr(producto, 'imagen', None):
+        try:
+            url = producto.imagen.url
+            if url:
+                return url
+        except Exception:
+            pass
+
     sources = []
     for img in _iter_imagenes_product(producto):
         if img.ruta_almacenamiento:

@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
+from cloudinary.models import CloudinaryField
 
 
 class MarcaCatalogo(models.Model):
@@ -88,6 +89,7 @@ class Producto(models.Model):
         related_name='productos',
     )
     nombre = models.CharField(max_length=160, db_index=True)
+    imagen = CloudinaryField('imagen', folder='productos', null=True, blank=True)
     slug = models.CharField(max_length=180, unique=True)
     descripcion_corta = models.CharField(max_length=255, null=True, blank=True)
     descripcion_larga = models.TextField(null=True, blank=True)

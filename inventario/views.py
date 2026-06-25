@@ -261,14 +261,8 @@ def crear_producto(request):
 
                     imagen = variante_form.cleaned_data.get('imagen')
                     if imagen:
-                        from django.core.files.storage import default_storage
-                        path = default_storage.save(f'productos/{imagen.name}', imagen)
-                        ImagenProducto.objects.create(
-                            producto=variante.producto,
-                            variante=variante,
-                            ruta_almacenamiento=path,
-                            es_principal=True
-                        )
+                        producto.imagen = imagen
+                        producto.save(update_fields=['imagen'])
                 return redirect('lista_inventario')
         else:
             variante_form = VarianteProductoForm()
@@ -370,18 +364,9 @@ def editar_producto(request, id):
                     saldo.save()
 
                     imagen = variante_form.cleaned_data.get('imagen')
-                    if imagen:
-                        # Eliminar imágenes previas de esta variante
-                        ImagenProducto.objects.filter(variante=variante).delete()
-
-                        from django.core.files.storage import default_storage
-                        path = default_storage.save(f'productos/{imagen.name}', imagen)
-                        ImagenProducto.objects.create(
-                            producto=variante.producto,
-                            variante=variante,
-                            ruta_almacenamiento=path,
-                            es_principal=True
-                        )
+                    if imagen and variante.producto:
+                        variante.producto.imagen = imagen
+                        variante.producto.save(update_fields=['imagen'])
                 return redirect('lista_inventario')
             except Exception as e:
                 variante_form.add_error(None, f"Error en la base de datos al guardar: {str(e)}")
@@ -390,29 +375,16 @@ def editar_producto(request, id):
         saldo_form = SaldoInventarioForm(instance=saldo)
 
     current_image_url = None
-    current_image = None
-    try:
-        current_image = ImagenProducto.objects.filter(variante=variante).first()
-        if current_image and current_image.ruta_almacenamiento:
-            path = current_image.ruta_almacenamiento
-            if path.startswith('http://') or path.startswith('https://'):
-                current_image_url = path
-            else:
-                try:
-                    from django.core.files.storage import default_storage
-                    current_image_url = default_storage.url(path)
-                except Exception:
-                    from django.conf import settings
-                    media_url = (settings.MEDIA_URL or '/media/').rstrip('/') + '/'
-                    current_image_url = media_url + path.lstrip('/')
-    except Exception:
-        pass
+    if variante and getattr(variante, 'producto', None) and getattr(variante.producto, 'imagen', None):
+        try:
+            current_image_url = variante.producto.imagen.url
+        except Exception:
+            pass
 
     return render(request, 'inventario/formulario.html', {
         'form_variante': variante_form,
         'form_saldo': saldo_form,
         'variante': variante,
-        'current_image': current_image,
         'current_image_url': current_image_url,
         'is_editing': True,
     })

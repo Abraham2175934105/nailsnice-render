@@ -113,11 +113,11 @@ urlpatterns = [
 # Exponer las rutas de archivos multimedia en todos los entornos
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# En producción, si no se utiliza un backend de almacenamiento en la nube,
-# servimos los archivos locales a través de la vista estática de Django.
-if not settings.DEBUG:
-    from django.views.static import serve
+# Las rutas de archivos multimedia locales no se sirven síncronamente en producción con ASGI
+# para evitar bloqueos del iterador. Todo debe ser gestionado por Cloudinary.
+if settings.DEBUG:
     from django.urls import re_path
+    from django.views.static import serve
     urlpatterns += [
         re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
     ]
