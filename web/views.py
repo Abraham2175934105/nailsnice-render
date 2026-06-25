@@ -249,7 +249,10 @@ def carga_masiva_clientes(request):
             messages.error(request, 'El archivo debe incluir nombre y apellido (o nombre1 y apellido1).')
             return redirect('clientes_carga_masiva')
 
+        allow_update = request.POST.get('allow_update') == 'on'
+
         creados = 0
+        actualizados = 0
         procesados = 0
         lista_duplicados = []
         lista_fallidos = []
@@ -320,17 +323,33 @@ def carga_masiva_clientes(request):
                 if correo_key in seen_emails:
                     duplicate_reasons.append(f"correo duplicado en archivo ({data['correo']})")
                 elif correo_key in existing_emails:
-                    duplicate_reasons.append(f"correo ya existe ({data['correo']})")
+                    duplicate_reasons.append(f"correo ya existe en BD ({data['correo']})")
 
             if telefono_key:
                 if telefono_key in seen_phones:
                     duplicate_reasons.append(f"teléfono duplicado en archivo ({data['telefono']})")
                 elif telefono_key in existing_phones:
-                    duplicate_reasons.append(f"teléfono ya existe ({data['telefono']})")
+                    duplicate_reasons.append(f"teléfono ya existe en BD ({data['telefono']})")
+
+            usuario_existente = None
+            cliente_existente = None
+            es_actualizacion = False
 
             if duplicate_reasons:
-                lista_duplicados.append(f"Fila {fila_num}: {', '.join(duplicate_reasons)}")
-                continue
+                if allow_update and not (correo_key in seen_emails or telefono_key in seen_phones):
+                    # Podemos intentar actualizar porque el duplicado está solo en la BD, no en el archivo actual.
+                    if correo_key:
+                        usuario_existente = Usuario.objects.filter(correo__iexact=correo_key).first()
+                    if not usuario_existente and telefono_key:
+                        usuario_existente = Usuario.objects.filter(telefono=telefono_key).first()
+                    
+                    if usuario_existente:
+                        cliente_existente = Cliente.objects.filter(usuario=usuario_existente).first()
+                        es_actualizacion = True
+                else:
+                    # Rechazamos de forma estricta según las reglas
+                    lista_fallidos.append(f"Fila {fila_num}: No se procesó porque el correo o teléfono ya existen. ({', '.join(duplicate_reasons)})")
+                    continue
 
             if correo_key:
                 seen_emails.add(correo_key)
@@ -347,6 +366,10 @@ def carga_masiva_clientes(request):
             acepta_fid = _as_text(row.get('acepta_fidelizacion', '1'))
             estado = _as_text(row.get('estado', 'ACTIVO')).upper() or 'ACTIVO'
 
+            form_kwargs = {}
+            if es_actualizacion:
+                form_kwargs = {'usuario': usuario_existente, 'perfil': cliente_existente}
+
             form = ClienteForm({
                 'correo': data['correo'],
                 'nombre': data['nombre'],
@@ -358,24 +381,27 @@ def carga_masiva_clientes(request):
                 'password': _as_text(row.get('password', row.get('contrasena', row.get('contraseña', '')))),
                 'es_staff': _as_text(row.get('es_staff', '0')) in {'1', 'true', 'si', 'yes'},
                 'es_superusuario': _as_text(row.get('es_superusuario', '0')) in {'1', 'true', 'si', 'yes'},
-            })
+            }, **form_kwargs)
 
             if form.is_valid():
                 form.save()
-                creados += 1
+                if es_actualizacion:
+                    actualizados += 1
+                    lista_duplicados.append(f"Fila {fila_num}: Cliente actualizado exitosamente ({data['correo'] or data['telefono']})")
+                else:
+                    creados += 1
             else:
                 lista_fallidos.append(f"Fila {fila_num}: {form.errors.as_text().replace('*', '').strip()}")
 
         if not tiene_columna_rol:
             messages.info(request, 'No se envió columna rol. Se asignó Cliente por defecto donde aplicó.')
 
-        duplicados_count = len(lista_duplicados)
         fallidos_count = len(lista_fallidos)
 
         msg_html = build_bulk_import_message(
             procesados=procesados,
             exitosos=creados,
-            duplicados=duplicados_count,
+            duplicados=actualizados,
             fallidos=fallidos_count,
             lista_duplicados=lista_duplicados,
             lista_fallidos=lista_fallidos

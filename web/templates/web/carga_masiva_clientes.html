@@ -105,7 +105,11 @@
     </div>
     <div class="pill-tag">Tip: correo con @. Si no envías rol, se asigna Cliente; para admin puedes usar Admin o Administrador.</div>
     <div class="pill-tag">Si envías password, debe incluir mayúscula, minúscula, número y carácter especial.</div>
-    <div class="pill-tag">No se permiten duplicados de correo o teléfono (ni en el archivo ni contra los datos existentes).</div>
+    <div class="pill-tag">No se permiten duplicados de correo o teléfono en el mismo archivo.</div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" name="allow_update" id="allow_update">
+      <label for="allow_update" style="margin: 0; font-weight: normal; font-size: 0.95rem;">Deseo actualizar los datos si el cliente ya existe (correo o teléfono coincide).</label>
+    </div>
     <div class="form-actions" style="justify-content:flex-end; gap:10px;">
       <a class="btn-ghost" href="{% url 'lista_clientes' %}">Cancelar</a>
       <button class="btn-pill btn-primary" type="submit"><svg aria-hidden="true"><use href="#icon-export"></use></svg>Procesar</button>
