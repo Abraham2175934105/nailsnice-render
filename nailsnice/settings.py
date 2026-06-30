@@ -314,38 +314,26 @@ else:
     }
 
 # ---------------------------------------------------------------------------
-# Configuración de correo — Brevo SMTP Relay
+# Configuración de correo — Brevo SMTP Relay (puerto 2525 bypass)
 # ---------------------------------------------------------------------------
-# Variables de entorno requeridas en producción (panel Render → Environment):
-#   EMAIL_HOST_USER     → b07db5001@smtp-brevo.com
-#   EMAIL_HOST_PASSWORD → (clave SMTP de Brevo)
+# Render tiene variables antiguas EMAIL_HOST_USER/PASSWORD con credenciales
+# de Gmail que colisionan.  Usamos BREVO_USER / BREVO_PASSWORD como nombres
+# dedicados para evitar conflictos.
 #
-# El host, puerto y modo TLS están fijos para Brevo smtp-relay.brevo.com:587.
+# En Render → Environment, configura:
+#   BREVO_USER     = b07db5001@smtp-brevo.com
+#   BREVO_PASSWORD = (clave SMTP xsmtpsib-... de Brevo)
 # ---------------------------------------------------------------------------
-if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
-    raw_user = os.environ.get('EMAIL_HOST_USER', '')
-    raw_pass = os.environ.get('EMAIL_HOST_PASSWORD', '')
-    
-    EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com').strip()
-    EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '2525'))  # 2525 bypass — diseñado para Render/Heroku
-    EMAIL_USE_TLS       = True                                        # STARTTLS en puerto 2525
-    EMAIL_USE_SSL       = False                                       # Mutuamente excluyente con TLS
-    EMAIL_HOST_USER     = raw_user.strip().strip(' "\'')
-    EMAIL_HOST_PASSWORD = raw_pass.strip().strip(' "\'')
-    EMAIL_TIMEOUT       = 20     # Más holgado para handshake en redes de cloud
-    DEFAULT_FROM_EMAIL  = os.environ.get(
-        'DEFAULT_FROM_EMAIL',
-        EMAIL_HOST_USER
-    )
+EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST          = 'smtp-relay.brevo.com'
+EMAIL_PORT          = 2525                                            # bypass para Render/Heroku
+EMAIL_USE_TLS       = True                                            # STARTTLS en puerto 2525
+EMAIL_USE_SSL       = False                                           # mutuamente excluyente con TLS
+EMAIL_HOST_USER     = os.environ.get('BREVO_USER', 'b07db5001@smtp-brevo.com').strip()
+EMAIL_HOST_PASSWORD = os.environ.get('BREVO_PASSWORD', '').strip()
+EMAIL_TIMEOUT       = 20
+DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
-else:
-    # Modo desarrollo / sin credenciales: imprime en consola de runserver.
-    EMAIL_BACKEND      = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = os.environ.get(
-        'DEFAULT_FROM_EMAIL',
-        'Nails Nice <noreply@nailsnice.com>'
-    )
 
 
 

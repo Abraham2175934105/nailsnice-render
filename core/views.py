@@ -725,32 +725,23 @@ def forgot_password_view(request):
                 _recipient  = u_correo
                 _html       = html_body
 
-                # Loggear las credenciales para diagnosticar si Render está inyectando basura
-                try:
-                    _ds_user = getattr(_ds, 'EMAIL_HOST_USER', 'None')
-                    _ds_pass = getattr(_ds, 'EMAIL_HOST_PASSWORD', '')
-                    _pass_mask = f"{_ds_pass[:10]}...{_ds_pass[-5:]} (len: {len(_ds_pass)})" if _ds_pass else "EMPTY"
-                    _logger.warning("SMTP_DIAGNOSTICS - User: '%s', PassMask: '%s', From: '%s'", _ds_user, _pass_mask, _from_email)
-                except Exception as e:
-                    _logger.warning("SMTP_DIAGNOSTICS - Failed to log: %s", e)
+                def _send_in_background():
+                    try:
+                        send_mail(
+                            subject=_subject,
+                            message=_plain,
+                            from_email=_from_email,
+                            recipient_list=[_recipient],
+                            html_message=_html,
+                            fail_silently=False,
+                        )
+                        _logger.info('reset_email_sent: %s', _recipient)
+                    except Exception as _exc:
+                        _logger.error('reset_email_error: %s — %s', _recipient, _exc)
 
-                # Ejecutar de forma síncrona en el hilo principal
-                try:
-                    send_mail(
-                        subject=_subject,
-                        message=_plain,
-                        from_email=_from_email,
-                        recipient_list=[_recipient],
-                        html_message=_html,
-                        fail_silently=False,
-                    )
-                    _logger.info('reset_email_sent: %s', _recipient)
-                except Exception as _exc:
-                    _logger.error('reset_email_error: %s — %s', _recipient, _exc)
-                    # Si falla en el hilo principal, lanzamos la excepción para ver el traceback completo en Render
-                    raise
+                _t = _threading.Thread(target=_send_in_background, daemon=True)
+                _t.start()
 
-                # Rate-limit cleanup
                 clear_failures('reset_ip', client_ip)
                 clear_failures('reset_identity', correo)
                 security_event('reset_code_issued', request, extra={'identity': correo})
