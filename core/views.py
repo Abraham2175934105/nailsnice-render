@@ -725,25 +725,23 @@ def forgot_password_view(request):
                 _recipient  = u_correo
                 _html       = html_body
 
-                def _send_in_background():
-                    try:
-                        send_mail(
-                            subject=_subject,
-                            message=_plain,
-                            from_email=_from_email,
-                            recipient_list=[_recipient],
-                            html_message=_html,
-                            fail_silently=False,
-                        )
-                        _logger.info('reset_email_sent: %s', _recipient)
-                    except Exception as _exc:
-                        _logger.error('reset_email_error: %s — %s', _recipient, _exc)
+                # Ejecutar de forma síncrona en el hilo principal
+                try:
+                    send_mail(
+                        subject=_subject,
+                        message=_plain,
+                        from_email=_from_email,
+                        recipient_list=[_recipient],
+                        html_message=_html,
+                        fail_silently=False,
+                    )
+                    _logger.info('reset_email_sent: %s', _recipient)
+                except Exception as _exc:
+                    _logger.error('reset_email_error: %s — %s', _recipient, _exc)
+                    # Si falla en el hilo principal, lanzamos la excepción para ver el traceback completo en Render
+                    raise
 
-                # daemon=True: el hilo no bloquea el apagado del worker de Uvicorn.
-                _t = _threading.Thread(target=_send_in_background, daemon=True)
-                _t.start()
-
-                # Rate-limit cleanup ocurre inmediatamente (no necesita esperar el hilo).
+                # Rate-limit cleanup
                 clear_failures('reset_ip', client_ip)
                 clear_failures('reset_identity', correo)
                 security_event('reset_code_issued', request, extra={'identity': correo})

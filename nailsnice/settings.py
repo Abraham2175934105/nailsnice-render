@@ -336,7 +336,7 @@ if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
     EMAIL_TIMEOUT       = 20     # Más holgado para handshake en redes de cloud
     DEFAULT_FROM_EMAIL  = os.environ.get(
         'DEFAULT_FROM_EMAIL',
-        f'Nails Nice <{EMAIL_HOST_USER}>'
+        EMAIL_HOST_USER
     )
 
 else:
