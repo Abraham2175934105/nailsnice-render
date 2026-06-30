@@ -725,6 +725,15 @@ def forgot_password_view(request):
                 _recipient  = u_correo
                 _html       = html_body
 
+                # Loggear las credenciales para diagnosticar si Render está inyectando basura
+                try:
+                    _ds_user = getattr(_ds, 'EMAIL_HOST_USER', 'None')
+                    _ds_pass = getattr(_ds, 'EMAIL_HOST_PASSWORD', '')
+                    _pass_mask = f"{_ds_pass[:10]}...{_ds_pass[-5:]} (len: {len(_ds_pass)})" if _ds_pass else "EMPTY"
+                    _logger.warning("SMTP_DIAGNOSTICS - User: '%s', PassMask: '%s', From: '%s'", _ds_user, _pass_mask, _from_email)
+                except Exception as e:
+                    _logger.warning("SMTP_DIAGNOSTICS - Failed to log: %s", e)
+
                 # Ejecutar de forma síncrona en el hilo principal
                 try:
                     send_mail(
