@@ -325,12 +325,12 @@ else:
 if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
     EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
-    EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '587'))
-    EMAIL_USE_TLS       = get_env_bool('EMAIL_USE_TLS', True)
-    EMAIL_USE_SSL       = False   # mutuamente excluyente con TLS; Brevo usa TLS en 587
+    EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '465'))   # 465 SSL — Render no bloquea este puerto
+    EMAIL_USE_SSL       = get_env_bool('EMAIL_USE_SSL', True)        # SSL puro para puerto 465
+    EMAIL_USE_TLS       = False                                       # Mutuamente excluyente con SSL
     EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-    EMAIL_TIMEOUT       = 10
+    EMAIL_TIMEOUT       = 15     # segundos — más holgado que el anterior para SSL handshake
     DEFAULT_FROM_EMAIL  = os.environ.get(
         'DEFAULT_FROM_EMAIL',
         'Nails Nice <b07db5001@smtp-brevo.com>'
