@@ -725,22 +725,20 @@ def forgot_password_view(request):
                 _recipient  = u_correo
                 _html       = html_body
 
-                def _send_in_background():
-                    try:
-                        send_mail(
-                            subject=_subject,
-                            message=_plain,
-                            from_email=_from_email,
-                            recipient_list=[_recipient],
-                            html_message=_html,
-                            fail_silently=False,
-                        )
-                        _logger.info('reset_email_sent: %s', _recipient)
-                    except Exception as _exc:
-                        _logger.error('reset_email_error: %s — %s', _recipient, _exc)
-
-                _t = _threading.Thread(target=_send_in_background, daemon=True)
-                _t.start()
+                # Ejecutar síncronamente para capturar cualquier rechazo de remitente (550) en Render
+                try:
+                    _result = send_mail(
+                        subject=_subject,
+                        message=_plain,
+                        from_email=_from_email,
+                        recipient_list=[_recipient],
+                        html_message=_html,
+                        fail_silently=False,
+                    )
+                    _logger.warning("SMTP_RESULT: send_mail devolvió %s (1 = Entregado a Brevo)", _result)
+                except Exception as _exc:
+                    _logger.error('reset_email_error: %s — %s', _recipient, _exc)
+                    raise  # Forzamos el 500 para que el traceback estalle en Render
 
                 clear_failures('reset_ip', client_ip)
                 clear_failures('reset_identity', correo)
