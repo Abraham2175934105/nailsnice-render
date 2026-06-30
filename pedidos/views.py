@@ -320,7 +320,7 @@ def lista_pedidos(request):
     export_fmt = (request.GET.get('export') or '').lower()
     if export_fmt in {'csv', 'xlsx', 'pdf'}:
         if export_scope == 'all':
-            export_source = pedidos_qs
+            export_source = pedidos_qs.iterator(chunk_size=2000)
         elif export_scope == 'pages':
             export_source = []
             for page_num in export_pages:

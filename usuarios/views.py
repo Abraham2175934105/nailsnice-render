@@ -408,11 +408,12 @@ def request_password_reset(request):
             'sitio_nombre': 'Profesional Beauty',
         }
         html = render_to_string('usuarios/email_recovery.html', context)
-        subject = 'Código de recuperación de contraseña - Profesional Beauty'
-        from_email = None  # Django usará DEFAULT_FROM_EMAIL
+        subject = 'Tu codigo de verificacion - Nails Nice'
+        from django.conf import settings as _s
+        from_email = getattr(_s, 'DEFAULT_FROM_EMAIL', None)
 
-        # send_mail maneja texto y html
-        send_mail(subject, f'Código: {codigo}', from_email, [correo], html_message=html)
+        # send_mail maneja texto y html; fail_silently=False para ver errores reales
+        send_mail(subject, f'Tu codigo de verificacion es: {codigo}', from_email, [correo], html_message=html, fail_silently=False)
 
         return JsonResponse({'status': 'ok', 'message': 'Código enviado si el correo existe'})
     except Exception as e:
@@ -445,8 +446,10 @@ def password_reset_request_page(request):
                 'sitio_nombre': 'Profesional Beauty',
             }
             html = render_to_string('usuarios/email_recovery.html', context)
-            subject = 'Código de recuperación de contraseña - Profesional Beauty'
-            send_mail(subject, f'Código: {codigo}', None, [correo], html_message=html)
+            subject = 'Tu codigo de verificacion - Nails Nice'
+            from django.conf import settings as _s
+            from_email = getattr(_s, 'DEFAULT_FROM_EMAIL', None)
+            send_mail(subject, f'Tu codigo de verificacion es: {codigo}', from_email, [correo], html_message=html, fail_silently=False)
 
             messages.success(request, 'Si existe una cuenta con ese correo, se ha enviado un código de verificación.')
             return redirect(reverse('usuarios:password_reset_change_page') + f'?correo={correo}')

@@ -253,7 +253,7 @@ if DATABASE_URL.startswith('sqlite'):
     }
 else:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=(os.environ.get('DJANGO_DEBUG','').lower() not in {'1','true','yes'}))
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=0, ssl_require=(os.environ.get('DJANGO_DEBUG','').lower() not in {'1','true','yes'}))
     }
 
 # Use SQLite for tests to avoid external DB dependency during CI/local runs.
@@ -314,57 +314,36 @@ else:
     }
 
 # ---------------------------------------------------------------------------
-# Configuración de correo — Alta resiliencia para producción en Render
+# Configuración de correo — Brevo SMTP Relay
 # ---------------------------------------------------------------------------
-# Variables de entorno requeridas en producción:
-#   EMAIL_HOST_USER     → cuenta de correo (ej. soporteProfesional Beauty@gmail.com)
-#   EMAIL_HOST_PASSWORD → contraseña de app (App Password en Gmail)
+# Variables de entorno requeridas en producción (panel Render → Environment):
+#   EMAIL_HOST_USER     → b07db5001@smtp-brevo.com
+#   EMAIL_HOST_PASSWORD → (clave SMTP de Brevo)
 #
-# Variables opcionales con defaults razonables:
-#   EMAIL_HOST      → smtp.gmail.com  (o smtp.hostinger.com, etc.)
-#   EMAIL_PORT      → 465 por defecto (SSL directo, nunca capado por Render)
-#   EMAIL_USE_SSL   → true  (compatible con port 465)
-#   EMAIL_USE_TLS   → false (mutuamente excluyente con SSL)
-#
-# Si el puerto 465 estuviese bloqueado, cambia EMAIL_PORT=587 y EMAIL_USE_TLS=true
-# desde el panel de Render sin necesidad de redeploy.
+# El host, puerto y modo TLS están fijos para Brevo smtp-relay.brevo.com:587.
 # ---------------------------------------------------------------------------
 if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
-    EMAIL_BACKEND    = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST       = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-    EMAIL_HOST_USER  = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
+    EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS       = get_env_bool('EMAIL_USE_TLS', True)
+    EMAIL_USE_SSL       = False   # mutuamente excluyente con TLS; Brevo usa TLS en 587
+    EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-
-    # Detección automática del modo SSL vs TLS según las env vars.
-    # Por defecto usamos puerto 465 + SSL (más compatible con Render).
-    _use_ssl = get_env_bool('EMAIL_USE_SSL', True)
-    _use_tls = get_env_bool('EMAIL_USE_TLS', False)
-
-    # Prevenir configuración inválida: SSL y TLS son mutuamente excluyentes.
-    if _use_ssl and _use_tls:
-        _use_tls = False  # SSL tiene prioridad
-
-    EMAIL_USE_SSL = _use_ssl
-    EMAIL_USE_TLS = _use_tls
-
-    # Puerto inteligente: 465 con SSL, 587 con TLS, sobrescribible por env var.
-    _default_port = 465 if _use_ssl else 587
-    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', str(_default_port)))
-
-    # Timeout corto para no bloquear el proceso web si el SMTP no responde.
-    EMAIL_TIMEOUT = 8
-
-    DEFAULT_FROM_EMAIL = os.environ.get(
+    EMAIL_TIMEOUT       = 10
+    DEFAULT_FROM_EMAIL  = os.environ.get(
         'DEFAULT_FROM_EMAIL',
-        f'Profesional Beauty <{EMAIL_HOST_USER}>'
+        'Nails Nice <b07db5001@smtp-brevo.com>'
     )
 else:
     # Modo desarrollo / sin credenciales: imprime en consola de runserver.
     EMAIL_BACKEND      = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = os.environ.get(
         'DEFAULT_FROM_EMAIL',
-        'Profesional Beauty <soporteProfesional Beauty@gmail.com>'
+        'Nails Nice <noreply@nailsnice.com>'
     )
+
+
 
 # Logging básico orientado a producción: guarda errores 400/500 y excepciones en logs/app.log
 LOGGING = {
