@@ -332,7 +332,7 @@ EMAIL_USE_SSL       = False                                           # mutuamen
 EMAIL_HOST_USER     = os.environ.get('BREVO_USER', 'b07db5001@smtp-brevo.com').strip()
 EMAIL_HOST_PASSWORD = os.environ.get('BREVO_PASSWORD', '').strip()
 EMAIL_TIMEOUT       = 20
-DEFAULT_FROM_EMAIL  = 'b07db5001@smtp-brevo.com'
+DEFAULT_FROM_EMAIL  = 'abrahamboada95@gmail.com'
 
 
 
