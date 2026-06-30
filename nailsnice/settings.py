@@ -331,8 +331,8 @@ if os.environ.get('EMAIL_HOST_USER') and os.environ.get('EMAIL_HOST_PASSWORD'):
     EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', '2525'))  # 2525 bypass — diseñado para Render/Heroku
     EMAIL_USE_TLS       = True                                        # STARTTLS en puerto 2525
     EMAIL_USE_SSL       = False                                       # Mutuamente excluyente con TLS
-    EMAIL_HOST_USER     = raw_user.strip(' "\'')
-    EMAIL_HOST_PASSWORD = raw_pass.strip(' "\'')
+    EMAIL_HOST_USER     = raw_user.strip().strip(' "\'')
+    EMAIL_HOST_PASSWORD = raw_pass.strip().strip(' "\'')
     EMAIL_TIMEOUT       = 20     # Más holgado para handshake en redes de cloud
     DEFAULT_FROM_EMAIL  = os.environ.get(
         'DEFAULT_FROM_EMAIL',
