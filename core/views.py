@@ -701,31 +701,53 @@ def forgot_password_view(request):
 
             if usuario_activo and u_correo:
                 import logging as _log
+                import threading as _threading
                 from django.conf import settings as _ds
+                from django.template.loader import render_to_string
                 _logger = _log.getLogger('Profesional Beauty')
+
+                # Renderizar el HTML aquí (síncrono, sin I/O de red) antes de
+                # lanzar el hilo para evitar problemas con el contexto de Django.
                 try:
-                    from django.template.loader import render_to_string
                     html_body = render_to_string('usuarios/email_recovery.html', {
                         'codigo': codigo,
                         'correo': u_correo,
                         'expira_en': timezone.now() + timedelta(minutes=10),
                         'sitio_nombre': 'Nails Nice',
                     })
-                    send_mail(
-                        subject='Tu codigo de verificacion - Nails Nice',
-                        message=f'Tu codigo de verificacion es: {codigo}. Valido por 10 minutos.',
-                        from_email=getattr(_ds, 'DEFAULT_FROM_EMAIL', None),
-                        recipient_list=[u_correo],
-                        html_message=html_body,
-                        fail_silently=False,  # Muestra el error real en los logs de Render
-                    )
-                    _logger.info('reset_email_sent: %s', correo)
-                except Exception as _mail_exc:
-                    _logger.error('reset_email_error: %s — %s', correo, _mail_exc)
-                finally:
-                    clear_failures('reset_ip', client_ip)
-                    clear_failures('reset_identity', correo)
-                    security_event('reset_code_issued', request, extra={'identity': correo})
+                except Exception as _tpl_exc:
+                    _logger.error('reset_template_error: %s — %s', correo, _tpl_exc)
+                    html_body = f'Tu codigo de verificacion es: {codigo}. Valido por 10 minutos.'
+
+                _subject    = 'Tu codigo de verificacion - Nails Nice'
+                _plain      = f'Tu codigo de verificacion es: {codigo}. Valido por 10 minutos.'
+                _from_email = getattr(_ds, 'DEFAULT_FROM_EMAIL', None)
+                _recipient  = u_correo
+                _html       = html_body
+
+                def _send_in_background():
+                    try:
+                        send_mail(
+                            subject=_subject,
+                            message=_plain,
+                            from_email=_from_email,
+                            recipient_list=[_recipient],
+                            html_message=_html,
+                            fail_silently=False,
+                        )
+                        _logger.info('reset_email_sent: %s', _recipient)
+                    except Exception as _exc:
+                        _logger.error('reset_email_error: %s — %s', _recipient, _exc)
+
+                # daemon=True: el hilo no bloquea el apagado del worker de Uvicorn.
+                _t = _threading.Thread(target=_send_in_background, daemon=True)
+                _t.start()
+
+                # Rate-limit cleanup ocurre inmediatamente (no necesita esperar el hilo).
+                clear_failures('reset_ip', client_ip)
+                clear_failures('reset_identity', correo)
+                security_event('reset_code_issued', request, extra={'identity': correo})
+
             else:
                 # Correo no encontrado: registrar intento pero mostrar mismo mensaje genérico
                 register_failure('reset_ip', client_ip, limit=12, window_seconds=900, lock_seconds=1200)
