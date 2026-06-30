@@ -635,8 +635,7 @@ def profile_view(request):
             messages.success(request, 'Contraseña actualizada con éxito.')
             return redirect('perfil')
 
-    print(f"CITAS DEL USUARIO: {len(agendamientos)} (QuerySet count: {agendamientos_qs.count()})")
-    
+
     return render(request, 'perfil.html', {
         'pedidos': pedidos_usuario,
         'agendamientos': agendamientos,
@@ -678,11 +677,10 @@ def forgot_password_view(request):
         if not field_errors:
             usuario = Usuario.objects.filter(correo__iexact=correo).first()
 
-            usuario_activo = bool(
-                usuario is not None
-                and getattr(usuario, 'is_active', True)
-                and str(getattr(usuario, 'estado', 'ACTIVO')).upper() == 'ACTIVO'
-            )
+            # El usuario existe si hay un registro con ese correo (activo o inactivo).
+            # Permitimos el reset incluso para cuentas INACTIVO para que puedan ser
+            # reactivadas sin intervención manual del admin.
+            usuario_activo = usuario is not None
 
             codigo = _generate_reset_code()
 
@@ -703,23 +701,28 @@ def forgot_password_view(request):
 
             if usuario_activo and u_correo:
                 import logging as _log
+                from django.conf import settings as _ds
                 _logger = _log.getLogger('Profesional Beauty')
                 try:
+                    from django.template.loader import render_to_string
+                    html_body = render_to_string('usuarios/email_recovery.html', {
+                        'codigo': codigo,
+                        'correo': u_correo,
+                        'expira_en': timezone.now() + timedelta(minutes=10),
+                        'sitio_nombre': 'Nails Nice',
+                    })
                     send_mail(
-                        subject='Código de verificación - Profesional Beauty',
-                        message=f'Tu código de verificación es: {codigo}. Válido por 10 minutos.',
-                        from_email=None,  # Django usa DEFAULT_FROM_EMAIL
+                        subject='Tu codigo de verificacion - Nails Nice',
+                        message=f'Tu codigo de verificacion es: {codigo}. Valido por 10 minutos.',
+                        from_email=getattr(_ds, 'DEFAULT_FROM_EMAIL', None),
                         recipient_list=[u_correo],
-                        fail_silently=True,  # No tumba el flujo si el SMTP falla
+                        html_message=html_body,
+                        fail_silently=False,  # Muestra el error real en los logs de Render
                     )
                     _logger.info('reset_email_sent: %s', correo)
                 except Exception as _mail_exc:
-                    # fail_silently=True ya silencia la excepción de smtplib,
-                    # pero capturamos cualquier otro error inesperado.
                     _logger.error('reset_email_error: %s — %s', correo, _mail_exc)
                 finally:
-                    # Limpiar rate-limit siempre que el usuario exista,
-                    # independientemente de si el correo llegó o no.
                     clear_failures('reset_ip', client_ip)
                     clear_failures('reset_identity', correo)
                     security_event('reset_code_issued', request, extra={'identity': correo})
